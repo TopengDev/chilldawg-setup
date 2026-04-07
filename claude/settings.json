@@ -1,0 +1,77 @@
+{
+  "env": {
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-4-6",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "EDITOR": "nvim"
+  },
+  "hooks": {
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreCompact\",\"additionalContext\":\"MEMORY REVIEW: Context is about to be compacted. Scan the conversation for unsaved decisions, corrections, new projects, references, or feedback. Run /remember review to persist anything important before compaction loses it.\"}}'",
+            "timeout": 5,
+            "statusMessage": "Checking for unsaved memories..."
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline.sh"
+  },
+  "enabledPlugins": {
+    "ralph-loop@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true,
+    "playwright@claude-plugins-official": true,
+    "attn@s0nderlabs": true,
+    "whatsapp@TopengDev": true,
+    "nativ@nativ": true
+  },
+  "extraKnownMarketplaces": {
+    "ui-ux-pro-max-skill": {
+      "source": {
+        "source": "github",
+        "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
+      }
+    },
+    "s0nderlabs": {
+      "source": {
+        "source": "github",
+        "repo": "s0nderlabs/marketplace"
+      },
+      "autoUpdate": true
+    },
+    "TopengDev": {
+      "source": {
+        "source": "github",
+        "repo": "TopengDev/whatsapp-marketplace"
+      }
+    },
+    "nativ": {
+      "source": {
+        "source": "github",
+        "repo": "s0nderlabs/nativ"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "voiceEnabled": false,
+  "channelsEnabled": true,
+  "allowedChannelPlugins": [
+    {
+      "marketplace": "s0nderlabs",
+      "plugin": "attn"
+    },
+    {
+      "marketplace": "TopengDev",
+      "plugin": "whatsapp"
+    }
+  ],
+  "autoMemoryDirectory": "~/.claude/memory",
+  "skipDangerousModePermissionPrompt": true
+}

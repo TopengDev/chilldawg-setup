@@ -1,0 +1,101 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# chilldawg-setup .gitignore
+# This repo is the source-of-truth for Christopher's Claude Code + dev env.
+# Anything below MUST NOT be committed.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ─── Secrets (live) ──────────────────────────────────────────────────────────
+secrets.env
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+.git-credentials
+.gh.json
+.netrc
+
+# ─── Claude Code runtime state (regeneratable, large, or sensitive) ──────────
+claude/.credentials.json
+claude/.mcp.json
+claude/mcp-needs-auth-cache.json
+claude/projects/
+claude/sessions/
+claude/cache/
+claude/file-history/
+claude/debug/
+claude/backups/
+claude/paste-cache/
+claude/session-env/
+claude/shell-snapshots/
+claude/stats-cache.json
+claude/statsig/
+claude/telemetry/
+claude/usage-data/
+claude/todos/
+claude/teams/
+claude/channels/
+claude/history.jsonl
+claude/plans/
+claude/invoices/
+claude/plugins/
+claude/settings.local.json
+
+# ─── Shell history / runtime ─────────────────────────────────────────────────
+.bash_history
+.python_history
+.node_repl_history
+.lesshst
+.viminfo
+.claude.json
+.claude.json.backup
+
+# ─── Node / build artifacts ──────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+*.log
+*.lock
+*.pid
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Allow lockfiles for reproducibility (override the *.lock above)
+!package-lock.json
+!bun.lock
+!bun.lockb
+!Cargo.lock
+!lazy-lock.json
+
+# ─── Editor / OS ─────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+.ipynb_checkpoints/
+
+# ─── Qutebrowser personal state (we only track config.py + scripts/ + greasemonkey/) ──
+config/qutebrowser/bookmarks/
+config/qutebrowser/quickmarks
+config/qutebrowser/qsettings/
+config/qutebrowser/autoconfig.yml
+config/qutebrowser/history.sqlite*
+config/qutebrowser/sessions/
+config/qutebrowser/webengine/
+
+# ─── Sibling-cloned configs (not owned by chilldawg-setup) ───────────────────
+# nvim has its own upstream repo (TopengDev/nvim_setup); install.sh clones it
+# as a sibling into ~/.config/nvim. We never track it here.
+config/nvim/
+
+# ─── Defensive: nested git repos under config/ should never be tracked ───────
+config/*/.git/
+config/*/.gitignore
+
+# ─── Misc ────────────────────────────────────────────────────────────────────
+*.tmp
+*.bak
+*.orig
+*~

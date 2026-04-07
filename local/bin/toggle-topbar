@@ -1,0 +1,8 @@
+#!/bin/bash
+key="/org/gnome/shell/extensions/just-perfection/panel"
+val=$(dconf read $key)
+if [ "$val" = "true" ]; then
+  dconf write $key false
+else
+  dconf write $key true
+fi

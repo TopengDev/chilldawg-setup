@@ -1,0 +1,13 @@
+[user]
+	name = TopengDev
+	email = topengdev@outlook.com
+[core]
+	compression = 0
+[pack]
+	window = 1
+[pull]
+	rebase = true
+[init]
+	defaultBranch = main
+[credential]
+	helper = store

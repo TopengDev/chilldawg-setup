@@ -1,0 +1,19 @@
+{
+  "accounts": {
+    "personal": {
+      "label": "Outlook Personal",
+      "imap": { "host": "outlook.office365.com", "port": 993, "tls": true },
+      "smtp": { "host": "smtp.office365.com", "port": 587, "starttls": true },
+      "email": "you@outlook.com",
+      "password": "your-password"
+    },
+    "business": {
+      "label": "Aenoxa (Hostinger)",
+      "imap": { "host": "imap.hostinger.com", "port": 993, "tls": true },
+      "smtp": { "host": "smtp.hostinger.com", "port": 465, "tls": true },
+      "email": "you@aenoxa.com",
+      "password": "your-password"
+    }
+  },
+  "defaultAccount": "personal"
+}
