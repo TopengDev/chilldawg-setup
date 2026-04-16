@@ -1267,6 +1267,24 @@ These are the "default suggestion" fonts. They signal zero design thought. There
 - `window.alert()` — BANNED. Use inline feedback or toast components.
 - Generic circular spinners — BANNED. Use skeletal loaders matching layout shape.
 
+### Banned: glowing-edge + left-dot pill badges
+
+Do NOT use the following badge pattern in any generated landing / marketing component:
+
+- Rounded pill with gradient / glowing outer edge (ring-offset or box-shadow glow)
+- Small colored dot (● / •) on the left side
+- Uppercase tracked text
+
+This pattern is instantly recognizable as "AI-generated SaaS landing" aesthetic and has become visually tired. Recent offenders: hero LIVE indicator, section eyebrows like "WHAT PULSE DOES", "A DAY ON PULSE".
+
+**Acceptable badge alternatives:**
+
+1. **Simple tonal pill** — solid single-tone background (e.g., `bg-accent/10`), no dot, no glow, `rounded-md` or `rounded-full`, plain or uppercase text. Clean, functional, timeless.
+2. **No-container eyebrow** — text prefixed with em-dash or bullet, no pill. Example: `— Section Title` or `• Live`. Works well when paired with strong h2/h3 typography below.
+3. **Thin underline eyebrow** — small tracked text with an accent-colored underline, no container.
+
+For "live" indicators (where the badge is communicating real-time status, not styling), prefer an actual small pulsing dot via CSS `@keyframes` with minimal scale/opacity animation (no filter, no shadow). The animation earns the live-indicator semantic; without animation, the left-dot is decorative noise.
+
 ### Creative Arsenal (High-End Patterns)
 
 Pull from these when the design calls for something elevated:
