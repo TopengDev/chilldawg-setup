@@ -16,6 +16,19 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/christopher/.claude/hooks/lint-check.sh",
+            "timeout": 60,
+            "statusMessage": "Running linter..."
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -73,5 +86,17 @@
     }
   ],
   "autoMemoryDirectory": "~/.claude/memory",
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "permissions": {
+    "allow": [
+      "Edit(~/.claude/skills/**)",
+      "Write(~/.claude/skills/**)",
+      "Edit(~/.claude/memory/**)",
+      "Write(~/.claude/memory/**)",
+      "Edit(~/.claude/hooks/**)",
+      "Write(~/.claude/hooks/**)",
+      "Edit(/home/christopher/claude/Git/repositories/chilldawg-setup/**)",
+      "Write(/home/christopher/claude/Git/repositories/chilldawg-setup/**)"
+    ]
+  }
 }
