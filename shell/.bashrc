@@ -19,6 +19,38 @@ c() {
     claude "$@"
   fi
 }
+
+# claude-worker: spawn a named claude session that registers as a distinct
+# attn local peer so it can message back to "main" without polling. Also
+# auto-injects a reporting-protocol preamble a few seconds after the prompt
+# is ready so you don't forget to brief it.
+# usage:
+#   cd <repo> && claude-worker <worker-name> [extra claude args...]
+# example:
+#   cd ~/claude/Git/repositories/pulse-landing && claude-worker landing-polish
+claude-worker() {
+  local name="${1:?claude-worker: worker name required}"
+  shift
+  if [ -n "$TMUX" ]; then
+    tmux rename-window "$name" 2>/dev/null
+  fi
+  local preamble_file="/tmp/claude-worker-preamble-$$.txt"
+  cat > "$preamble_file" <<EOF
+You are a spawned worker registered to attn as local peer "$name". Main session is addressable as "main" (chilldawg.attn). Reporting protocol is EVENT-DRIVEN, not polling — use mcp__plugin_attn_attn__send with to="main" proactively at every: task completion, blocker you can't self-resolve, user-decision-needed fork. Include evidence (file paths, commit SHAs, curl output, screenshots), not claims. Do NOT wait to be asked for progress. When you receive a task brief in this session, acknowledge the reporting protocol, then execute. If attn is not available in this session, surface that as your first message so it can be fixed.
+EOF
+  if [ -n "$TMUX" ] && [ -n "$TMUX_PANE" ]; then
+    ( sleep 4 \
+      && tmux load-buffer -b "claude-worker-preamble-$$" "$preamble_file" 2>/dev/null \
+      && tmux paste-buffer -b "claude-worker-preamble-$$" -t "$TMUX_PANE" 2>/dev/null \
+      && sleep 1 \
+      && tmux send-keys -t "$TMUX_PANE" Enter 2>/dev/null \
+      && rm -f "$preamble_file"
+    ) &
+  else
+    rm -f "$preamble_file"
+  fi
+  ATTN_SESSION="$name" claude --dangerously-skip-permissions "$@"
+}
 PS1='[\u@\h \W]\$ '
 
 eval "$(oh-my-posh init bash --config ~/Documents/chris.omp.json)"
