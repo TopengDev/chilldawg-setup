@@ -4,7 +4,33 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "EDITOR": "nvim"
   },
+  "permissions": {
+    "allow": [
+      "Edit(~/.claude/skills/**)",
+      "Write(~/.claude/skills/**)",
+      "Edit(~/.claude/memory/**)",
+      "Write(~/.claude/memory/**)",
+      "Edit(~/.claude/hooks/**)",
+      "Write(~/.claude/hooks/**)",
+      "Edit(/home/christopher/claude/Git/repositories/chilldawg-setup/**)",
+      "Write(/home/christopher/claude/Git/repositories/chilldawg-setup/**)",
+      "Edit(~/.claude/scripts/**)",
+      "Write(~/.claude/scripts/**)"
+    ]
+  },
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/christopher/.claude/hooks/oneshot-webapp-rules-hook.sh",
+            "timeout": 10,
+            "statusMessage": "Injecting /oneshot-webapp non-negotiables..."
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "hooks": [
@@ -26,6 +52,34 @@
             "command": "/home/christopher/.claude/hooks/lint-check.sh",
             "timeout": 60,
             "statusMessage": "Running linter..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_playwright_playwright__browser_.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Playwright+Chrome is hard-banned in this environment. Use /agent-browser with qutebrowser instead. See ~/.claude/skills/agent-browser/SKILL.md and memory feedback_browser_qutebrowser.md. Proxy: curl http://localhost:9222/target, driver: agent-browser CLI (export AGENT_BROWSER_CDP=9222).\"}}'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/christopher/.claude/hooks/triage-gate-hook.sh",
+            "timeout": 10,
+            "statusMessage": "Triage gate check..."
+          },
+          {
+            "type": "command",
+            "command": "/home/christopher/.claude/hooks/block-raw-git-commit.sh",
+            "timeout": 10,
+            "statusMessage": "Checking for raw git commit..."
           }
         ]
       }
@@ -73,7 +127,6 @@
     }
   },
   "effortLevel": "high",
-  "voiceEnabled": false,
   "channelsEnabled": true,
   "allowedChannelPlugins": [
     {
@@ -87,16 +140,7 @@
   ],
   "autoMemoryDirectory": "~/.claude/memory",
   "skipDangerousModePermissionPrompt": true,
-  "permissions": {
-    "allow": [
-      "Edit(~/.claude/skills/**)",
-      "Write(~/.claude/skills/**)",
-      "Edit(~/.claude/memory/**)",
-      "Write(~/.claude/memory/**)",
-      "Edit(~/.claude/hooks/**)",
-      "Write(~/.claude/hooks/**)",
-      "Edit(/home/christopher/claude/Git/repositories/chilldawg-setup/**)",
-      "Write(/home/christopher/claude/Git/repositories/chilldawg-setup/**)"
-    ]
-  }
+  "editorMode": "vim",
+  "agentPushNotifEnabled": false,
+  "voiceEnabled": false
 }

@@ -11,8 +11,8 @@ Systematically save, update, and clean up persistent memories.
 
 ## Memory Directory
 
-- **Index:** `~/.claude/projects/-home-christopher-claude/memory/MEMORY.md`
-- **Files:** `~/.claude/projects/-home-christopher-claude/memory/<type>_<topic>.md`
+- **Index:** `~/.claude/memory/MEMORY.md`
+- **Files:** `~/.claude/memory/<type>_<topic>.md`
 
 ## Modes
 
@@ -93,12 +93,12 @@ When spawning agents in tmux sessions, they can write to the same memory directo
 
 ```
 Shared memories to be aware of (read these files for context):
-- ~/.claude/projects/-home-christopher-claude/memory/user_christopher.md
-- ~/.claude/projects/-home-christopher-claude/memory/reference_vps.md
-- ~/.claude/projects/-home-christopher-claude/memory/reference_cloudflare.md
+- ~/.claude/memory/user_christopher.md
+- ~/.claude/memory/reference_vps.md
+- ~/.claude/memory/reference_cloudflare.md
 
 If you learn something worth persisting across sessions, write it to:
-~/.claude/projects/-home-christopher-claude/memory/
+~/.claude/memory/
 and update MEMORY.md index.
 ```
 

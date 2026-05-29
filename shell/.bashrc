@@ -74,8 +74,8 @@ export PATH="/home/christopher/Programs/WebStorm/bin:$PATH"
 # tor browser
 export PATH="/home/christopher/Programs/tor-browser/Browser:$PATH"
 
-# go
-export PATH="$(go env GOPATH)/bin:$PATH"
+# go (only if go is installed)
+command -v go >/dev/null && export PATH="$(go env GOPATH)/bin:$PATH"
 
 # gpt
 export PATH="/home/christopher/Programs/ChatGPT_1.1.0:$PATH"

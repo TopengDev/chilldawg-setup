@@ -47,7 +47,7 @@ If no records found, say so.
 
 #### CREATE (`/cloudflare-dns create [name]`)
 
-Create an A record for `{name}-landing-page.aenoxa.com` pointing to `31.97.110.176` with proxy enabled.
+Create an A record for `{name}-landing-page.aenoxa.com` pointing to `$VPS_HOST` with proxy enabled.
 
 1. If no name is provided, generate a random two-word name in `adjective-noun` format. Use this bash one-liner to generate it:
 ```bash
@@ -64,13 +64,13 @@ print(f'{random.choice(adjectives)}-{random.choice(nouns)}')
 curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records" \
   -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
   -H "Content-Type: application/json" \
-  --data '{"type":"A","name":"NAME-landing-page.aenoxa.com","content":"31.97.110.176","ttl":1,"proxied":true}'
+  --data "{\"type\":\"A\",\"name\":\"NAME-landing-page.aenoxa.com\",\"content\":\"${VPS_HOST}\",\"ttl\":1,\"proxied\":true}"
 ```
 Replace `NAME` with the actual subdomain name.
 
 3. Parse the response and display:
    - **Subdomain:** `{name}-landing-page.aenoxa.com`
-   - **IP:** `31.97.110.176`
+   - **IP:** `$VPS_HOST`
    - **Proxied:** Yes
    - **Record ID:** from response
    - **Status:** Created successfully
@@ -120,6 +120,6 @@ Commands:
 
 - Always use the full subdomain format: `{name}-landing-page.aenoxa.com`
 - The user only provides the prefix (e.g., `sunny-ocean`), not the full domain
-- All A records point to `31.97.110.176` with proxy enabled
+- All A records point to `$VPS_HOST` with proxy enabled
 - Parse Cloudflare API JSON responses properly and handle errors gracefully
 - Display results in a clean, readable format

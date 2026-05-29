@@ -48,9 +48,9 @@ If the user provided $ARGUMENTS, use that as the commit message instead of gener
 
 ### 4. Commit
 
-Use a HEREDOC for the message:
+Use a HEREDOC for the message. Prefix the command with the `CLAUDE_COMMIT_SKILL=1` sentinel — this is how the `block-raw-git-commit.sh` PreToolUse hook distinguishes a legitimate skill-driven commit from a raw `git commit` (which it blocks). Always include the sentinel:
 ```
-git commit -m "$(cat <<'EOF'
+CLAUDE_COMMIT_SKILL=1 git commit -m "$(cat <<'EOF'
 type(scope): subject line here
 
 Optional body here.

@@ -14,6 +14,51 @@ This skill guides creation of distinctive, production-grade frontend interfaces 
 
 ---
 
+## 0.5 CRITICAL META-RULE — i18n + Multi-Theme Mandatory Baseline
+
+**Every website / web app / landing page / marketing site for the Aenoxa ecosystem MUST ship with i18n + multi-theme support out of the box. Non-negotiable from commit 0. No "MVP first, add later." No exceptions for customer-facing sites.**
+
+### i18n requirements
+
+- **next-intl** for Next.js projects. `[locale]` route segment + middleware. (Other frameworks: equivalent locale-aware routing.)
+- **Minimum locales**: `id` (Indonesian, DEFAULT — Aenoxa target market is Indonesia) + `en` (English, secondary).
+- **No hardcoded strings** in components. Every user-facing string in `messages/<locale>.json`, accessed via `useTranslations()` (or `getTranslations()` in server components).
+- **Auth flows + form errors + toast messages + 404/error pages** all translated. NO English-only error strings.
+- **hreflang metadata** on every page for SEO.
+- Brief MUST include locales list + default locale upfront.
+
+### Multi-theme requirements
+
+- **next-themes** for Next.js projects.
+- **Minimum themes**: `light` + `dark` + `system` (follow OS preference).
+- **Both themes designed polished** — not "light is main, dark is afterthought".
+- **CSS variables for tokens** in `globals.css` (`--bg`, `--fg`, `--accent`, `--surface`, `--border`, etc) — NOT hardcoded color values in components.
+- **Theme switcher visible** in nav or settings. Not buried.
+- **Theme persists** via cookie. Matches SSR (no FOUC on load).
+- Brief MUST include theme list + default theme upfront.
+
+### Exception
+
+Internal-only admin tools (not customer-facing, used only by dev team) MAY ship English-only single-theme. Still preferred to include if scope permits.
+
+### Verification gate (mandatory before declaring done)
+
+- [ ] `messages/id.json` + `messages/en.json` populated for every section + form/error string
+- [ ] `[locale]` routing works (`/id/...` + `/en/...`)
+- [ ] `useTranslations` used everywhere — NO hardcoded user-facing English strings
+- [ ] Light + dark themes both render polished
+- [ ] Theme switcher accessible from nav
+- [ ] Theme persists across page refresh
+- [ ] No FOUC on theme load
+
+If any gate fails → build NOT done. Fix before reporting complete.
+
+### Why this rule exists (verified failure)
+
+2026-05-24: Pulse landing v2 redesign was built English-only + single-light-theme. Toper rejected the entire output ("just kill the worker, we will not continue it"). Lost ID locale + lost dark mode compounded the rejection beyond just aesthetic — even with iteration, missing these baselines made the work unsalvageable. Indonesian market + premium product = bilingual + dark mode out of the box. Always.
+
+---
+
 ## 1. INTERACTIVE SETUP
 
 Before writing any code, run this setup sequence with the user. Present it conversationally — don't dump the whole menu.

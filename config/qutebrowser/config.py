@@ -40,6 +40,33 @@ c.content.blocking.whitelist = ["*://*.youtube.com/*"]
 c.content.javascript.enabled = True
 c.content.cookies.accept = 'all'
 
+# ── Permission prompt bypass (for agent-browser-driven workflows) ──
+# Pre-decide every permission prompt so qutebrowser doesn't pop up blocking
+# dialogs during automated testing flows. Override per-domain if a real site
+# legitimately needs e.g. mic/camera.
+c.content.notifications.enabled = False
+c.content.geolocation = False
+c.content.media.audio_capture = False
+c.content.media.video_capture = False
+c.content.media.audio_video_capture = False
+c.content.desktop_capture = False
+c.content.javascript.alert = False
+c.content.javascript.modal_dialog = False
+c.content.javascript.prompt = False
+c.content.javascript.can_open_tabs_automatically = True
+c.content.persistent_storage = True
+c.content.register_protocol_handler = False
+c.content.autoplay = True
+
+# Downloads — auto-accept, no overwrite prompts
+c.downloads.location.prompt = False
+c.downloads.location.suggestion = "filename"
+c.downloads.remove_finished = 600000  # auto-clear after 10 min
+
+# Tab close + window quit confirmations
+c.tabs.last_close = "default-page"
+c.confirm_quit = ["never"]
+
 # ── Google OAuth fix (spoof Chrome UA per-domain) ──
 _chrome_ua = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 config.set('content.headers.user_agent', _chrome_ua, 'https://accounts.google.com/*')
@@ -162,7 +189,7 @@ if os.path.exists(proxy_path) and not _is_port_alive(9222):
                           preexec_fn=os.setpgrp)
     _child_procs.append(_p)
 
-_companion_script = os.path.expanduser("~/Git/repositories/elsummariz00r/src/companion/index.ts")
+_companion_script = os.path.expanduser("~/claude/Git/repositories/elsummariz00r/src/companion/index.ts")
 _bun = os.path.expanduser("~/.bun/bin/bun")
 if os.path.exists(_companion_script) and os.path.exists(_bun) and not _is_port_alive(7700):
     subprocess.run(["pkill", "-f", "companion/index.ts"], capture_output=True)

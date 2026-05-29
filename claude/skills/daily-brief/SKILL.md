@@ -54,6 +54,27 @@ Glob `~/.claude/tasks/*.md` (exclude `INDEX.md` and `archive/`). For each task f
 
 Skip `## Completed` items entirely.
 
+## Step 2.5 — read work-queue (delegated workers + paused threads)
+
+Read `~/claude/state/work-queue.md`. Parse the markdown tables under these section headers:
+
+- `## In-flight (worker actively running)` → `inflight` list — capture `Name`, `State`, `Last update`
+- `## Paused — awaiting Toper decision` → `paused_decision` list — capture `Name`, `What's needed`
+- `## Paused — awaiting external (push, deploy, third-party)` → `paused_external` list — capture `Name`, `What's blocking`
+
+Skip `## Backlog` and `## Recently shipped` — those don't surface in the brief.
+
+For each table:
+- Skip the header row + separator row.
+- Skip rows whose first cell is `_(none)_`, empty, or only whitespace.
+- Truncate long values to ~60 chars with `…` so single-line bullets stay scannable on phone.
+
+Counts: `inflight_n`, `paused_decision_n`, `paused_external_n`. Total `open_threads_n = inflight_n + paused_decision_n + paused_external_n`.
+
+If `~/claude/state/work-queue.md` is missing → set all three lists to empty + `open_threads_n=0`, continue silently (no error nag in the brief). The skill must not crash on a missing work-queue.
+
+This section's labels use the standup-template voice (Bahasa, casual) per `~/claude/templates/standup-template.md`. The format applies to BOTH morning and evening flows.
+
 ## Step 3 — query Google Calendar (graceful)
 
 Use tool `mcp__claude_ai_Google_Calendar__authenticate` FIRST to check auth status. The tool may return either:
@@ -105,6 +126,20 @@ Dates should be formatted `DD MMM` (e.g. `15 Apr`) and weekdays as `Mon`, `Tue`,
 • {N} NOW tasks across projects
 • {N} waiting on others ({comma-separated names, max 3, then "+K more"})
 (omit section if both zero)
+
+📋 *OPEN THREADS* ({open_threads_n})
+🔄 jalan ({inflight_n}):
+• {name} — {state}
+…
+⏸️ nunggu lu ({paused_decision_n}):
+• {name} — {what's needed}
+…
+⏳ nunggu eksternal ({paused_external_n}):
+• {name} — {what's blocking}
+…
+
+_detail: ~/claude/state/work-queue.md_
+(omit the entire 📋 section if open_threads_n == 0. Within it, omit any sub-section whose count is 0 — e.g. drop the 🔄 line + bullets if inflight_n == 0.)
 ```
 
 ### Evening template
@@ -120,6 +155,20 @@ Dates should be formatted `DD MMM` (e.g. `15 Apr`) and weekdays as `Mon`, `Tue`,
 🌌 *EARLY MORNING* (12 AM – 6 AM)
 • {HH:MM} — {event}
 ...
+
+📋 *OPEN THREADS* ({open_threads_n})
+🔄 jalan ({inflight_n}):
+• {name} — {state}
+…
+⏸️ nunggu lu ({paused_decision_n}):
+• {name} — {what's needed}
+…
+⏳ nunggu eksternal ({paused_external_n}):
+• {name} — {what's blocking}
+…
+
+_detail: ~/claude/state/work-queue.md_
+(same omission rules as morning: drop the entire 📋 block if open_threads_n == 0; drop empty sub-sections.)
 
 😴 sleep well — {summary line}
 ```
@@ -160,7 +209,7 @@ Log file: `~/.local/share/daily-brief/log/{mode}-{YYYY-MM-DD}.log` (WIB date).
 
 Append a line:
 ```
-[YYYY-MM-DD HH:MM:SS WIB] {mode} brief — tasks_due={N} events_today={M} sent={yes|no|dry-run} calendar_auth={yes|no|unavailable}
+[YYYY-MM-DD HH:MM:SS WIB] {mode} brief — tasks_due={N} open_threads={open_threads_n} events_today={M} sent={yes|no|dry-run} calendar_auth={yes|no|unavailable}
 ```
 
 Then update the lock file to the current WIB minute.

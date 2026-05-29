@@ -43,7 +43,7 @@ For each contact's messages, extract these dimensions:
 ### Step 4: Write Memory Files
 
 For each analyzed contact, write a memory file at:
-`~/.claude/projects/-home-christopher-claude/memory/whatsapp_style_<contact_slug>.md`
+`~/.claude/memory/whatsapp_style_<contact_slug>.md`
 
 Where `<contact_slug>` is the contact name lowercased, spaces replaced with underscores, special chars removed (e.g., "Alkautsar" → `whatsapp_style_alkautsar.md`, "Pak Andi" → `whatsapp_style_pak_andi.md`).
 
@@ -101,7 +101,7 @@ tags: [whatsapp, style, <contact_slug>]
 
 After writing/updating memory files:
 
-1. Read `~/.claude/projects/-home-christopher-claude/memory/MEMORY.md`
+1. Read `~/.claude/memory/MEMORY.md`
 2. Check if each contact already has an entry under a `## WhatsApp Styles` section
 3. If the section doesn't exist, add it at the bottom
 4. Add/update entries in the format: `- [WhatsApp Style — <Name>](whatsapp_style_<slug>.md) — <language>, <tone summary>`

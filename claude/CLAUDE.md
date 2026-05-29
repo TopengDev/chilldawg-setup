@@ -25,7 +25,7 @@ After any new shell, the env vars below are populated automatically.
 ## Project Locations
 
 - All codebases: ~/claude/Git/repositories/
-- Memory: ~/.claude/projects/-home-christopher-claude/memory/
+- Memory: ~/.claude/memory/
 - Tasks: ~/.claude/tasks/
 - Skills: ~/.claude/skills/
 - Main session (command center): ~/claude
@@ -125,6 +125,186 @@ Security bugs are the most expensive bugs. Think about how an attacker would abu
 
 Building the wrong thing confidently wastes far more time than a quick clarifying question. When in doubt, ask.
 
+## Task Complexity Triage — MANDATORY FIRST STEP for EVERY Task
+
+**OVERRIDE: Before ANY work begins on a task Toper gives, the FIRST output MUST be a triage header classifying the task's complexity level. No exceptions. Starting work (spawning a worker, editing, planning) without a triage header is a hard violation. Toper can reset with one word — "triage?" — and I restart correctly.**
+
+### The triage header (shown ALWAYS, even L1)
+
+```
+📊 TRIAGE — Level <N>: <name>
+Scope: <1 line — what it touches>
+Treatment: <protocol that kicks in>
+```
+
+Then follow that level's protocol.
+
+### The 3 levels
+
+**L1 — Trivial**
+- Looks like: typo fix, variable rename, single log line, add one enum value, one-line config change, single obvious bug fix.
+- Treatment: STILL delegate to a worker (main session never executes implementation itself — see "Main Session is DISCUSSION ONLY"), but via the **L1 fast-path**, NOT full 3-tier: write a `triage.json` (`"level":"L1"`) + a one-line brief + a **stub STATE.md** (name/status/one-liner) — **no initiative file, no parent-initiative linkage**. Deliver with `brief-worker.sh --quick <window> <brief>` (the `--quick`/`--l1` flag accepts the stub; the default path requires full parent-initiative linkage). No prototype, no plan-approval. Spawn fast.
+- **Exception — pure coordination/comms is NOT a delegatable task** and stays in main: sending a WhatsApp/attn message, listing tmux windows, answering a factual question, reading a file for Toper, checking a process. These aren't "implementation" so they don't need a worker — but they DO still get a triage header (L1).
+- Clarifying questions: 0
+
+**L2 — Standard / Complex** (the broad middle — most real tasks)
+- Looks like: fix a known bug, add a feature to existing code, author a test batch, a single endpoint, a multi-file/multi-component change, an architectural choice, coordinated backend+frontend work, multi-phase execution.
+- Treatment: full 3-tier task hierarchy + **prototype/smoke-test FIRST if anything new** (library/API/design/integration) + **written plan presented for Toper approval** before execution + possibly multiple workers.
+- Clarifying questions: **0–10, scaled to ambiguity** (zero if crystal-clear, up to 10 if fuzzy).
+
+**L3 — Major / Huge scale** (highest tier — maximum protection)
+- Looks like: a new product, a major redesign, a new standalone app/repo, an auth/payment/security system, anything customer-facing at scale, irreversible or high-stakes work, a multi-day initiative.
+- Treatment: **HARD GATE** — I am forbidden from spawning ANY worker until ALL of these complete in order:
+  1. **Minimum 10 clarifying questions asked** (as many more as needed — 10 is the floor, not the target)
+  2. Answers received from Toper
+  3. **Prototype validation** where visual/aesthetic/integration judgment matters (per "Prototype & Smoke Test Before Planning")
+  4. **Written plan** drafted + presented
+  5. **Toper's explicit sign-off** ("approved" or equivalent)
+- Only after sign-off: initiative-level 3-tier setup + phased delivery with checkpoints.
+- Clarifying questions: **≥10, as many as needed.**
+
+### Classification rules
+
+- **Show the triage header always** — even for L1. One line; it trains both of us to think in levels.
+- **Borderline cases round UP** — when torn between two levels, pick the higher one (more questions, more safety). An L2-that-was-really-L3 is the expensive mistake; an L3-treated-as-L2 burns hours (verified: the Pulse landing rejection).
+- Triage happens BEFORE the 3-tier hierarchy setup — it decides whether/how the 3-tier applies (L1 = minimal, L2 = full + plan, L3 = full + gate).
+
+### Enforcement gates
+
+Triage is now backed by an **on-disk artifact** (`triage.json`, one per task, in the task notes dir) + **mechanical enforcement at the spawn path** — not just prose. The `📊 TRIAGE` chat header is the human echo of `triage.json` (write the file, then print the header). Schema + convention: `~/.claude/scripts/TRIAGE-SCHEMA.md`.
+
+| Gate | Mechanism |
+|---|---|
+| Spawn without `triage.json` | **MECHANICAL** — `spawn-worker.sh` calls `check-triage.sh` and refuses (exit 4) before creating the window; PreToolUse `Bash` hook (`triage-gate-hook.sh`) backstops it. Fail-closed in the script, fail-open in the hook. |
+| L3 worker spawn before sign-off | **MECHANICAL** — `triage.json` with `level=L3` is refused unless `signoff: true` (flip only after Toper's explicit approval). Same enforcement points as above. |
+| No triage header | Soft — Toper says "triage?" → restart with header. (The header echoes `triage.json`.) |
+| L3 < 10 questions | FORBIDDEN — the 10-question floor is non-negotiable for L3 (soft, judgment-based). |
+| Borderline misclassified low | Round-up rule — default to higher level. |
+
+> ⚠️ The PreToolUse hook loads at session start — edits to it / settings.json activate only after a Claude Code restart. The `spawn-worker.sh` guard is effective immediately.
+
+### Why this rule exists (verified failure)
+
+2026-05-24: Pulse landing v2 redesign was an L3 (new standalone repo, customer-facing, major design) but treated like an L2 — jumped to build with weak discovery, no prototype validation, no min-10 questions. Result: 1h of work + 5 commits rejected outright ("just kill the worker"). The min-10-question L3 gate would have surfaced bilingual? / dark mode? / which aesthetic direction? BEFORE any code, and the prototype gate would have validated direction in 15 min instead of failing after 60.
+
+## 3-Tier Task Hierarchy — MANDATORY for ALL Delegated Work
+
+**OVERRIDE: Every task delegated to a worker MUST go through the 3-tier task hierarchy. No exceptions. Spawning a worker without setting up the hierarchy is a hard violation.**
+
+### The 3 tiers
+
+**Tier 1 — Initiative** (multi-day project)
+- Lives at: `~/claude/notes/initiatives/<slug>.md`
+- Naming: `<area>-<verb>-<noun>` (e.g. `pulse-landing-redesign`, `bms-fitest-sit-closeout`)
+- Template: `~/claude/notes/templates/initiative.md`
+- Contains: outcome, success criteria, child tasks list, decisions log, status
+- Create on FIRST delegated task in the area. Reuse for subsequent related tasks.
+
+**Tier 2 — Task** (single worker delegation unit)
+- Tracked in: TaskCreate (in-session task list) + `~/claude/notes/<task-slug>-<date>/`
+- Required files in the dir:
+  - `brief.md` — input handed to the worker
+  - `STATE.md` — LIVE status, maintained by worker (see template `~/claude/notes/templates/STATE.md`)
+  - `report.md` — final summary written on completion
+- Task slug must reference parent initiative for navigability
+
+**Tier 3 — Steps** (worker-internal sub-phases)
+- Captured in STATE.md "Roadmap" + "Completed" sections only
+- NOT in TaskCreate (too granular)
+
+### Pre-spawn discipline (atomic — complete ALL before spawn-worker.sh)
+
+**Full path (L2 / L3):**
+1. **TaskCreate** the task with parent initiative slug in description
+2. **Create or update initiative file** at `~/claude/notes/initiatives/<slug>.md` (use `templates/initiative.md`) — add this task to its "Child tasks" list
+3. **Create task notes dir** at `~/claude/notes/<task-slug>-<date>/`
+4. **Write `triage.json`** in that dir (`level` L2/L3, `scope`, `created`; for L3 `signoff` stays `false` until Toper approves). `spawn-worker.sh` refuses without it. Schema: `~/.claude/scripts/TRIAGE-SCHEMA.md`.
+5. **Write brief.md** in that dir
+6. **Copy STATE.md template** into that dir + fill: NAME, worker name, parent initiative slug, starting point, initial roadmap
+7. THEN spawn-worker.sh + brief-worker.sh
+
+**L1 fast-path (trivial work — skip the ceremony):**
+1. Create task notes dir `~/claude/notes/<task-slug>-<date>/`
+2. **Write `triage.json`** with `"level":"L1"` (still required — the spawn gate enforces it)
+3. **One-line brief.md** + a **stub STATE.md** (name/status/one-liner) — NO initiative file, NO parent-initiative linkage
+4. spawn-worker.sh, then **`brief-worker.sh --quick`** (accepts the stub; the default path requires parent-initiative linkage)
+
+> Pure-comms L1 (send WA, list tmux, answer a Q, read a file for Toper, check a process) is NOT a delegatable task — it stays in main and needs no worker, no triage.json. It still gets a `📊 TRIAGE — L1` header in chat.
+
+### Hard enforcement gates
+
+- **spawn-worker.sh refuses to spawn** (exit 4) if there's no valid `triage.json` for the worker, or if `level=L3` and `signoff != true`. Runs before the tmux window is created (no orphan window). PreToolUse `Bash` hook backstops it. (See triage Enforcement gates above + `~/.claude/scripts/TRIAGE-SCHEMA.md`.)
+- **brief-worker.sh refuses to deliver** the brief if `STATE.md` is missing from the brief's directory (exit 3). On the **full path** it ALSO requires a "Parent initiative" reference in STATE.md (no orphan tasks). The **`--quick`/`--l1`** flag exempts that linkage check and accepts a stub STATE.md (L1 fast-path).
+- **Worker role-override preamble** (auto-injected by brief-worker.sh) instructs worker to: open STATE.md FIRST, set status to IN_PROGRESS, fill starting point, maintain throughout, update on every major step, write report.md on completion. `--quick` injects a lightweight L1 variant (role override kept, ceremony trimmed).
+- **Main session 5-min poll cadence** includes STATE.md mtime check. If STATE.md not updated in >10 min while worker is active, investigate stall.
+- **TaskCreate description must include parent initiative slug** (e.g. "Parent initiative: `pulse-landing-redesign`"). No orphan tasks. (L1 fast-path tasks may skip TaskCreate + initiative linkage.)
+
+### Spontaneous tasks
+
+When Toper drops a task spontaneously, main session is responsible for ALL setup overhead (TaskCreate + initiative file + notes dir + STATE.md skeleton) BEFORE spawning. Toper stays fluid; main session handles the discipline.
+
+### Forward-only adoption
+
+Existing tasks (pre-2026-05-24, tasks #70-#126) are grandfathered. New tasks from 2026-05-24 onward MUST follow the 3-tier structure.
+
+### Why this rule exists (verified failure)
+
+2026-05-23/24: TaskCreate was used post-hoc or missed entirely. Workers ad-hoc documented — some wrote report.md, some didn't, no live progress visibility. No hierarchy → impossible to navigate. Resulted in workers running 30+ min on wrong direction (English-only landing when bilingual was the spec), zero ability to course-correct mid-flight because there was no state visible to main.
+
+## Website Build Defaults — i18n + Multi-Theme (MANDATORY)
+
+**OVERRIDE: Every website / web app / landing page / marketing site built for Aenoxa ecosystem MUST ship with i18n + multi-theme support out of the box. Non-negotiable. From commit 0. Not v2. Not MVP-first. Not "we'll add it later".**
+
+### i18n (Internationalization)
+
+1. **next-intl required** for Next.js projects. `[locale]` route segment + middleware. (Other frameworks: equivalent locale-aware routing.)
+2. **Minimum locales**: `id` (Indonesian, DEFAULT — Pulse + aenoxa target market is Indonesia) + `en` (English, secondary).
+3. **No hardcoded strings** in components. Every user-facing string lives in `messages/<locale>.json`, accessed via `useTranslations()` (or `getTranslations()` in server components).
+4. **Auth flows + form errors + toast messages + 404/error pages**: all translated. NO English-only error strings.
+5. **hreflang metadata** on every page for SEO.
+
+### Multi-Theme
+
+1. **next-themes required** for Next.js projects.
+2. **Minimum themes**: `light` + `dark` + `system` (follow OS preference).
+3. **Both themes designed polished** — not "light is main, dark is afterthought". Toper will check both.
+4. **CSS variables for tokens** in `globals.css` (`--bg`, `--fg`, `--accent`, `--surface`, `--border`, etc) — NOT hardcoded color values in components.
+5. **Theme switcher visible** in nav or settings. Not buried.
+6. **Theme persists** via cookie. Matches SSR (no FOUC on load).
+
+### Verification gate (before declaring website build done)
+
+- [ ] `messages/id.json` + `messages/en.json` populated for every section + form/error string
+- [ ] `[locale]` routing works (`/id/...` + `/en/...`)
+- [ ] `useTranslations` used everywhere — NO hardcoded user-facing English strings
+- [ ] Light + dark themes both render polished
+- [ ] Theme switcher accessible from nav
+- [ ] Theme persists across page refresh
+- [ ] No FOUC on theme load
+
+If any gate fails → build NOT done. Fix before reporting complete.
+
+### Exception
+
+Internal-only admin tools (used only by Toper / dev team, not customer-facing) MAY ship English-only single-theme by default. Still preferred to include i18n+themes if scope permits.
+
+### Why this rule exists (verified failure)
+
+2026-05-24: Pulse landing v2 redesign worker built English-only single-light-theme after 1h work. Toper rejected the entire output ("just kill the worker, we will not continue it"). Lost ID locale + lost dark mode compounded the rejection beyond just aesthetic — even with iteration, missing these baselines made the work unsalvageable as a starting point. Indonesian market + premium product = bilingual + dark mode out of the box. Always.
+
+## One-Shot Pitch/Demo Webapps — Non-Negotiables (MANDATORY)
+
+**OVERRIDE: When building or deploying a pitch/demo/recruiter webapp — or whenever `/oneshot-webapp` runs — these non-negotiables apply and deliberately OVERRIDE the i18n+multi-theme website default above (those are for the Aenoxa product ecosystem; one-shot pitch demos are different):**
+
+1. **Pitch-grade design is priority #1** — never cut design polish to save time; cut SCOPE instead. Generic shadcn-default = failure.
+2. **SAFE `/frontend-design` preset ONLY** — Japanese Minimal / Warm Craft / Editorial Luxury / Soft Structuralism. High-variance directions (Neo-Brutalist, art-deco, maximalist, VARIANCE ≥ 7) are BANNED unless Toper explicitly overrides in the brief.
+3. **Light mode ONLY** — no dark mode, no `next-themes`, no theme switcher.
+4. **Server-side secrets only + a mandatory deterministic LLM fallback** — key in container `.env` (chmod 600), never `NEXT_PUBLIC_`/never in the image; the live demo must survive an API failure.
+5. **Deploy to `<slug>.topengdev.com`** — per-subdomain Cloudflare A record (no wildcard), HTTPS via certbot behind nginx. Don't disrupt other VPS services.
+6. **Ship fast** — cap thinking, act in visible steps, iterate the running app.
+
+Full procedure, gates, and gotchas: `~/.claude/skills/oneshot-webapp/SKILL.md` (a `UserPromptSubmit` hook auto-injects these rules whenever `/oneshot-webapp` is invoked). Verified failure: 2026-05-29 art-deco Selaras/Bithour demo rejected ("looked SO BAD").
+
 ---
 
 # Agent Work Protocol
@@ -210,3 +390,26 @@ An unverified "done" is not done. An unreported "done" is invisible. The agent t
 **IMPORTANT — scope of this rule:** "Main session" means the command-center session in tmux window 1 (the one Christopher interacts with directly). Spawned worker sessions that RECEIVE a creative task brief should EXECUTE it directly — they are the delegation target, not another layer of delegation. Do NOT recursively delegate from a worker session.
 
 **Why:** Creative tasks consume massive context (image data, prompt iterations, multi-variant generation, critique loops). Running them in main pollutes the coordination context and risks hitting context limits during unrelated work. Main session = command center. Creative execution = spawned worker.
+
+---
+
+## WhatsApp Channel Discipline
+
+**OVERRIDE: WhatsApp is a first-class notification channel, not a logging sink.** When you receive WhatsApp `<channel>` events, follow these hard rules:
+
+1. **If Toper chats you as [SUPERUSER] on WhatsApp** → ALWAYS send a WhatsApp reply, not just a main-session acknowledgement. He's on his phone; main-session text is invisible to him. Reply via `mcp__plugin_whatsapp_whatsapp__send_message` to `62817712289@s.whatsapp.net`.
+
+2. **If a contact asks to speak to Toper directly** (trigger phrases: "panggilin chris", "panggilin dia", "claude panggilin chris", "is toper around", "mas lagi ada ga", "chris on ga", "minta chris dong", "mau ngobrol sama chris", or any explicit request for Christopher the human, not the AI) → the required sequence is:
+   - (a) reply to the asker with a short ack ("siap ma dipanggilin")
+   - (b) **immediately** send a WhatsApp DM to `62817712289@s.whatsapp.net` flagging: `bro, <NAME> lagi nyariin lu di WA — <BRIEF CONTEXT if known>`
+   - (c) continue holding the thread — don't impersonate Chris on direct-speak requests
+   - Main-session text alone is NOT sufficient notification. Chris may be AFK from the terminal.
+   - Skip (b) only if Chris has just sent a message in the current main session (he's clearly watching). Don't spam on repeated pings — one notification is enough.
+
+3. **Whitelist + JID verification** — whitelist (verified JIDs): Toper, Suryadi, Alkautsar, Tama, Stiven, Hezkiel, Kenny, Kenken. ALWAYS `list_chats` or `check_number` before `send_message`. NEVER fuzzy-match contact names.
+
+4. **Voice**: natural Bahasa Indonesia for Indo contacts. Emoji allowlist: ONLY 🤣🙏😭🥲😁. Short messages. Real friend slang. No eager corporate phrasing.
+
+5. **`WHATSAPP=1` env — main session ONLY.** NEVER set this on spawned worker sessions. The Claude WhatsApp plugin splits inbound messages across all sessions that load it — main misses messages, command-center reliability breaks. Workers communicate via status files, attn local-peer, or main-session relay. Verified failure mode 2026-04-27. See memory `feedback_whatsapp_single_session_rule.md`.
+
+See memory for details: `feedback_whatsapp_superuser_always_reply.md`, `feedback_whatsapp_panggilin_notify.md`, `feedback_whatsapp_auto_reply_global.md`, `feedback_whatsapp_no_random_messaging.md`, `feedback_bahasa_natural.md`.
