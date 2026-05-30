@@ -18,7 +18,8 @@ One command to go from "done coding" to "pushed and CI-ready."
 5. README update — update docs if changes affect them (if applicable)
 6. `/commit` — commit all changes
 7. `/preflight` — run CI/CD checks locally
-8. Push + tag
+8. Push
+9. Distribution tail — changelog refresh from commits, annotated semver tag, CI watch, optional publish
 
 ### Step 1: Simplify (auto-fix)
 
@@ -107,30 +108,70 @@ If `/preflight` finds and fixes issues, it will commit those fixes automatically
 
 Do NOT proceed until `/preflight` reports all checks passing.
 
-### Step 8: Push + Tag
+### Step 8: Push
 
 1. Determine branch: `git branch --show-current`
 2. Push: `git push -u origin <branch>`
    - If behind remote: `git pull --rebase origin <branch>`, then push again
-3. **If version was bumped in Step 4:**
-   - Create tag: `git tag v{VERSION}`
-   - Push tag: `git push origin v{VERSION}`
-   - Check for tag-triggered CI in `.github/workflows/` → report if release CI triggered
+
+> Tagging moved to Step 9 (Distribution Tail) so the tag is annotated and created only after the push lands.
+
+### Step 9: Distribution Tail (post-push)
+
+Runs AFTER the push succeeds. This is the "make the release real and observable" stage. Each sub-step is conditional — skip silently when it doesn't apply, never block the ship on an optional step.
+
+**(a) Changelog refresh from commits**
+
+- If `CHANGELOG.md` was already updated in Step 4, skip — it's current.
+- If there is NO `CHANGELOG.md` and the project looks like a release artifact (has a version manifest: `package.json` / `Cargo.toml` / `pyproject.toml`), offer to generate one from the git history:
+  - `git log --pretty=format:'%s' {LAST_TAG}..HEAD` (or full history if no prior tag), grouped into Added / Changed / Fixed by conventional-commit prefix (`feat:`→Added, `fix:`→Fixed, else Changed).
+  - Write a Keep-a-Changelog `## [{VERSION}] - {YYYY-MM-DD}` section. Commit it via `/commit` and re-push.
+- If the project is not a release artifact (no manifest), skip silently — most of Christopher's repos are apps/configs, not published packages.
+
+**(b) Annotated semver tag**
+
+- Only when a version exists/was bumped (Step 4) OR the user explicitly asks to tag.
+- Resolve `{VERSION}` from the manifest. Confirm it isn't already tagged: `git tag -l v{VERSION}`.
+- Create an **annotated** tag (carries tagger, date, message — unlike a lightweight tag):
+  - `git tag -a v{VERSION} -m "Release v{VERSION}"` (append a one-line summary of headline changes if available).
+- Push it: `git push origin v{VERSION}`.
+- If `v{VERSION}` already exists, do NOT overwrite — report it and skip.
+
+**(c) Watch CI after push**
+
+- Only if the repo has a GitHub remote and `.github/workflows/` exists and `gh` is authenticated (`gh auth status`).
+- Give the run a moment to register, then watch the run for the pushed SHA:
+  - `gh run watch $(gh run list --branch <branch> --limit 1 --json databaseId -q '.[0].databaseId') --exit-status` (or poll `gh run list` if `watch` isn't available).
+  - Bound the wait sensibly; if CI is still running after a reasonable window, report "CI in progress" rather than hanging.
+- Report the outcome: **PASS** / **FAIL** (with the failing job + a link via `gh run view --web`) / **IN PROGRESS** / **N/A** (no CI).
+- A CI **FAIL** does not un-ship the push (it's already pushed) — surface it loudly in the Final Report so the user can act.
+
+**(d) Publish to package registries — OPTIONAL / DEFERRED**
+
+> ⚠️ Christopher does not currently publish CLI packages. Treat this whole sub-step as OFF by default. Only run it if the project clearly publishes a package AND the user explicitly confirms.
+
+If this project publishes a CLI / library:
+- **npm:** `npm publish` (verify `package.json` `name`/`version`/`files`/`bin`, `npm whoami`, 2FA OTP if enabled; `--access public` for scoped first publish).
+- **Homebrew tap:** bump the formula in the tap repo — update `url` to the new release tarball + recompute `sha256` (`shasum -a 256`), commit + push to the tap.
+- Both require credentials/auth set up first — if not configured, report "publish skipped (not configured)" and move on. Never invent registry credentials.
 
 ### Final Report
 
 ```
 Ship Summary
 ============
-Feature:     [what was shipped]
-Branch:      [branch name]
-Security:    CLEAN / {N} findings fixed
-E2E Tests:   PASS
-CI/CD:       PASS
-Version:     v{version} (if bumped) / unchanged
-Commits:     [list of commit hashes and messages]
-Pushed:      YES
-Tagged:      v{version} (if applicable)
+Feature:      [what was shipped]
+Branch:       [branch name]
+Security:     CLEAN / {N} findings fixed
+E2E Tests:    PASS
+Preflight:    PASS
+Version:      v{version} (if bumped) / unchanged
+Commits:      [list of commit hashes and messages]
+Pushed:       YES
+Tagged:       v{version} annotated (if applicable) / none
+Changelog:    updated / generated / n/a
+Remote CI:    PASS / FAIL ({failing job} — {url}) / IN PROGRESS / N/A
+Published:    npm + brew / skipped (deferred) / n/a
 ============
 ```
 
@@ -143,4 +184,7 @@ Tagged:      v{version} (if applicable)
 - Security review is the ONLY mandatory interactive step
 - Version bump is OPTIONAL — only when CHANGELOG.md exists
 - Version bump + changelog + README happen BEFORE commit
-- Git tag happens AFTER commit + push
+- The distribution tail (Step 9) runs AFTER push: annotated tag, then CI watch
+- Tags are ANNOTATED (`git tag -a`), never lightweight; never overwrite an existing tag
+- A CI FAIL in Step 9 does not un-ship — report it loudly, don't silently swallow it
+- Package publishing (npm/brew) is OFF by default — only with an explicit confirm + configured creds
