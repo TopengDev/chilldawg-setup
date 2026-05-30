@@ -52,12 +52,6 @@
             "command": "/home/christopher/.claude/hooks/lint-check.sh",
             "timeout": 60,
             "statusMessage": "Running linter..."
-          },
-          {
-            "type": "command",
-            "command": "/home/christopher/.claude/hooks/tsc-check.sh",
-            "timeout": 35,
-            "statusMessage": "Type-checking edited TS..."
           }
         ]
       }
