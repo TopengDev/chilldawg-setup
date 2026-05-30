@@ -360,7 +360,11 @@ def backup_memory() -> Path:
     stamp = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     archive = BACKUP_DIR / f"memory-{stamp}.tar.gz"
     with tarfile.open(archive, "w:gz") as tar:
-        tar.add(MEMORY_DIR, arcname="memory")
+        # MEMORY_DIR is a symlink (-> the chilldawg-setup repo). tarfile lstat's
+        # symlinks by default, so add(MEMORY_DIR) would archive only the link
+        # (a useless ~260B tar). Resolve to the real dir so the actual memory
+        # files are captured and the backup is a genuine restore artifact.
+        tar.add(MEMORY_DIR.resolve(), arcname="memory")
     return archive
 
 
