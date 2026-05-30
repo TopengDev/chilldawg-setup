@@ -118,6 +118,9 @@ agent-browser scrollintoview @e5                 # Scroll element into view
 agent-browser screenshot /tmp/page.png           # Save screenshot
 agent-browser screenshot --full /tmp/full.png  # Full page
 agent-browser screenshot --annotate              # Numbered labels on elements
+# Heavy page (backdrop-filter, mask-image, feTurbulence, multi-MB bg PNGs) where the
+# CDP screenshot comes back blank/black? Use qb-shoot (native Qt render path) — see
+# "Hardening & Self-Healing" at the bottom of this skill.
 
 # Execute JS
 agent-browser eval "document.title"    # Run JavaScript
@@ -303,7 +306,7 @@ curl -s http://localhost:9222/json/version | python3 -c "import sys,json; print(
 # Check qutebrowser CDP
 curl -s http://localhost:2262/json/list | head -5
 
-# Restart proxy
+# Restart proxy (manual — but a systemd watchdog now auto-restarts it; see below)
 pkill -f "qb_proxy.py"; sleep 1
 python3 ~/.config/qutebrowser/scripts/qb_proxy.py > /dev/null 2>&1 &
 
@@ -312,6 +315,56 @@ curl -s http://localhost:9222/target
 
 # Daemon stuck? Close and retry
 agent-browser close
+```
+
+## Hardening & Self-Healing (adopted from elpabl0/sebat-duls, 2026-05-30)
+
+These were adapted from elpabl0's private `sebat-duls` repo (github.com/alkautsarf), with
+permission, and ported macOS → Linux.
+
+### qb-shoot — native screenshots for heavy pages
+
+`~/.config/qutebrowser/scripts/qb-shoot <url-slug> <output-path>` takes a screenshot via
+qutebrowser's own `:screenshot` (Qt render path), bypassing the CDP compositor cliff that
+makes `agent-browser screenshot` return blank/black on heavy pages (backdrop-filter,
+mask-image, mix-blend-mode, svg feTurbulence, multi-MB background PNGs — e.g. fitest's UI).
+
+```bash
+qb-shoot test-suites/702 /tmp/suite.png    # matches the tab whose URL contains the slug
+```
+
+It saves the current active tab, switches to the matching tab, screenshots, and switches
+back. It relies on the **IPC `:command` focus-theft suppression** monkey-patch in
+`config.py` (qb upstream issue #5094) — without it each IPC command raises qb to the
+foreground. That patch was adopted into our `config.py` (active after the next qb restart /
+`:config-source`). Tab discovery + restore use qutebrowser's real CDP on port 2262.
+
+### qb-proxy-doctor — self-healing proxy watchdog
+
+A systemd `--user` timer (`qb-proxy-doctor.timer`, every 2 min) runs
+`~/.config/qutebrowser/scripts/qb-proxy-doctor.sh`, which restarts `qb_proxy.py` if port
+9222 is unreachable **while qutebrowser is running**. Healthy proxy → silent no-op; it never
+touches a live proxy and never spawns an orphan when qb is down. Logs to
+`~/.cache/qb_proxy/doctor.log`. This is why the manual restart above is now a fallback.
+
+```bash
+systemctl --user status qb-proxy-doctor.timer      # check it's active
+cat ~/.cache/qb_proxy/doctor.log                   # see any restarts it performed
+```
+
+### Staged: multi-port proxy upgrade (NOT yet live)
+
+A hardened multi-port version of the proxy is staged at
+`~/.config/qutebrowser/scripts/qb_proxy.py.new` (+ `.README`). It binds ports **9222-9236**
+and adds race-free port allocation (`/claim`, `/free`) and session listing (`/sessions`),
+WS heartbeat, and a stale-connection reaper — enabling **parallel** agent-browser sessions,
+each on its own port/tab. It is **inert** until Toper cuts it over during a deliberate
+browser restart (the live proxy is load-bearing for fitest, so it was not hot-swapped).
+Until cut-over, this skill's single-port `9222` flow is the source of truth. After cut-over,
+claim a port with:
+
+```bash
+export AGENT_BROWSER_CDP=$(curl -s http://localhost:9222/claim | python3 -c "import sys,json;print(json.load(sys.stdin).get('port',''))")
 ```
 
 ## Known Limitations

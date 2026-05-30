@@ -1,0 +1,41 @@
+# qb_proxy.py.new — staged multi-port CDP proxy (NOT live)
+
+Adapted from elpabl0/sebat-duls (github.com/alkautsarf), with permission, 2026-05-30.
+Ported macOS → Linux (QUTEBROWSER_BIN default → /usr/bin/qutebrowser). The only source
+diff from his version is that one path; everything else is his hardening verbatim.
+
+## Why staged, not applied
+The live proxy (single-port `qb_proxy.py`) is load-bearing — fitest browses through it.
+Hot-swapping the running proxy mid-session would drop the CDP connection. So this newer
+version is staged for Toper to cut over during a deliberate browser restart.
+
+## What it adds over our current single-port proxy
+- **Multi-port (9222-9236, 15 ports)** instead of single 9222. Enables parallel
+  agent-browser sessions, each pinned to its own port/tab without cross-talk.
+- **`/claim`** — atomic, race-free port allocation (reserves a free port with a TTL so two
+  parallel callers never get the same port). **`/free`** — non-reserving "what's free" probe.
+  **`/sessions`** — list active ports with their targets + connection counts.
+- **Per-port target state** (`/target` scoped to the arriving port) instead of one global target.
+- **WS heartbeat** (autoping, 15s) to detect dead clients + **stale-connection reaper**
+  (every 30s) + auto-clear target when the last connection on a port drops.
+- **Companion-panel filtering** (port 7700 views removed from CDP target lists).
+- **Graceful per-port bind** — a port already in use is skipped with a log line instead of
+  crashing the whole proxy.
+
+## Behaviour parity / safety
+- `TARGET_PORT` = 2262 (same as ours). Chrome identity spoof + `Target.*` mocks unchanged.
+- 9222 stays the canonical bootstrap port for `/claim` `/free` `/sessions` (works on any port).
+- Our config.py auto-start (`python3 qb_proxy.py` when 9222 is dead) works unchanged — it
+  just launches this file instead, and it binds the whole range.
+
+## Cut-over procedure (Toper, during a browser restart)
+```bash
+cd ~/.config/qutebrowser/scripts
+cp qb_proxy.py qb_proxy.py.single-port.bak   # back up the current single-port version
+cp qb_proxy.py.new qb_proxy.py               # promote multi-port
+pkill -f qb_proxy.py                          # only when qb is being restarted anyway
+# restart qutebrowser → config.py auto-starts the multi-port proxy
+curl -s http://localhost:9222/sessions | python3 -m json.tool   # verify
+```
+After cut-over, the `/agent-browser` skill's multi-port `/claim` workflow (already documented
+upstream) becomes usable; until then our skill stays on the single-port flow.

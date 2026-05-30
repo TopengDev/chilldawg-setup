@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# qb-shoot SLUG OUTPUT_PATH — silent screenshot of qb tab matching SLUG (URL substring).
+#
+# Adapted from elpabl0/sebat-duls (github.com/alkautsarf), with permission, 2026-05-30.
+# Ported macOS → Linux: IPC socket discovery uses $XDG_RUNTIME_DIR/qutebrowser (Linux)
+# instead of the macOS DARWIN_USER_TEMP_DIR / /var/folders path.
+#
+# Routes through qb's native :screenshot (Qt render path) — bypasses the CDP compositor
+# cliff that breaks agent-browser screenshot on heavy pages (backdrop-filter, mask-image,
+# mix-blend-mode, svg feTurbulence, multi-MB bg-image PNGs). Useful for fitest's heavy UI.
+#
+# Depends on the IPC :command focus-theft suppression monkey-patch in config.py
+# (qb upstream issue #5094). Without that patch each IPC :command raises qb to the
+# foreground, stealing focus. The patch is appended to our config.py (adopted 2026-05-30);
+# it activates on the next qb restart / :config-source.
+set -euo pipefail
+SLUG="${1:?usage: qb-shoot <url-slug> <output-path>}"
+OUT="${2:?usage: qb-shoot <url-slug> <output-path>}"
+
+TARGET_PORT="${QB_TARGET_PORT:-2262}"   # qutebrowser's real CDP (tab discovery only)
+
+# Save current active tab URL (qb returns active tab first in /json/list) so we can restore.
+ORIG=$(curl -s "http://localhost:${TARGET_PORT}/json/list" | python3 -c "
+import sys, json
+try:
+    tabs = [t for t in json.load(sys.stdin) if t.get('type')=='page']
+    print(tabs[0].get('url','') if tabs else '', end='')
+except Exception:
+    print('', end='')
+")
+
+# Locate qb IPC socket (Linux): $XDG_RUNTIME_DIR/qutebrowser/ipc-<hash>
+# (falls back to /run/user/<uid> when XDG_RUNTIME_DIR is unset).
+IPC_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/qutebrowser"
+SOCK_NAME=$(ls "$IPC_DIR" 2>/dev/null | grep "^ipc-" | head -1)
+SOCK="${IPC_DIR}/${SOCK_NAME}"
+if [ -z "$SOCK_NAME" ] || [ ! -S "$SOCK" ]; then
+  echo "qb-shoot: qb IPC socket not found in $IPC_DIR" >&2
+  exit 1
+fi
+
+# Send all 3 commands from a single python subprocess with explicit waits between sends.
+# Subprocess-per-command timing was racy: the restore IPC got silently dropped while qb
+# was still processing the screenshot. One subprocess + waits gives qb time to finish each.
+python3 - "$SOCK" "$SLUG" "$OUT" "$ORIG" << 'PYEOF'
+import socket, json, sys, time
+
+sock_path, slug, out_path, orig = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+
+def send(cmd):
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.connect(sock_path)
+    s.sendall((json.dumps({"args":[cmd],"target_arg":None,"version":"3.6.3","protocol_version":1,"cwd":"/tmp"})+"\n").encode())
+    time.sleep(0.1)
+    s.close()
+
+send(f":tab-select {slug}")
+time.sleep(0.4)
+send(f":screenshot --force {out_path}")
+time.sleep(1.5)  # screenshot of heavy page can take >1s; restore must wait
+if orig:
+    send(f":tab-select {orig}")
+    time.sleep(0.3)
+PYEOF
+
+echo "qb-shoot: saved $OUT"

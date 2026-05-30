@@ -1,0 +1,476 @@
+# ── STAGED, NOT LIVE ──────────────────────────────────────────────────────────
+# Multi-port CDP proxy (9222-9236) with /claim /free /sessions race-free port
+# allocation, WS heartbeat, stale-connection reaper, per-port targets, companion
+# filtering, and graceful per-port bind.
+#
+# Adapted from elpabl0/sebat-duls (github.com/alkautsarf), with permission, 2026-05-30.
+# Ported macOS → Linux: QUTEBROWSER_BIN default set to /usr/bin/qutebrowser.
+#
+# ⚠️ This file is INERT. The LIVE proxy is the single-port qb_proxy.py running now.
+# DO NOT hot-swap while qutebrowser/fitest are using the live proxy. To cut over:
+#   1. Toper closes qutebrowser (kills the live proxy via config.py atexit), OR
+#      manually: pkill -f qb_proxy.py
+#   2. cp qb_proxy.py.new qb_proxy.py   (back up the old one first)
+#   3. Restart qutebrowser — config.py auto-starts the new multi-port proxy.
+# See qb_proxy.py.new.README for the full diff/benefits.
+# ──────────────────────────────────────────────────────────────────────────────
+import asyncio
+import json
+import os
+import time
+import aiohttp
+from aiohttp import web
+import sys
+
+TARGET_PORT = 2262
+BASE_PORT = 9222
+PORT_COUNT = 15  # Ports 9222-9236 (9222-9231 for agents, 9232-9236 for companion)
+COMPANION_PORT = 7700  # Filter companion panel from CDP target lists
+RESERVATION_TTL = 30.0  # Default /claim reservation window in seconds — allows slow daemon cold-start under system load
+QB_BIN = os.environ.get(
+    "QUTEBROWSER_BIN",
+    "/usr/bin/qutebrowser",
+)
+
+# Per-port target state: {port: tab_id_or_None}
+_targets = {}
+
+# Per-port active WebSocket connections: {port: set(ws_response)}
+_connections = {}
+
+# Per-port reservation expiry timestamps: {port: unix_time_when_expires}
+# Set by /claim, cleared when a WS connects or when the TTL elapses.
+# Prevents the /free → daemon-connect race where parallel callers
+# both see a port as "free" before either has actually connected.
+_reservations = {}
+
+
+def _is_port_available(port):
+    """True if port has no active WS connections AND no valid reservation."""
+    if _connections.get(port):
+        return False
+    exp = _reservations.get(port)
+    if exp and time.time() < exp:
+        return False
+    return True
+
+
+def _request_port(request):
+    """Get the listening port this request arrived on."""
+    return request.transport.get_extra_info('sockname')[1]
+
+
+def _is_companion(tab):
+    """Check if a CDP target is the companion panel (not a real page)."""
+    url = tab.get("url", "")
+    return f"localhost:{COMPANION_PORT}" in url or f"127.0.0.1:{COMPANION_PORT}" in url
+
+
+async def get_target_tab(port):
+    """Fetch the target tab for a specific port — either pinned or active tab."""
+    target_id = _targets.get(port)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"http://127.0.0.1:{TARGET_PORT}/json/list") as res:
+            tabs = await res.json()
+            pages = [t for t in tabs if t.get("type") == "page" and not _is_companion(t)]
+            if not pages:
+                return None
+            if target_id:
+                for p in pages:
+                    if p["id"] == target_id:
+                        return p
+            return pages[0]
+    return None
+
+
+async def handle_target(request):
+    """Set or clear the target tab, scoped to the port this request arrived on.
+
+    GET /target?id=<tabId>       — pin a specific tab by CDP id
+    GET /target?url=<substring>  — pin the first tab whose URL contains substring
+    GET /target?clear            — revert to active tab (index 0)
+    GET /target                  — show current target
+    """
+    port = _request_port(request)
+    tab_id = request.query.get("id")
+    url_match = request.query.get("url")
+    clear = "clear" in request.query
+
+    if clear:
+        _targets[port] = None
+        return web.json_response({"target": "active tab (default)", "port": port})
+
+    if tab_id:
+        _targets[port] = tab_id
+        return web.json_response({"target": tab_id, "port": port})
+
+    if url_match:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"http://127.0.0.1:{TARGET_PORT}/json/list") as res:
+                tabs = await res.json()
+                for t in tabs:
+                    if t.get("type") != "page":
+                        continue
+                    if _is_companion(t):
+                        continue
+                    if url_match.lower() in t.get("url", "").lower():
+                        _targets[port] = t["id"]
+                        return web.json_response({
+                            "target": t["id"],
+                            "title": t.get("title", ""),
+                            "url": t.get("url", ""),
+                            "port": port,
+                        })
+        return web.json_response({"error": f"No tab matching '{url_match}'"}, status=404)
+
+    # Show current target
+    tab = await get_target_tab(port)
+    return web.json_response({
+        "target": _targets.get(port) or "active tab (default)",
+        "title": tab.get("title", "") if tab else "",
+        "url": tab.get("url", "") if tab else "",
+        "port": port,
+    })
+
+
+async def handle_sessions(request):
+    """Show all port sessions with their targets and connection counts."""
+    sessions = {}
+    for port in range(BASE_PORT, BASE_PORT + PORT_COUNT):
+        target_id = _targets.get(port)
+        conns = len(_connections.get(port, set()))
+        entry = {"target": target_id, "connections": conns}
+        # Only include ports that have a target or active connections
+        if target_id or conns > 0:
+            # Resolve tab info for active targets
+            if target_id:
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(f"http://127.0.0.1:{TARGET_PORT}/json/list") as res:
+                            tabs = await res.json()
+                            for t in tabs:
+                                if t["id"] == target_id:
+                                    entry["title"] = t.get("title", "")[:60]
+                                    entry["url"] = t.get("url", "")
+                                    break
+                except Exception:
+                    pass
+            sessions[str(port)] = entry
+    return web.json_response({
+        "ports": f"{BASE_PORT}-{BASE_PORT + PORT_COUNT - 1}",
+        "active": sessions,
+    })
+
+
+async def handle_free(request):
+    """Return the first available port with no active WebSocket connections and no active reservation.
+
+    Unlike /claim, this does NOT reserve the port — it only reports it as currently free.
+    Two parallel callers hitting /free in quick succession can both get back the same port.
+    For race-free port allocation use /claim instead.
+    """
+    start = int(request.query.get('from', BASE_PORT))
+    start = max(start, BASE_PORT)
+    for port in range(start, BASE_PORT + PORT_COUNT):
+        if _is_port_available(port):
+            return web.json_response({"port": port})
+    return web.json_response({"error": "No free ports"}, status=503)
+
+
+async def handle_claim(request):
+    """Atomically return AND reserve a free port.
+
+    GET /claim            — reserve for default 10 seconds
+    GET /claim?ttl=N      — reserve for N seconds
+
+    The reservation blocks /free and /claim from returning this port until either:
+      1. A WebSocket connection is established on the port (reservation is consumed), OR
+      2. The TTL elapses with no connection (reservation expires)
+
+    This eliminates the race window between a caller picking a port and the
+    daemon actually connecting. Parallel callers are guaranteed different ports.
+    """
+    try:
+        ttl = float(request.query.get('ttl', RESERVATION_TTL))
+    except ValueError:
+        return web.json_response({"error": "Invalid ttl"}, status=400)
+    start = int(request.query.get('from', BASE_PORT))
+    start = max(start, BASE_PORT)
+    for port in range(start, BASE_PORT + PORT_COUNT):
+        if _is_port_available(port):
+            _reservations[port] = time.time() + ttl
+            sys.stderr.write(f"[{port}] Reserved for {ttl}s via /claim\n")
+            sys.stderr.flush()
+            return web.json_response({"port": port, "ttl": ttl})
+    return web.json_response({"error": "No free ports"}, status=503)
+
+
+async def handle_http(request):
+    path = request.path.rstrip('/')
+    url_path = path if path else '/'
+    port = _request_port(request)
+    sys.stderr.write(f"HTTP {request.method} {url_path} (port {port})\n")
+    sys.stderr.flush()
+
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(f"http://127.0.0.1:{TARGET_PORT}{url_path}") as res:
+                if path == '/json/version':
+                    data = await res.json()
+                    data['Browser'] = "Chrome/134.0.0.0"
+                    ws_url = data['webSocketDebuggerUrl']
+                    data['webSocketDebuggerUrl'] = ws_url.replace(str(TARGET_PORT), str(port))
+                    return web.json_response(data)
+                elif path in ['/json', '/json/list']:
+                    data = await res.json()
+                    # Filter out companion panel views from target list
+                    data = [item for item in data if not _is_companion(item)]
+                    for item in data:
+                        if 'webSocketDebuggerUrl' in item:
+                            item['webSocketDebuggerUrl'] = item['webSocketDebuggerUrl'].replace(str(TARGET_PORT), str(port))
+                    return web.json_response(data)
+                else:
+                    body = await res.read()
+                    return web.Response(body=body, content_type=res.content_type)
+        except Exception as e:
+            sys.stderr.write(f"HTTP Error: {e}\n")
+            sys.stderr.flush()
+            return web.Response(text=str(e), status=502)
+
+async def handle_ws(request):
+    port = _request_port(request)
+    sys.stderr.write(f"WS Connection on port {port}: {request.path}\n")
+    sys.stderr.flush()
+    ws_client = web.WebSocketResponse(
+        autoclose=False,
+        autoping=True,        # Send pings to detect dead clients
+        heartbeat=15.0,       # Ping every 15s, close if no pong in 15s
+    )
+    await ws_client.prepare(request)
+
+    # Track this connection
+    if port not in _connections:
+        _connections[port] = set()
+    _connections[port].add(ws_client)
+
+    # Consume any active /claim reservation — caller has now connected
+    if _reservations.pop(port, None) is not None:
+        sys.stderr.write(f"[{port}] Reservation consumed by WS connect\n")
+        sys.stderr.flush()
+
+    target_url = f"ws://127.0.0.1:{TARGET_PORT}{request.path}"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.ws_connect(target_url, autoclose=False, autoping=False) as ws_target:
+                async def forward_to_target():
+                    try:
+                        async for msg in ws_client:
+                            if msg.type == aiohttp.WSMsgType.TEXT:
+                                try:
+                                    data = json.loads(msg.data)
+                                    method = data.get('method', '')
+
+                                    if method == 'Target.createBrowserContext':
+                                        sys.stderr.write(f"[{port}] Mocking Target.createBrowserContext\n")
+                                        sys.stderr.flush()
+                                        await ws_client.send_str(json.dumps({
+                                            "id": data['id'],
+                                            "result": {"browserContextId": f"fake-context-{port}"}
+                                        }))
+                                        continue
+                                    elif method == 'Target.getBrowserContexts':
+                                        await ws_client.send_str(json.dumps({
+                                            "id": data['id'],
+                                            "result": {"browserContextIds": [f"fake-context-{port}"]}
+                                        }))
+                                        continue
+                                    elif method == 'Target.setDiscoverTargets':
+                                        sys.stderr.write(f"[{port}] Mocking Target.setDiscoverTargets\n")
+                                        sys.stderr.flush()
+                                        await ws_client.send_str(json.dumps({
+                                            "id": data['id'],
+                                            "result": {}
+                                        }))
+                                        continue
+                                    elif method == 'Target.getTargets':
+                                        # Return only the target tab for THIS port
+                                        tab = await get_target_tab(port)
+                                        if tab:
+                                            target_info = {
+                                                "targetId": tab["id"],
+                                                "type": "page",
+                                                "title": tab.get("title", ""),
+                                                "url": tab.get("url", ""),
+                                                "attached": False,
+                                                "browserContextId": f"fake-context-{port}",
+                                            }
+                                            sys.stderr.write(f"[{port}] Mocking Target.getTargets -> {tab['title'][:40]}\n")
+                                            sys.stderr.flush()
+                                            await ws_client.send_str(json.dumps({
+                                                "id": data['id'],
+                                                "result": {"targetInfos": [target_info]}
+                                            }))
+                                        else:
+                                            await ws_client.send_str(json.dumps({
+                                                "id": data['id'],
+                                                "result": {"targetInfos": []}
+                                            }))
+                                        continue
+                                    elif method == 'Target.createTarget':
+                                        url = data.get('params', {}).get('url', 'about:blank')
+                                        sys.stderr.write(f"[{port}] Mocking Target.createTarget -> {url[:60]}\n")
+                                        sys.stderr.flush()
+                                        # Snapshot existing tab IDs
+                                        async with aiohttp.ClientSession() as s:
+                                            async with s.get(f"http://127.0.0.1:{TARGET_PORT}/json/list") as r:
+                                                before = {t["id"] for t in await r.json() if t.get("type") == "page"}
+                                        # Open tab via qutebrowser CLI
+                                        proc = await asyncio.create_subprocess_exec(
+                                            QB_BIN, "--target", "tab-bg-silent", url,
+                                            stdout=asyncio.subprocess.DEVNULL,
+                                            stderr=asyncio.subprocess.DEVNULL,
+                                        )
+                                        await proc.wait()
+                                        # Poll for the new tab (up to 10s)
+                                        new_tab = None
+                                        for _ in range(20):
+                                            await asyncio.sleep(0.5)
+                                            async with aiohttp.ClientSession() as s:
+                                                async with s.get(f"http://127.0.0.1:{TARGET_PORT}/json/list") as r:
+                                                    tabs = await r.json()
+                                                    for t in tabs:
+                                                        if t.get("type") == "page" and t["id"] not in before:
+                                                            new_tab = t
+                                                            break
+                                            if new_tab:
+                                                break
+                                        if new_tab:
+                                            await ws_client.send_str(json.dumps({
+                                                "id": data['id'],
+                                                "result": {"targetId": new_tab["id"]}
+                                            }))
+                                        else:
+                                            await ws_client.send_str(json.dumps({
+                                                "id": data['id'],
+                                                "error": {"code": -32000, "message": "Tab open timed out"}
+                                            }))
+                                        continue
+                                    elif method == 'Target.setAutoAttach':
+                                        await ws_client.send_str(json.dumps({
+                                            "id": data['id'],
+                                            "result": {}
+                                        }))
+                                        continue
+                                except:
+                                    pass
+                                await ws_target.send_str(msg.data)
+                            elif msg.type == aiohttp.WSMsgType.BINARY:
+                                await ws_target.send_bytes(msg.data)
+                            elif msg.type == aiohttp.WSMsgType.CLOSE:
+                                await ws_target.close()
+                    except Exception as e:
+                        sys.stderr.write(f"[{port}] Forward to target error: {e}\n")
+                        sys.stderr.flush()
+
+                async def forward_to_client():
+                    try:
+                        async for msg in ws_target:
+                            if msg.type == aiohttp.WSMsgType.TEXT:
+                                if not ws_client.closed:
+                                    try:
+                                        data = json.loads(msg.data)
+                                        # Intercept Browser.getVersion response
+                                        if data.get('result', {}).get('product', '').startswith('qutebrowser'):
+                                            data['result']['product'] = "Chrome/134.0.0.0"
+                                            await ws_client.send_str(json.dumps(data))
+                                            continue
+                                    except:
+                                        pass
+                                    await ws_client.send_str(msg.data)
+                            elif msg.type == aiohttp.WSMsgType.BINARY:
+                                if not ws_client.closed:
+                                    await ws_client.send_bytes(msg.data)
+                            elif msg.type == aiohttp.WSMsgType.CLOSE:
+                                if not ws_client.closed:
+                                    await ws_client.close()
+                    except Exception as e:
+                        sys.stderr.write(f"[{port}] Forward to client error: {e}\n")
+                        sys.stderr.flush()
+
+                await asyncio.gather(forward_to_target(), forward_to_client())
+    finally:
+        # Clean up connection tracking
+        if port in _connections:
+            _connections[port].discard(ws_client)
+            # Auto-clear target when last connection on this port drops
+            if not _connections[port]:
+                old_target = _targets.get(port)
+                _targets[port] = None
+                if old_target:
+                    sys.stderr.write(f"[{port}] Last connection dropped, auto-cleared target {old_target[:20] if old_target else ''}\n")
+                    sys.stderr.flush()
+
+    return ws_client
+
+async def _reap_stale_connections():
+    """Periodically remove closed/dead WebSocket connections from tracking."""
+    while True:
+        await asyncio.sleep(30)
+        for port in list(_connections.keys()):
+            stale = {ws for ws in _connections[port] if ws.closed}
+            if stale:
+                _connections[port] -= stale
+                sys.stderr.write(f"[{port}] Reaped {len(stale)} stale connection(s)\n")
+                sys.stderr.flush()
+                # Auto-clear target when last connection drops
+                if not _connections[port]:
+                    old_target = _targets.get(port)
+                    _targets[port] = None
+                    if old_target:
+                        sys.stderr.write(f"[{port}] No connections left, auto-cleared target\n")
+                        sys.stderr.flush()
+
+
+async def main():
+    app = web.Application()
+    app.router.add_get('/target', handle_target)
+    app.router.add_get('/free', handle_free)
+    app.router.add_get('/claim', handle_claim)
+    app.router.add_get('/sessions', handle_sessions)
+    app.router.add_get('/devtools/browser/{id}', handle_ws)
+    app.router.add_get('/devtools/page/{id}', handle_ws)
+    app.router.add_get('/{tail:.*}', handle_http)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    # Start background reaper for stale connections
+    asyncio.create_task(_reap_stale_connections())
+
+    # Bind all ports in range
+    sites = []
+    for port in range(BASE_PORT, BASE_PORT + PORT_COUNT):
+        try:
+            site = web.TCPSite(runner, '127.0.0.1', port)
+            await site.start()
+            _targets[port] = None
+            _connections[port] = set()
+            sites.append(site)
+            sys.stderr.write(f"Listening on port {port}\n")
+            sys.stderr.flush()
+        except OSError as e:
+            # Port in use — skip it, don't crash the whole proxy
+            sys.stderr.write(f"Port {port} unavailable: {e}\n")
+            sys.stderr.flush()
+
+    if not sites:
+        sys.stderr.write("FATAL: No ports available\n")
+        sys.stderr.flush()
+        return
+
+    sys.stderr.write(f"Proxy started on {len(sites)} ports ({BASE_PORT}-{BASE_PORT + PORT_COUNT - 1})\n")
+    sys.stderr.flush()
+    await asyncio.Future()
+
+if __name__ == "__main__":
+    asyncio.run(main())

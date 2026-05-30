@@ -1,0 +1,11 @@
+[Unit]
+Description=qutebrowser CDP proxy watchdog — restart qb_proxy.py if port 9222 is down while qutebrowser is running (self-healing). Concept inspired by elpabl0/sebat-duls, Linux-native fresh build.
+Documentation=file:///home/christopher/claude/notes/adopt-qbproxy-2026-05-30/
+
+[Service]
+Type=oneshot
+Environment=HOME=/home/christopher
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/christopher/.config/qutebrowser/scripts/qb-proxy-doctor.sh
+SyslogIdentifier=qb-proxy-doctor
+TimeoutStartSec=60

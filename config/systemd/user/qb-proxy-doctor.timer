@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the qb CDP proxy watchdog every 2 minutes
+Documentation=file:///home/christopher/claude/notes/adopt-qbproxy-2026-05-30/
+
+[Timer]
+# First check shortly after login, then every 2 minutes. Healthy proxy = no-op.
+OnBootSec=2min
+OnUnitActiveSec=2min
+AccuracySec=20s
+Unit=qb-proxy-doctor.service
+
+[Install]
+WantedBy=timers.target

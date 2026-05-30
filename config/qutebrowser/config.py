@@ -297,3 +297,38 @@ def _setup_companion():
         sys.stderr.write(f"[companion] setup error: {e}\n")
 
 QTimer.singleShot(0, _setup_companion)
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Suppress IPC :command focus theft per qb upstream FIXME (issue #5094).
+# Adapted from elpabl0/sebat-duls (github.com/alkautsarf), with permission, 2026-05-30.
+# Without this, every `qutebrowser :command` invocation brings qb to the foreground
+# via window.maybe_raise(), stealing focus — breaks headless tooling like qb-shoot.
+# URL invocations (qutebrowser <url>) still raise; only IPC :command is suppressed.
+# Wrapped in try/except so an internal-API change in a future qb release degrades
+# gracefully (logs to stderr) instead of breaking the whole config.
+# ───────────────────────────────────────────────────────────────────────────────
+try:
+    import qutebrowser.app as _qb_app
+    import qutebrowser.mainwindow.mainwindow as _qb_mw
+    _qb_orig_process = _qb_app.process_pos_args
+    _qb_orig_raise_window = _qb_mw.raise_window
+
+    def _qb_silent_process(args, via_ipc=False, cwd=None, target_arg=None):
+        has_command = any(c and c.startswith(':') for c in args)
+        if via_ipc and has_command:
+            # Suppress BOTH activation paths during IPC :command dispatch:
+            # (1) process_pos_args's window.maybe_raise() (issue #5094)
+            # (2) commands like :tab-select that explicitly call raise_window
+            _orig_maybe = _qb_mw.MainWindow.maybe_raise
+            _qb_mw.MainWindow.maybe_raise = lambda self, *a, **kw: None
+            _qb_mw.raise_window = lambda window, alert=True: None
+            try:
+                return _qb_orig_process(args, via_ipc=via_ipc, cwd=cwd, target_arg=target_arg)
+            finally:
+                _qb_mw.MainWindow.maybe_raise = _orig_maybe
+                _qb_mw.raise_window = _qb_orig_raise_window
+        return _qb_orig_process(args, via_ipc=via_ipc, cwd=cwd, target_arg=target_arg)
+    _qb_app.process_pos_args = _qb_silent_process
+except Exception as e:
+    import sys
+    sys.stderr.write(f"[ipc-silent-patch] failed to apply: {e}\n")
