@@ -1,0 +1,17 @@
+[Unit]
+Description=Daily journal -> memory consolidation audit — promotes state-bearing journal.md entries to canonical ~/.claude/memory files (elpabl0 concept, adapted)
+Documentation=file:///home/christopher/claude/notes/adopt-journal-audit-2026-05-30/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=HOME=/home/christopher
+Environment=TZ=Asia/Jakarta
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# API key is read from ~/.claude/secrets.env by the script — NOT placed in this unit.
+ExecStart=/usr/bin/python3 /home/christopher/.claude/scripts/journal-audit.py --apply
+SyslogIdentifier=journal-audit
+StandardOutput=append:/home/christopher/.local/share/journal-audit/run.log
+StandardError=append:/home/christopher/.local/share/journal-audit/run.log
+TimeoutStartSec=300

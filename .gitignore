@@ -94,6 +94,13 @@ config/nvim/
 config/*/.git/
 config/*/.gitignore
 
+# ─── journal-audit runtime (operational state, not source) ───────────────────
+# journal.md (the log) IS tracked; its derived audit state + backups are not.
+claude/memory/.journal-audit-state.json
+claude/memory-backups/
+claude/scripts/__pycache__/
+__pycache__/
+
 # ─── Misc ────────────────────────────────────────────────────────────────────
 *.tmp
 *.bak

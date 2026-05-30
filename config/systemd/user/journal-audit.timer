@@ -1,0 +1,13 @@
+[Unit]
+Description=Trigger the daily journal->memory consolidation audit at 04:00 WIB (Asia/Jakarta)
+Documentation=file:///home/christopher/claude/notes/adopt-journal-audit-2026-05-30/
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 Asia/Jakarta
+# Catch a missed run after sleep/suspend/boot so nothing accumulates un-audited.
+Persistent=true
+AccuracySec=2min
+Unit=journal-audit.service
+
+[Install]
+WantedBy=timers.target
