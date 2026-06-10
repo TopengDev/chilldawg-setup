@@ -36,11 +36,11 @@ The naming intentionally collapses "what kind of thing" into a top-level directo
 
 The system works like this:
 
-1. `~/.claude/secrets.env` is a chmod-600 file that lives **outside** the repo and is **gitignored** even if accidentally placed inside. It contains 8 environment variables (`ANTHROPIC_API_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`, `VPS_HOST`, `VPS_USER`, `VPS_PASSWORD`, `GH_TOKEN`, `NANOBANANA_API_KEY`).
+1. `~/.claude/secrets.env` is a chmod-600 file that lives **outside** the repo and is **gitignored** even if accidentally placed inside. It contains the environment variables enumerated in `.env.example` — 8 core (`ANTHROPIC_API_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`, `VPS_HOST`, `VPS_USER`, `VPS_PASSWORD`, `GH_TOKEN`, `NANOBANANA_API_KEY`) plus optional ISI/fitest work logins (`ISI_EMAIL`, `ISI_PASSWORD`, `FITEST_USER`, `FITEST_PASSWORD`).
 
 2. `~/.bashrc` ends with `[ -f ~/.claude/secrets.env ] && source ~/.claude/secrets.env`. Every interactive shell gets these env vars for free.
 
-3. Files that previously contained literal secrets (`CLAUDE.md`, the three `reference_*` memory files, `cloudflare-dns/SKILL.md`, `deploy-landing/SKILL.md`, `settings.local.json`) have been rewritten to reference `$VAR_NAME` instead of the literal value. Bash code blocks that get executed by Claude Code skills run in a shell with secrets.env already sourced, so variable expansion just works.
+3. Files that previously contained literal secrets (`CLAUDE.md`, `cloudflare-dns/SKILL.md`, `deploy-landing/SKILL.md`, `settings.local.json`) have been rewritten to reference `$VAR_NAME` instead of the literal value. Bash code blocks that get executed by Claude Code skills run in a shell with secrets.env already sourced, so variable expansion just works. The `claude/memory/` directory — which holds private operational context and credential-by-reference notes — is **untracked entirely** (gitignored), so memory never enters git in the first place; the files live on disk, accessed via the `~/.claude/memory` symlink, but are not versioned.
 
 4. `.env.example` ships in the repo as a template — same variable names, empty values. New machines copy it to `~/.claude/secrets.env` and fill in real values during onboarding.
 
@@ -53,11 +53,12 @@ This means: **the repo can be public, private, mirrored, forked, or accidentally
 | Path | Purpose | Symlinked? |
 |------|---------|------------|
 | `CLAUDE.md` | Global instructions loaded into every conversation | ✓ |
-| `settings.json` | Plugins enabled, hooks, model config | ✓ |
+| `settings.json` | Plugins enabled, hooks, model config | ✗ (**copied, not linked** — Claude Code rewrites it live; `install.sh` restores it if absent, re-sync manually) |
 | `settings.local.json` | Per-machine permission allowlist | ✗ (gitignored, sanitized live) |
 | `statusline.sh` | Custom status line | ✓ |
-| `memory/` | ~50 long-term memory `.md` files (auto-loaded) | ✓ |
-| `skills/` | 29 custom skills (`/commit`, `/ship`, `/qa`, etc.) | ✓ |
+| `memory/` | Live long-term memory `.md` files (auto-loaded; `autoMemoryDirectory`) | ◐ (dir is symlinked to the repo, but its **contents are gitignored** — private + machine-local, not versioned) |
+| `skills/` | 36 custom skills (`/commit`, `/ship`, `/qa`, etc.) | ✓ |
+| `scripts/` | triage/spawn pipeline (`spawn-worker.sh`, `check-triage.sh`, `journal-audit.py`, …) | ✓ |
 | `hooks/` | PreToolUse hook scripts (e.g. `block-raw-git-commit.sh`) | ✓ |
 | `email-mcp/` | Custom MCP server source (Outlook + Hostinger SMTP/IMAP) | ✓ |
 | `whatsapp-mcp/` | Custom MCP server source (Baileys-based, with patch script) | ✓ |
@@ -163,4 +164,4 @@ If you're starting from a fresh machine and `~/.config/nvim/` already exists (e.
 6. `exec bash` to reload the shell
 7. `claude` to launch Claude Code
 
-The first interactive `claude` session will see all 29 skills, the global hooks, the plugin set, the MCPs, and the memory files — exactly the same as on the source machine.
+The first interactive `claude` session will see all 36 skills, the global hooks, the plugin set, and the MCPs — exactly the same as on the source machine. Memory is the one exception: it is private + untracked (see [Secrets architecture](#secrets-architecture) / `.gitignore`), so a fresh machine starts with an empty `~/.claude/memory` and grows its own.

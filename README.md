@@ -8,8 +8,8 @@ chilldawg-setup/
 │   ├── CLAUDE.md         global instructions (sanitized — secrets via ~/.claude/secrets.env)
 │   ├── settings.json     enabled plugins, hooks, model config
 │   ├── statusline.sh     custom statusline script
-│   ├── memory/           ~50 .md memory files (auto-loaded across sessions)
-│   ├── skills/           29 custom skills (/commit, /ship, /qa, etc.)
+│   ├── memory/           live long-term memory (private — untracked, gitignored)
+│   ├── skills/           36 custom skills (/commit, /ship, /qa, etc.)
 │   ├── hooks/            block-raw-git-commit.sh and friends
 │   ├── email-mcp/        custom Email MCP server (Outlook + Hostinger SMTP/IMAP)
 │   ├── whatsapp-mcp/     custom WhatsApp MCP server (forked + patched Baileys)
@@ -72,6 +72,6 @@ This is a personal dotfiles repo. PRs are not expected — but if you spot somet
 
 ## Secrets
 
-**No secrets are tracked in this repo.** All credentials live in `~/.claude/secrets.env` (gitignored, chmod 600). Files that previously held literal tokens have been rewritten to reference the env vars instead. See `.env.example` for the full list.
+**No secrets are tracked in this repo.** All credentials live in `~/.claude/secrets.env` (gitignored, chmod 600). Files that previously held literal tokens have been rewritten to reference the env vars instead. The live memory dir (`claude/memory/`) is private and **untracked entirely** (gitignored) — it never enters git. See `.env.example` for the full list of expected variables.
 
 If you find a secret in this repo, that's a bug — please flag it.

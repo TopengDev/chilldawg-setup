@@ -55,7 +55,7 @@ cp .env.example ~/.claude/secrets.env
 chmod 600 ~/.claude/secrets.env
 ```
 
-Open `~/.claude/secrets.env` in your editor. You'll see 8 empty `export FOO=""` lines. Fill each one in. Sources for each:
+Open `~/.claude/secrets.env` in your editor. You'll see a set of empty `export FOO=""` lines. Fill in the 8 core ones; the 4 ISI/fitest logins at the bottom are work-specific — fill them only if you run the QA/fitest flows, otherwise leave them blank. Sources for each:
 
 | Variable | Where to get it |
 |---|---|
@@ -67,11 +67,13 @@ Open `~/.claude/secrets.env` in your editor. You'll see 8 empty `export FOO=""` 
 | `VPS_PASSWORD` | The VPS root/user password (consider switching to SSH key auth for production!) |
 | `GH_TOKEN` | https://github.com/settings/tokens → classic PAT, scopes: `repo`, `read:org` |
 | `NANOBANANA_API_KEY` | https://aistudio.google.com/apikey |
+| `ISI_EMAIL` / `ISI_PASSWORD` | ISI / BMS WebAdmin login (work-specific — optional) |
+| `FITEST_USER` / `FITEST_PASSWORD` | fitest portal login (work-specific — optional) |
 
-Save the file. Verify:
+Save the file. Verify the core 8 are filled:
 ```bash
 cat ~/.claude/secrets.env | grep -c '^export.*=".*[^"]"$'
-# should print 8
+# should print 8 (or 12 if you also filled the ISI/fitest logins)
 ```
 
 ### 4. Install the package set
@@ -143,7 +145,7 @@ c
 ```
 
 You should see:
-- All 29 skills available (`/commit`, `/ship`, `/qa`, `/cloudflare-dns`, `/deploy-landing`, etc.)
+- All 36 skills available (`/commit`, `/ship`, `/qa`, `/cloudflare-dns`, `/deploy-landing`, etc.)
 - The custom hooks active (try `git commit -m "test"` from inside Claude Code — it should be blocked, redirecting you to `/commit`)
 - Memory files auto-loaded
 - Custom MCPs (email + whatsapp) listed in `claude mcp list`

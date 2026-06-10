@@ -2,6 +2,17 @@
 
 Auto-generated 2026-04-07. Use this to bootstrap a fresh machine to match Christopher's environment.
 
+> **This is a point-in-time snapshot, not a live manifest** — it drifts as packages are added/removed. Regenerate the major sections with the commands named in each `##` heading below:
+> ```bash
+> pacman -Qe            # Arch — explicitly installed
+> pacman -Qm            # Arch — AUR / foreign
+> npm list -g --depth=0 # npm globals
+> bun pm ls -g          # bun globals
+> cargo install --list  # cargo binaries
+> pipx list --short     # pipx apps
+> brew list             # linuxbrew formulae
+> ```
+
 ---
 
 ## Arch Linux — explicitly installed (`pacman -Qe`)
