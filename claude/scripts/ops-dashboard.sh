@@ -178,6 +178,15 @@ fi
 la="$(awk '{print $1, $2, $3}' /proc/loadavg 2>/dev/null || true)"
 ncpu="$(nproc 2>/dev/null || echo '?')"
 info "load (1/5/15m)" "${la:-?} · ${ncpu} CPUs"
+# config: settings.json live-vs-repo drift (the one non-symlinked claude config)
+SETTINGS_DRIFT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/settings-drift.sh"
+if [ -x "$SETTINGS_DRIFT" ]; then
+  if "$SETTINGS_DRIFT" --no-color >/dev/null 2>&1; then
+    pass "settings.json" "live == repo (canonical)"
+  else
+    warn "settings.json" "DRIFT vs repo — run settings-drift.sh"
+  fi
+fi
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 5. VPS (read-only SSH)

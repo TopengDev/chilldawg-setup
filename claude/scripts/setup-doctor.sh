@@ -243,6 +243,21 @@ else
   drift "settings.json missing — cannot check enabledPlugins"
 fi
 
+# ── 5b. settings.json live-vs-repo drift (delegated to settings-drift.sh) ──────
+# The ONE config file that is NOT a symlink into the repo (install.sh copies it),
+# so it can silently diverge. settings-drift.sh does the canonical (key-order-
+# insensitive), hooks-aware comparison; here we just surface its one-line verdict.
+SETTINGS_DRIFT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/settings-drift.sh"
+if [ -x "$SETTINGS_DRIFT" ]; then
+  if "$SETTINGS_DRIFT" --no-color >/dev/null 2>&1; then
+    pass "settings.json live == repo (canonical, hooks-aware — via settings-drift.sh)"
+  else
+    drift "settings.json live vs repo DRIFT — run settings-drift.sh to see keys/hooks, reconcile with --sync-to-repo / --sync-to-live"
+  fi
+else
+  skip "settings-drift.sh not found/executable — skipping live-vs-repo settings drift check"
+fi
+
 # ── 6. secrets.env present + sourced ──────────────────────────────────────────
 sect "secrets"
 if [ -f "$HOME/.claude/secrets.env" ]; then
