@@ -1,0 +1,16 @@
+[Unit]
+Description=Trigger the weekly conservative memory-decay archival sweep (Sundays 04:30 WIB, after the 04:00 journal-audit)
+Documentation=file:///home/christopher/claude/notes/initiatives/setup-overhaul-2026-06.md
+
+[Timer]
+# Sundays 04:30 WIB — sits just after the daily journal-audit (04:00) so the
+# index is already consolidated when decay runs. Weekly cadence: stale memories
+# accrue slowly, no need to sweep more often.
+OnCalendar=Sun *-*-* 04:30:00 Asia/Jakarta
+# Catch a missed run after sleep/suspend/boot so a skipped week still sweeps.
+Persistent=true
+AccuracySec=5min
+Unit=memory-decay.service
+
+[Install]
+WantedBy=timers.target

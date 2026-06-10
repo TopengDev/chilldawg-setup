@@ -1,0 +1,21 @@
+[Unit]
+Description=Weekly conservative memory decay — archive (never delete) clearly-stale memory files (old session-state snapshots, self-declared-superseded), then regenerate MEMORY.md
+Documentation=file:///home/christopher/claude/notes/initiatives/setup-overhaul-2026-06.md
+
+[Service]
+Type=oneshot
+Environment=HOME=/home/christopher
+Environment=TZ=Asia/Jakarta
+# PATH must include ~/.local/bin (git/gitleaks for any downstream tooling) plus
+# standard dirs for python3/coreutils.
+Environment=PATH=/home/christopher/.local/bin:/usr/local/bin:/usr/bin:/bin
+# --apply is safe to run unattended: memory-decay.py is conservative (requires a
+# high-confidence stale signal AND passes every guard — wikilink-protected,
+# user/feedback-protected, age-gated). It MOVES (never deletes); archive/ stays
+# in the private repo so every archival is reversible. The regenerated MEMORY.md
+# is auto-pushed by memory-autopush.timer.
+ExecStart=/usr/bin/python3 /home/christopher/.claude/scripts/memory-decay.py --apply
+SyslogIdentifier=memory-decay
+StandardOutput=append:/home/christopher/.local/share/memory-decay/decay.log
+StandardError=append:/home/christopher/.local/share/memory-decay/decay.log
+TimeoutStartSec=180

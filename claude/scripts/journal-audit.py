@@ -399,6 +399,92 @@ def print_report(promotions: list[dict], skipped: list[dict],
 
 
 # --------------------------------------------------------------------------- #
+# orphan safety-net — the actual fix for the "stalled loop" symptom.
+#
+# The journal-audit high-water tracks journal.md correctly, but most memory
+# files are now written DIRECTLY (by /remember, wa-behavior-learn, manual edits,
+# worker sessions) and never flow through journal.md — so the consolidation
+# audit has nothing to consolidate and the "nothing state-bearing silently
+# drops" guarantee leaks: a directly-written memory file that never made it into
+# MEMORY.md is invisible to the loader. This pass closes that gap by detecting
+# index orphans (memory .md files not linked from MEMORY.md) and, in live mode,
+# regenerating the index so every memory file is represented. It runs every
+# audit regardless of whether journal.md had new entries.
+# --------------------------------------------------------------------------- #
+INDEX_LINK_RE = re.compile(r"\]\((?P<fn>[^)]+\.md)\)")
+GEN_INDEX = HOME / ".claude" / "scripts" / "gen-memory-index.py"
+
+
+def find_index_orphans() -> list[str]:
+    """Memory .md files present on disk (top-level only) but NOT linked in
+    MEMORY.md. archive/ is excluded automatically (non-recursive glob)."""
+    on_disk = {f.name for f in MEMORY_DIR.glob("*.md")
+               if f.name not in ("MEMORY.md", "MEMORY.md.prev", "journal.md")}
+    index_text = INDEX.read_text(encoding="utf-8") if INDEX.exists() else ""
+    linked = set(INDEX_LINK_RE.findall(index_text))
+    return sorted(on_disk - linked)
+
+
+def reindex_live() -> tuple[bool, str]:
+    """Regenerate MEMORY.md via gen-memory-index.py (verify-before-replace lives
+    in that script). Returns (ok, message). Never raises — caller is best-effort.
+    """
+    import subprocess
+    if not GEN_INDEX.exists():
+        return False, f"gen-memory-index.py not found at {GEN_INDEX}"
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(GEN_INDEX)],
+            capture_output=True, text=True, timeout=120,
+            env={**os.environ, "HOME": str(HOME)},
+        )
+    except Exception as ex:  # noqa: BLE001 — best-effort, must not crash the audit
+        return False, f"reindex subprocess error: {ex}"
+    msg = (proc.stdout.strip() + (" | " + proc.stderr.strip() if proc.stderr.strip() else "")).strip()
+    return proc.returncode == 0, msg or f"exit {proc.returncode}"
+
+
+def orphan_safety_net(dry: bool) -> list[str]:
+    """Detect orphans and (live) re-index. Returns change-log lines for the
+    report. Best-effort: any failure is logged + reported, never fatal (memory
+    integrity must not depend on the index regen succeeding)."""
+    log_lines: list[str] = []
+    try:
+        orphans_before = find_index_orphans()
+    except Exception as ex:  # noqa: BLE001
+        log(f"WARN: orphan scan failed: {ex}")
+        return [f"orphan-scan FAILED (non-fatal): {ex}"]
+
+    if not orphans_before:
+        log_lines.append("orphan safety-net: 0 index orphans — index complete")
+        return log_lines
+
+    log_lines.append(
+        f"orphan safety-net: {len(orphans_before)} memory file(s) NOT in index "
+        f"(would silently drop): " + ", ".join(orphans_before[:12])
+        + (" …" if len(orphans_before) > 12 else ""))
+
+    if dry:
+        log_lines.append("  (dry-run: would regenerate MEMORY.md to include them)")
+        return log_lines
+
+    ok, msg = reindex_live()
+    if ok:
+        try:
+            orphans_after = find_index_orphans()
+        except Exception:  # noqa: BLE001
+            orphans_after = []
+        log_lines.append(f"  re-indexed: {msg}")
+        log_lines.append(f"  orphans remaining: {len(orphans_after)}")
+        log(f"orphan safety-net: re-indexed, {len(orphans_before)} -> "
+            f"{len(orphans_after)} orphans")
+    else:
+        log_lines.append(f"  re-index FAILED (non-fatal): {msg}")
+        log(f"WARN: orphan re-index failed: {msg}")
+    return log_lines
+
+
+# --------------------------------------------------------------------------- #
 # main
 # --------------------------------------------------------------------------- #
 def main() -> int:
@@ -443,7 +529,13 @@ def main() -> int:
         f"(floor={floor.isoformat() if floor else 'none'})")
 
     if not candidates:
-        print_report([], pre_skipped, ["no candidate entries — nothing to do"], dry)
+        # No NEW journal entries to consolidate — but still run the orphan
+        # safety-net so directly-written memory files (the common path now) get
+        # indexed instead of silently dropping. This is the branch every run hit
+        # while the loop appeared "stalled".
+        net_log = orphan_safety_net(dry)
+        print_report([], pre_skipped,
+                     ["no candidate journal entries — consolidation idle"] + net_log, dry)
         # still advance high-water in live mode so ephemerals aren't re-scanned
         if not dry and unaudited:
             newest = max(e["dt"] for e in unaudited)
@@ -472,6 +564,7 @@ def main() -> int:
             changelog = apply_promotions(copy_dir, promotions, today)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+        changelog += orphan_safety_net(dry=True)
         print_report(promotions, skipped, changelog, dry=True)
         log("dry-run complete — no changes to real store, high-water NOT advanced")
         return 0
@@ -503,6 +596,11 @@ def main() -> int:
         except Exception as rex:
             log(f"RESTORE FAILED: {rex} — backup intact at {archive}")
         die(f"apply failed: {ex}", code=3)
+
+    # Orphan safety-net AFTER promotions land (so just-created files are indexed
+    # too). Best-effort — it never raises; a re-index failure does NOT roll back
+    # the already-committed promotions.
+    changelog += orphan_safety_net(dry=False)
 
     print_report(promotions, skipped, changelog, dry=False)
     log(f"LIVE audit complete — high-water -> {STATE_FILE}")

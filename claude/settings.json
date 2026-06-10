@@ -52,6 +52,12 @@
             "command": "/home/christopher/.claude/hooks/lint-check.sh",
             "timeout": 60,
             "statusMessage": "Running linter..."
+          },
+          {
+            "type": "command",
+            "command": "/home/christopher/.claude/scripts/memory-write-validate.sh",
+            "timeout": 15,
+            "statusMessage": "Validating memory write..."
           }
         ]
       }
@@ -126,7 +132,7 @@
       }
     }
   },
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
   "channelsEnabled": true,
   "allowedChannelPlugins": [
     {
