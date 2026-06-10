@@ -282,6 +282,26 @@ On completion (or terminal block), a full-path worker writes a machine-readable 
 
 `~/.claude/scripts/workflows/` — playbooks for the multi-worker patterns main keeps hand-assembling, each with a brief-shape skeleton + sequencing + verification gates: **fan-out-review** (N parallel lens agents → synthesis, e.g. `/audit`), **recon→implement→verify** (the fitest pattern), **loop-until-green / loop-until-dry** (iterate to a condition with a budget). **`scaffold-workflow.sh <pattern> <run-slug>`** writes the 3-tier pre-spawn artifacts (per-worker task dir with triage.json + STATE.md + role-shaped brief.md) and prints the exact spawn/brief commands. See `workflows/README.md`.
 
+## Autonomous Loop Operations — wake priority + idle backlog (Wave-6, 2026-06-11)
+
+Additive operating model for the overnight self-pacing loop (main schedules its own next wake via `ScheduleWakeup`, sentinel `<<autonomous-loop-dynamic>>`; a finished sub-agent auto-re-invokes main). This gives that loop a **priority lens** + a **backlog to grind on when idle** — operationalizing `feedback_always_working` (idle ≠ sleep; advance real deliverables). Full doc: `docs/AUTONOMOUS-LOOP.md`.
+
+### The wake-priority ladder (highest pending wins)
+
+- **P0 — act immediately (wake ≤60s):** a real **deadman daemon-death alert** (`~/.claude/state/deadman/*.alerted` present = an armed daemon went alive→dead, not yet recovered); a **Toper WhatsApp/SUPERUSER** message (already first-class — delivered LIVE to main via `WHATSAPP=1`, so it's handled by the WhatsApp Channel Discipline rule, not by a poll); anything time-critical + irreversible.
+- **P1 — handle next (~1–10 min):** a **fresh worker `result.json`** to ingest (`~/claude/notes/*/result.json` newer than the consumed marker); inside the **paid-work window** (Ryan/BMS ~08:00–11:00 WIB weekdays — stay responsive); a scheduled time-promise coming due.
+- **P2 — idle tick (~20–30 min):** nothing higher → pull **ONE `loop-safe`** item from `~/claude/notes/idle-backlog.md` and advance it.
+
+### `wake-priority.sh` (read-only reporter)
+
+`claude/scripts/wake-priority.sh` reports the top pending reason + tier + a suggested cadence so the loop can consult it each wake. **Read-only** (the only thing it writes is its own `~/.claude/state/wake-priority.consumed` marker, and only under `--consume`); **exit code = tier** (`0=P2`, `1=P1`, `2=P0`); **fail-open** (any ambiguity → P2/idle, never falsely escalate); **never prints a secret**. Modes: default report · `--quiet` · `--json` · `--consume` (call after ingesting a `result.json`). Not wired to any timer/hook — it's a tool the loop *consults*, never a side-effect source.
+
+### P2 selection protocol (the idle work queue)
+
+When at P2: read `~/claude/notes/idle-backlog.md` → pick the highest-value **`loop-safe`** item that fits remaining context/time → execute under the **normal Task Complexity Triage + 3-tier + verify** discipline → log the outcome + check it off. The autonomous-execution policy still applies (self-gate destructive ops backup→verify→proceed; stage nuclear).
+
+**HARD RULE:** every backlog entry is flagged **`loop-safe`** (loop MAY auto-execute) vs **`human-gated`** (loop must NEVER auto-fire). Nuclear / external / destructive / money / external-relationship work is **`human-gated`, no exceptions** (e.g. the W5 `.bashrc` age-cutover + off-machine key backup, the W0 dashboard key rotations, #27 VPS migration, history-scrub+force-push of the *other* public repos). Surface `human-gated` items to Toper (standup / loop-digest); never auto-execute them. Borderline → `human-gated`.
+
 ## Website Build Defaults — i18n + Multi-Theme (MANDATORY)
 
 **OVERRIDE: Every website / web app / landing page / marketing site built for Aenoxa ecosystem MUST ship with i18n + multi-theme support out of the box. Non-negotiable. From commit 0. Not v2. Not MVP-first. Not "we'll add it later".**
