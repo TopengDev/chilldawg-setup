@@ -57,6 +57,51 @@ if tmux list-windows -t "$TMUX_SESSION" -F "#{window_name}" 2>/dev/null | grep -
   exit 2
 fi
 
+# CONCURRENCY GOVERNOR (semaphore) — ADDITIONAL gate, ordered AFTER triage ------
+# The box is 4 vCPU / ~15GB; nothing else caps how many workers run at once.
+# Refuse (or optionally wait+retry) if at/over CHILLDAWG_MAX_WORKERS live workers.
+# FAIL-OPEN: if the count can't be determined, the helper allows the spawn — a
+# counting bug must never brick the pipeline. Placed AFTER the triage gate (task
+# validity first) and the window sanity checks, BEFORE any tmux side effect, so a
+# capacity-refused spawn leaves no window behind.
+SEMAPHORE="$SCRIPT_DIR/worker-semaphore.sh"
+if [[ -r "$SEMAPHORE" ]]; then
+  # shellcheck source=/dev/null
+  source "$SEMAPHORE"
+  SPAWN_WAIT="${CHILLDAWG_SPAWN_WAIT:-0}"
+  if ! cs_has_capacity; then
+    if [[ "$SPAWN_WAIT" =~ ^[0-9]+$ ]] && (( SPAWN_WAIT > 0 )); then
+      echo "[semaphore] at cap — waiting up to ${SPAWN_WAIT}s for a free slot (CHILLDAWG_SPAWN_WAIT)..." >&2
+      _got_slot=0
+      for ((w = 0; w < SPAWN_WAIT; w++)); do
+        sleep 1
+        if cs_has_capacity 2>/dev/null; then _got_slot=1; break; fi
+      done
+      if (( _got_slot == 0 )); then
+        echo "" >&2
+        echo "REFUSING TO SPAWN '$WINDOW_NAME': worker cap reached (CHILLDAWG_MAX_WORKERS=$(_cs_max_workers)) and no slot freed within ${SPAWN_WAIT}s." >&2
+        echo "  Live workers: $(cs_live_count). Kill a finished worker, raise the cap, or retry later." >&2
+        echo "  Inspect the fleet: fleetview.sh" >&2
+        exit 5
+      fi
+      echo "[semaphore] slot freed — proceeding." >&2
+    else
+      echo "" >&2
+      echo "REFUSING TO SPAWN '$WINDOW_NAME': worker cap reached (CHILLDAWG_MAX_WORKERS=$(_cs_max_workers))." >&2
+      echo "  Live workers: $(cs_live_count). Options:" >&2
+      echo "    - finish/kill a worker, then retry" >&2
+      echo "    - raise the cap:   CHILLDAWG_MAX_WORKERS=$(( $(_cs_max_workers) + 2 )) spawn-worker.sh ..." >&2
+      echo "    - wait for a slot: CHILLDAWG_SPAWN_WAIT=120 spawn-worker.sh ...  (waits up to 120s)" >&2
+      echo "    - inspect fleet:   fleetview.sh" >&2
+      exit 5
+    fi
+  fi
+else
+  echo "WARNING: worker-semaphore.sh not found/readable at $SEMAPHORE" >&2
+  echo "  Concurrency governor SKIPPED for '$WINDOW_NAME' (fail-open). Repair to re-enable." >&2
+fi
+# ------------------------------------------------------------------------------
+
 # Create the window at the next available HIGHEST index.
 # Don't use -a (appends after CURRENT, displaces existing windows including main).
 # Compute: max existing index + 1, so new worker always lands at the tail.
@@ -64,6 +109,13 @@ NEXT_INDEX=$(tmux list-windows -t "$TMUX_SESSION" -F '#{window_index}' | sort -n
 NEXT_INDEX=$((NEXT_INDEX + 1))
 tmux new-window -t "${TMUX_SESSION}:${NEXT_INDEX}" -n "$WINDOW_NAME" -c "$CWD"
 sleep 0.5
+
+# Register this worker in the concurrency-governor registry (best-effort; a
+# registry write failure never fails the spawn). The live count = registry ∩
+# live tmux windows, so this is what makes the cap accurate + self-pruning.
+if declare -F cs_register_worker >/dev/null 2>&1; then
+  cs_register_worker "$WINDOW_NAME"
+fi
 
 # Launch claude with attn.
 # CRITICAL: set ATTN_SESSION env var to a unique name BEFORE claude starts.

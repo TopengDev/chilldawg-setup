@@ -144,12 +144,13 @@ The auto-loaded CLAUDE.md rule "Main Session is DISCUSSION ONLY / never run dev 
 
 ## L1 fast-path (trivial task — lightweight)
 
-This is an L1 trivial task. No initiative file, no full 3-tier ceremony. Keep it minimal:
+This is an L1 trivial task. No initiative file, no full 3-tier ceremony, no result.json required. Keep it minimal:
 
 1. **Open STATE.md** (a stub next to this brief), set Status to IN_PROGRESS.
 2. **Do the task.** Verify it actually works (don't just assume).
 3. **On completion**: set Status to COMPLETE in STATE.md + send an attn report to 'main' (what you did + how you verified). A full report.md is optional for L1.
 4. **If blocked**: set Status to BLOCKED + ping main via attn.
+5. **If you get killed / hit the session limit and are re-briefed with a RESUME note**: read STATE.md first, note what you'd already finished, and continue from there rather than redoing it. (L1 is short — usually a quick re-check suffices.)
 
 ---
 
@@ -176,14 +177,49 @@ Your task notes dir already has \`STATE.md\` next to this brief (main pre-create
 1. **Open STATE.md FIRST** before running any tool calls for the actual work
 2. **Set Status to IN_PROGRESS** + fill the "Starting point" section with what you observed about the existing state
 3. **Maintain it throughout**: update "Current progress" continuously (every major step), move items from "Roadmap" → "Completed" as you finish them, add "Blockers" if anything halts you
-4. **On task completion**: set Status to COMPLETE + write report.md
+4. **On task completion**: set Status to COMPLETE + write report.md + result.json (see Result contract below)
 5. **On halt/block**: set Status to BLOCKED + describe blocker + ping main via attn
 
 Main session will poll your STATE.md every 5 min. If not updated in >10 min while you're still active, main will ping or investigate stall. Treat STATE.md as your living source-of-truth, not the attn pings.
 
 ---
 
-Below is your brief. Read it fully, init STATE.md per above, send an attn STARTING ping to main, then execute.
+## MANDATORY: Resumable-checkpoint contract (survive a kill / session limit)
+
+You may be KILLED or hit the Claude session limit mid-task. When that happens you can be RE-BRIEFED with a RESUME preamble (via resume-worker.sh) — your job is to resume from where you died, NOT redo work or wait for a babysitter. The "Checkpoints" + "Resume protocol" sections of STATE.md are the contract that makes this safe:
+
+1. **Decompose into idempotent checkpoints.** Break the task into sub-steps that are each individually safe to re-run / re-check without harm or duplication. Write them into STATE.md's "Checkpoints (idempotent, resumable)" list.
+2. **Verify BEFORE marking a checkpoint \`[x]\`.** Mark a checkpoint done ONLY after you confirmed its effect actually landed (file written + re-read, command exit 0 + output asserted, row in DB, endpoint 200). Record the proof inline. A \`[x]\` checkpoint MUST be safe to skip on resume. If you can't verify it, leave it \`[ ]\`.
+3. **Keep the "Resume cursor" current** — it points at the first incomplete checkpoint. Update it as you finish each one.
+4. **Guard non-idempotent actions** (send-email / force-push / fund-transfer): drop a sentinel BEFORE acting and check it on resume so you never double-fire.
+5. **On (re)start, follow the Resume protocol** in STATE.md: read STATE.md first, trust \`[x]\` checkpoints (skip them), re-verify the last \`[x]\` cheaply, continue from the first \`[ ]\`.
+
+This is the difference between a 2-minute resume and a from-scratch redo. Treat every checkpoint flip as a commit.
+
+---
+
+## RESULT CONTRACT: machine-readable completion (so main can parse you)
+
+On completion (Status COMPLETE) **or** terminal block (Status BLOCKED), in ADDITION to report.md, write a \`result.json\` next to STATE.md so main can ingest your outcome without re-parsing prose. Schema (validate with \`~/.claude/scripts/result-schema.sh <dir>\` — it reads/validates it):
+
+\`\`\`json
+{
+  "task_slug": "<slug>",
+  "status":    "done | blocked | partial",
+  "summary":   "<2-3 sentence plain-language outcome>",
+  "deliverables":   ["<what you produced — files/commits/endpoints>"],
+  "evidence":       ["<proof each deliverable works — command+output, path, 200, screenshot>"],
+  "blockers":       ["<what stopped you, empty if none>"],
+  "followups":      ["<recommended next actions, empty if none>"],
+  "staged_for_human": ["<anything left for Toper to trigger: rotate key, force-push, deploy>"]
+}
+\`\`\`
+
+\`status\`: \`done\` = fully complete + verified; \`partial\` = some checkpoints done, more remain (pair with Checkpoints state); \`blocked\` = halted, see \`blockers\`. Keep arrays terse. This does NOT replace report.md (human narrative) — it complements it.
+
+---
+
+Below is your brief. Read it fully, init STATE.md per above (including decomposing into checkpoints), send an attn STARTING ping to main, then execute.
 
 EOF
 fi

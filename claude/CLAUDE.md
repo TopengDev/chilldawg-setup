@@ -251,6 +251,37 @@ Existing tasks (pre-2026-05-24, tasks #70-#126) are grandfathered. New tasks fro
 
 2026-05-23/24: TaskCreate was used post-hoc or missed entirely. Workers ad-hoc documented — some wrote report.md, some didn't, no live progress visibility. No hierarchy → impossible to navigate. Resulted in workers running 30+ min on wrong direction (English-only landing when bilingual was the spec), zero ability to course-correct mid-flight because there was no state visible to main.
 
+## Worker Orchestration Tooling (Wave-3, 2026-06-11)
+
+Additive tooling on top of the spawn pipeline. All scripts live in `~/.claude/scripts/` (chilldawg `claude/scripts/`). Backward-compatible — existing `spawn-worker.sh` / `brief-worker.sh` callers and flags are unchanged.
+
+### Worker resume (killed / session-limit recovery)
+
+**A worker that dies mid-task RESUMES from its last checkpoint — it does not redo work or need a babysitter.** STATE.md is a resumable journal:
+
+- **Checkpoints (idempotent, resumable):** the worker decomposes its task into sub-steps that are each individually idempotent (safe to re-run/re-check). It marks a checkpoint `[x]` **only after verifying its effect actually landed** (file written + re-read, command exit 0 + output asserted, row in DB, endpoint 200) and records the proof inline. A `[x]` checkpoint is therefore safe to SKIP on resume. The **Resume cursor** line points at the first incomplete checkpoint. Non-idempotent actions (send-email / force-push / fund-transfer) are GUARDED with a sentinel checked on resume so they never double-fire.
+- **Resume protocol** (the worker follows it on every (re)start): read STATE.md FIRST → trust `[x]` checkpoints and skip them → cheaply re-verify the last `[x]` still holds → continue from the first `[ ]`.
+- **`resume-worker.sh <window> <task-dir> [--with-brief <orig-brief>]`** re-briefs a window (still-alive-but-stuck, or freshly re-spawned) with a RESUME preamble that points the worker at its STATE.md and orders it to continue from the Resume cursor. It delegates delivery to `brief-worker.sh` (so the worker re-absorbs the full role-override + contracts), and auto-falls back to the `--quick` path for L1-stub STATE.md.
+- The contract is enforced in the **brief-worker.sh role-override preamble** (every full-path worker is told to checkpoint + verify-before-marking) and the **STATE.md template** (`~/claude/notes/templates/STATE.md` carries the Checkpoints + Resume protocol sections).
+
+Verified safe because resume only skips checkpoints the worker itself verified + that are idempotent. (Verified failure that motivated this: 2026-06-11 a worker died at the session limit mid-task; recovery was manual + idempotent-by-luck.)
+
+### Structured worker results (`result.json`)
+
+On completion (or terminal block), a full-path worker writes a machine-readable **`result.json`** next to STATE.md **in addition to** `report.md`, so main can ingest the outcome without re-parsing prose. Schema: `{ task_slug, status (done|blocked|partial), summary, deliverables[], evidence[], blockers[], followups[], staged_for_human[] }`. Validate/read it with **`result-schema.sh <dir|file>`** (`--validate` exits 0/1; default pretty-prints; `--field <f>` for scripting; `--template` emits a skeleton). NOT required for L1 quick tasks.
+
+### Concurrency governor (don't over-spawn the 4-vCPU box)
+
+`spawn-worker.sh` now has a **semaphore gate** (after the triage gate, before the window is created): it refuses to spawn if at/over **`CHILLDAWG_MAX_WORKERS`** (default 4) live pipeline workers. The live count = a spawn registry ∩ live tmux windows (precise to pipeline-spawned workers, self-pruning as windows die). **Fail-open**: if the count can't be determined, the spawn is allowed (a counting bug never bricks the pipeline). Override per-spawn: `CHILLDAWG_MAX_WORKERS=6 spawn-worker.sh …`, or queue with `CHILLDAWG_SPAWN_WAIT=120 spawn-worker.sh …` (waits up to 120s for a slot). Refusal exits 5 with an actionable message. Logic lives in the sourceable `worker-semaphore.sh` (`worker-semaphore.sh status` to inspect).
+
+### FleetView (live cockpit)
+
+**`fleetview.sh`** — read-only one-screen dashboard of all active workers: each window's STATE.md status + mtime (STALLED flag if no update in >10min while still active), checkpoint progress (done/remaining), Resume cursor, context% (read from the pane statusline; this is REMAINING — low% = near-limit), capacity (N/max), and parent initiative. `--watch [secs]` refreshes. NEVER acts on a worker. Renders "no active workers" cleanly when idle.
+
+### Workflow library (codified multi-worker patterns)
+
+`~/.claude/scripts/workflows/` — playbooks for the multi-worker patterns main keeps hand-assembling, each with a brief-shape skeleton + sequencing + verification gates: **fan-out-review** (N parallel lens agents → synthesis, e.g. `/audit`), **recon→implement→verify** (the fitest pattern), **loop-until-green / loop-until-dry** (iterate to a condition with a budget). **`scaffold-workflow.sh <pattern> <run-slug>`** writes the 3-tier pre-spawn artifacts (per-worker task dir with triage.json + STATE.md + role-shaped brief.md) and prints the exact spawn/brief commands. See `workflows/README.md`.
+
 ## Website Build Defaults — i18n + Multi-Theme (MANDATORY)
 
 **OVERRIDE: Every website / web app / landing page / marketing site built for Aenoxa ecosystem MUST ship with i18n + multi-theme support out of the box. Non-negotiable. From commit 0. Not v2. Not MVP-first. Not "we'll add it later".**
