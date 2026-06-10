@@ -5,6 +5,16 @@ argument-hint: <natural language reminder | list | cancel <slug-or-id> | cancel 
 allowed-tools: Bash, Read, ScheduleWakeup, CronCreate, CronList, CronDelete, mcp__plugin_whatsapp_whatsapp__send_message
 ---
 
+> ⚠️ **Routing note (Task #130, 2026-05-24):** On this host, `CronCreate(durable:true)` is silently
+> NOT persisted (reported `[session-only]`), so CronCreate reminders die on session restart/compact.
+> The durable reminder path is the **systemd `reminder-check` service** reading
+> `~/reminders/reminders.jsonl` (appends to the wa-sender queue). For any reminder that must survive
+> a restart, add a row to that store instead of (or in addition to) CronCreate — see "How to operate"
+> in `~/claude/notes/reminder-infra-vps-2026-05-24/report.md`. **Do not enter the same reminder in
+> BOTH** `reminders.jsonl` AND a `/remindme` CronCreate job — that's the only way to manufacture a
+> duplicate WhatsApp send, since the two paths use different stores and different send channels and
+> share no dedup key.
+
 # /remindme — WhatsApp Reminder Scheduler
 
 Turns a natural-language request into a scheduled job that fires a formatted WhatsApp reminder to Toper. `CronCreate` is the backbone for every real reminder (one-shot + recurring); `ScheduleWakeup` is used only for the 60-second test mode; `CronList`/`CronDelete` power list/cancel.
