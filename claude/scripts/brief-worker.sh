@@ -86,6 +86,67 @@ if [[ "$QUICK" != "1" ]]; then
   fi
 fi
 
+# ── No-creds-in-brief pre-flight (warn-on-literal-secret, FAIL-OPEN) ──────────
+# Scan the OUTGOING brief text for literal secret VALUES (the gitleaks prefix
+# set). If any are found, print a LOUD warning naming the pattern-CLASS + line
+# (NEVER the matched value), then PROCEED ANYWAY — this is a warn, not a block,
+# consistent with the other fail-open hooks (a brief that legitimately *discusses*
+# a key prefix must still send). The point is to catch an accidental paste of a
+# real key into a brief (the #29 discipline: credentials go by var-reference,
+# e.g. $VPS_PASSWORD or "see ~/.claude/secrets.env", never as literals).
+#
+# Crucially it must NOT fire on the CORRECT pattern: var-references ($FOO /
+# ${FOO}) or the literal string "secrets.env". We strip those from each line
+# before testing, so "$VPS_PASSWORD" / "${ANTHROPIC_API_KEY}" / "secrets.env"
+# can never trip a pattern.
+#
+# Opt-out: CHILLDAWG_BRIEF_ALLOW_SECRETS=1 silences the scan entirely.
+if [[ "${CHILLDAWG_BRIEF_ALLOW_SECRETS:-0}" != "1" ]]; then
+  # pattern-class label | ERE  (same prefix engine as the global gitleaks hook)
+  __brief_secret_classes=(
+    "Anthropic-key|sk-ant-[A-Za-z0-9_-]{20,}"
+    "OpenAI-style-key|sk-[A-Za-z0-9]{32,}"
+    "GitHub-token|gh[pousr]_[A-Za-z0-9]{36,}"
+    "GitHub-fine-PAT|github_pat_[A-Za-z0-9_]{22,}"
+    "AWS-access-key-id|AKIA[0-9A-Z]{16}"
+    "Google-API-key|AIza[0-9A-Za-z_-]{35}"
+    "Slack-token|xox[baprs]-[A-Za-z0-9-]{10,}"
+    "PEM-private-key|-----BEGIN [A-Z ]*PRIVATE KEY-----"
+  )
+  __brief_secret_hit=0
+  __brief_lineno=0
+  while IFS= read -r __bline || [[ -n "$__bline" ]]; do
+    __brief_lineno=$((__brief_lineno+1))
+    # Strip var-refs ${VAR} and $VAR, and the literal token "secrets.env", so the
+    # correct credential-by-reference pattern never matches.
+    __residue="$(printf '%s' "$__bline" | sed -E 's/\$\{[A-Za-z_][A-Za-z0-9_]*\}//g; s/\$[A-Za-z_][A-Za-z0-9_]*//g; s/secrets\.env//g')"
+    for __cls in "${__brief_secret_classes[@]}"; do
+      __label="${__cls%%|*}"; __pat="${__cls#*|}"
+      # grep -- terminates options so the leading-dash PEM pattern is treated as a pattern.
+      if printf '%s' "$__residue" | grep -qE -- "$__pat" 2>/dev/null; then
+        if [[ "$__brief_secret_hit" == "0" ]]; then
+          echo "" >&2
+          echo -e "\033[1;31m╔══════════════════════════════════════════════════════════════════╗\033[0m" >&2
+          echo -e "\033[1;31m║  ⚠  BRIEF MAY CONTAIN A LITERAL SECRET — no-creds-in-brief rule  ║\033[0m" >&2
+          echo -e "\033[1;31m╚══════════════════════════════════════════════════════════════════╝\033[0m" >&2
+          echo "  Brief: $BRIEF" >&2
+          echo "  Credentials belong by REFERENCE (\$VPS_PASSWORD, 'see ~/.claude/secrets.env')," >&2
+          echo "  never as literal values. Detected (pattern-CLASS + line, value NOT shown):" >&2
+        fi
+        echo -e "    \033[1;33m• line $__brief_lineno — pattern-class [$__label]\033[0m" >&2
+        __brief_secret_hit=1
+      fi
+    done
+  done < "$BRIEF"
+  if [[ "$__brief_secret_hit" == "1" ]]; then
+    echo "  → PROCEEDING ANYWAY (fail-open warn). If this is a false positive (the brief" >&2
+    echo "    legitimately discusses a key prefix), silence with CHILLDAWG_BRIEF_ALLOW_SECRETS=1." >&2
+    echo "    If it's a REAL key: Ctrl-C now, scrub the brief, and rotate the key." >&2
+    echo "" >&2
+  fi
+  unset __brief_secret_classes __brief_secret_hit __brief_lineno __bline __residue __cls __label __pat
+fi
+
 # Step 1: Handle trust-folder prompt if present.
 # Claude Code shows "Quick safety check: Is this a project you created or one you trust?"
 # with option 1 pre-highlighted. Single Enter confirms.

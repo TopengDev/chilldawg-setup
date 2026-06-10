@@ -16,6 +16,17 @@ secrets.env
 .gh.json
 .netrc
 
+# ─── Secrets (encrypted-at-rest + keys) ──────────────────────────────────────
+# The age master key (lose it = lose every secret) + the encrypted secrets blob
+# + any age/encrypted artifact. These are machine-local and MUST NEVER be
+# committed, even though ~/.claude and ~/.config/age are not symlinked into this
+# repo today (defensive — in case the key/blob ever lands under a tracked path).
+secrets.env.enc
+config/age/
+keys.txt
+*.age
+*.enc
+
 # ─── Claude Code runtime state (regeneratable, large, or sensitive) ──────────
 claude/.credentials.json
 claude/.mcp.json
