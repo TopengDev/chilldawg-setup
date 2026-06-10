@@ -42,6 +42,14 @@ claude/invoices/
 claude/plugins/
 claude/settings.local.json
 
+# ─── Live memory (private, machine-local, NOT committed) ─────────────────────
+# claude/memory/ holds the running system's long-term memory .md files. It is a
+# REAL on-disk directory that ~/.claude/memory symlinks into (settings.json
+# autoMemoryDirectory). The files mutate constantly and contain private context
+# (people, projects, credentials-by-reference), so memory is untracked here.
+# The files stay on disk; git just doesn't version them.
+claude/memory/
+
 # ─── Shell history / runtime ─────────────────────────────────────────────────
 .bash_history
 .python_history
@@ -104,5 +112,7 @@ __pycache__/
 # ─── Misc ────────────────────────────────────────────────────────────────────
 *.tmp
 *.bak
+*.bak-*
+*.draft
 *.orig
 *~
