@@ -172,6 +172,14 @@ link config/qutebrowser/config.py    .config/qutebrowser/config.py
 link config/qutebrowser/scripts      .config/qutebrowser/scripts
 link config/qutebrowser/greasemonkey .config/qutebrowser/greasemonkey
 
+# git global hooks: the pre-push secret-scan (gitleaks). The committed .gitconfig
+# sets core.hooksPath = ~/.config/git/hooks, so this symlink wires that path to the
+# repo's hooks. Per-child link (~/.config/git also holds a real `ignore` file).
+# Requires gitleaks on PATH (see tools-installed.md); the hook fails OPEN + warns
+# if gitleaks is absent, so a fresh machine isn't bricked before the tool lands.
+mkdir -p "$HOME/.config/git"
+link config/git/hooks .config/git/hooks
+
 # ── systemd user units (journal-audit + qb-proxy-doctor timers) ─────────────
 # These drive the daily memory-consolidation audit and the qutebrowser proxy
 # doctor. Symlinking the unit files does NOT enable them — systemd needs a

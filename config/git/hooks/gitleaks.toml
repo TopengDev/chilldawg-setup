@@ -1,0 +1,46 @@
+# gitleaks config for the GLOBAL pre-push secret-scan hook.
+# Loaded by ~/.config/git/hooks/pre-push via `gitleaks git -c <this file>`.
+#
+# Why a custom config: gitleaks 8.21.2's DEFAULT ruleset does NOT include rules
+# for Anthropic `sk-ant-` keys (those rules landed in a later gitleaks release).
+# Anthropic keys are the single most sensitive secret in this environment, so we
+# extend the default ruleset (keeps GitHub/AWS/GCP/Slack/etc detection) and add
+# explicit Anthropic rules + a broad catch-all for any sk-ant- prefix.
+#
+# Verified 2026-06-11: catches sk-ant-api03-/sk-ant-admin01- canonical keys, a
+# literal `sk-ant-api03-FAKE...` truncated fake, and a raw GitHub PAT, while NOT
+# false-positiving on the bare string "sk-ant-" appearing in prose.
+
+title = "chilldawg global pre-push secret scan"
+
+[extend]
+# Inherit ALL of gitleaks' built-in rules (GitHub, AWS, GCP, Slack, Stripe,
+# private keys, JWTs, generic high-entropy assignments, …). We only ADD on top.
+useDefault = true
+
+# ── Anthropic API key (canonical format) ──────────────────────────────────────
+# Mirrors the upstream gitleaks master rule (config/gitleaks.toml @ master).
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API Key — risks unauthorized access to AI integrations and data."
+regex = '''\b(sk-ant-api03-[a-zA-Z0-9_\-]{93}AA)(?:[\x60'"\s;]|\\[nr]|$)'''
+keywords = ["sk-ant-api03"]
+
+# ── Anthropic Admin API key (canonical format) ────────────────────────────────
+[[rules]]
+id = "anthropic-admin-api-key"
+description = "Anthropic Admin API Key — risks unauthorized access to admin functions."
+regex = '''\b(sk-ant-admin01-[a-zA-Z0-9_\-]{93}AA)(?:[\x60'"\s;]|\\[nr]|$)'''
+keywords = ["sk-ant-admin01"]
+
+# ── Broad sk-ant- catch-all (defensive) ───────────────────────────────────────
+# The canonical rules require exactly 93 body chars + "AA"; a TRUNCATED or
+# malformed paste of a real key would slip past them. This catch-all fires on any
+# `sk-ant-<segment>-<>=8 body chars>` shape — we would rather over-block on this
+# specific, unmistakable prefix than ever leak a real Anthropic key. It does NOT
+# fire on the bare string "sk-ant-" in prose (requires the -<body> tail).
+[[rules]]
+id = "anthropic-key-broad"
+description = "Any Anthropic-style sk-ant- key (catch-all, incl. malformed/truncated pastes)."
+regex = '''\bsk-ant-[a-zA-Z0-9]{2,}[0-9]{0,2}-[a-zA-Z0-9_\-]{8,}'''
+keywords = ["sk-ant-"]
