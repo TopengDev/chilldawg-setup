@@ -1,0 +1,187 @@
+name: test-install
+
+# Catch the "install.sh doesn't actually restore X" bug class on a FRESH machine.
+# Spins a clean Arch container, runs install.sh non-interactively, and asserts the
+# setup is genuinely wired: symlinks created + resolve to the repo, hooks +
+# scripts are executable, and a second run is idempotent (no churn, no re-backup).
+#
+# Scope: CI has NO secrets.env, NO Claude plugins, NO MCP servers, and NO systemd
+# user bus. So we only assert what is reproducible WITHOUT those — symlinks, file
+# perms, link-target resolution, idempotency, and that install.sh exits 0 in --ci
+# mode despite the missing pieces (it must degrade gracefully, not abort).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Avoid stacked runs on rapid pushes.
+concurrency:
+  group: test-install-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install-arch:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install base deps
+        # git for checkout + the nvim sibling clone; python for the doctor's JSON;
+        # openssh so scripts that reference ssh exist; gitleaks so the pre-push
+        # hook has its tool (the hook fails-open without it, but install it anyway
+        # to exercise the real path). pacman -Sy then install, keyring first.
+        run: |
+          pacman -Sy --noconfirm --needed archlinux-keyring
+          pacman -S --noconfirm --needed git python openssh gitleaks bash coreutils
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Mark repo dir safe for git (container runs as root)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Run install.sh (first run, non-interactive)
+        env:
+          CHILLDAWG_CI: "1"
+          HOME: /root
+        run: |
+          set -euxo pipefail
+          bash ./install.sh --ci
+
+      - name: Assert symlinks created and resolve to the repo
+        env:
+          HOME: /root
+        run: |
+          set -euo pipefail
+          REPO="$GITHUB_WORKSPACE"
+          fail=0
+          # map of: home-relative-path -> repo-relative-source it must resolve to
+          assert_link() {
+            local rel="$1" want="$2" dst="$HOME/$rel"
+            if [ ! -L "$dst" ]; then
+              echo "FAIL: ~/$rel is not a symlink"; fail=1; return
+            fi
+            local got; got="$(readlink -f "$dst" || true)"
+            local exp; exp="$(readlink -f "$REPO/$want" || true)"
+            if [ -z "$got" ] || [ "$got" != "$exp" ]; then
+              echo "FAIL: ~/$rel resolves to '$got' (expected '$exp')"; fail=1; return
+            fi
+            echo "ok: ~/$rel -> $want"
+          }
+          assert_link ".bashrc"                         "shell/.bashrc"
+          assert_link ".bash_profile"                   "shell/.bash_profile"
+          assert_link ".tmux.conf"                      "shell/.tmux.conf"
+          assert_link ".gitconfig"                      "shell/.gitconfig"
+          assert_link ".claude/CLAUDE.md"               "claude/CLAUDE.md"
+          assert_link ".claude/statusline.sh"           "claude/statusline.sh"
+          assert_link ".claude/skills"                  "claude/skills"
+          assert_link ".claude/hooks"                   "claude/hooks"
+          assert_link ".claude/scripts"                 "claude/scripts"
+          assert_link ".config/git/hooks"               "config/git/hooks"
+          # per-unit systemd links (the W0-B fix: individual files, NOT the dir)
+          assert_link ".config/systemd/user/deadman.service"        "config/systemd/user/deadman.service"
+          assert_link ".config/systemd/user/deadman.timer"          "config/systemd/user/deadman.timer"
+          assert_link ".config/systemd/user/journal-audit.timer"    "config/systemd/user/journal-audit.timer"
+          assert_link ".config/systemd/user/qb-proxy-doctor.timer"  "config/systemd/user/qb-proxy-doctor.timer"
+          assert_link ".config/systemd/user/memory-autopush.timer"  "config/systemd/user/memory-autopush.timer"
+          [ "$fail" -eq 0 ] || { echo "::error::symlink assertions failed"; exit 1; }
+
+      - name: Assert the whole systemd dir is NOT a symlink (data-loss regression guard)
+        env:
+          HOME: /root
+        run: |
+          set -euo pipefail
+          # The original bug symlinked the ENTIRE ~/.config/systemd/user dir, which
+          # would clobber machine-local units. After the fix it must be a real DIR
+          # containing per-file symlinks. If it ever becomes a symlink again, fail.
+          d="$HOME/.config/systemd/user"
+          if [ -L "$d" ]; then
+            echo "::error::~/.config/systemd/user is a SYMLINK — the data-loss regression is back"
+            exit 1
+          fi
+          [ -d "$d" ] || { echo "::error::~/.config/systemd/user is not a directory"; exit 1; }
+          echo "ok: ~/.config/systemd/user is a real dir with per-file links"
+
+      - name: Assert hooks and scripts are executable
+        env:
+          HOME: /root
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in \
+            ".config/git/hooks/pre-push" \
+            ".claude/scripts/deadman.sh" \
+            ".claude/scripts/ops-dashboard.sh" \
+            ".claude/scripts/lib-email-alert.py" \
+            ".claude/scripts/loop-digest.sh" \
+            ".claude/scripts/setup-doctor.sh" \
+            ".claude/statusline.sh" ; do
+            t="$HOME/$f"
+            if [ ! -e "$t" ]; then echo "FAIL: missing $f"; fail=1; continue; fi
+            if [ ! -x "$t" ]; then echo "FAIL: not executable $f"; fail=1; continue; fi
+            echo "ok exec: $f"
+          done
+          [ "$fail" -eq 0 ] || { echo "::error::executable assertions failed"; exit 1; }
+
+      - name: Assert scripts pass a bash/python syntax check
+        env:
+          HOME: /root
+        run: |
+          set -euo pipefail
+          fail=0
+          for s in install.sh claude/scripts/*.sh config/git/hooks/pre-push; do
+            [ -e "$s" ] || continue
+            if ! bash -n "$s"; then echo "FAIL bash -n: $s"; fail=1; fi
+          done
+          for p in claude/scripts/*.py; do
+            [ -e "$p" ] || continue
+            if ! python -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$p"; then
+              echo "FAIL py-parse: $p"; fail=1
+            fi
+          done
+          [ "$fail" -eq 0 ] || { echo "::error::syntax checks failed"; exit 1; }
+
+      - name: Run install.sh again (idempotency — no new links, no re-backup)
+        env:
+          CHILLDAWG_CI: "1"
+          HOME: /root
+        run: |
+          set -euo pipefail
+          out="$(bash ./install.sh --ci 2>&1)"
+          echo "$out"
+          newlinks="$(printf '%s\n' "$out" | grep -c 'linked ~' || true)"
+          backups="$(printf '%s\n'  "$out" | grep -c 'backed up' || true)"
+          echo "new 'linked ~' lines on 2nd run: $newlinks (expect 0)"
+          echo "'backed up' lines on 2nd run:    $backups (expect 0)"
+          if [ "$newlinks" -ne 0 ] || [ "$backups" -ne 0 ]; then
+            echo "::error::install.sh is NOT idempotent (newlinks=$newlinks backups=$backups)"
+            exit 1
+          fi
+          echo "ok: install.sh is idempotent"
+
+      - name: Run setup-doctor (reproducible subset must show no SYMLINK drift)
+        env:
+          HOME: /root
+        run: |
+          set -uo pipefail
+          # In CI the doctor legitimately DRIFTs on things CI does not / cannot
+          # provision, all of which are EXPECTED and excluded from the gate:
+          #   - secrets.env / .mcp.json / enabledPlugins / VPS_HOST  (no secrets in CI)
+          #   - settings.json file-path HOOKS  (settings.json hardcodes absolute
+          #     /home/<user>/.claude/hooks/... paths; under HOME=/root those can't
+          #     resolve. The hooks themselves ARE present + executable in the repo,
+          #     which the "executable" step above already asserts.)
+          # The REPRODUCIBLE invariant we gate on: install.sh's `link` targets must
+          # all be symlinks resolving to the repo (the "install doesn't restore X"
+          # bug class). Any such symlink-target DRIFT fails the job.
+          report="$(bash "$HOME/.claude/scripts/setup-doctor.sh" --no-color 2>&1 || true)"
+          echo "$report"
+          drift_symlink="$(printf '%s\n' "$report" | grep -E '^[[:space:]]*DRIFT' \
+               | grep -E 'NOT a symlink|symlink resolves to|MISSING \(expected symlink|repo source MISSING' || true)"
+          if [ -n "$drift_symlink" ]; then
+            echo "::error::setup-doctor reports SYMLINK-TARGET drift (the install-doesnt-restore-X bug class):"
+            printf '%s\n' "$drift_symlink"
+            exit 1
+          fi
+          echo "ok: no symlink-target drift (only the expected secrets/mcp/hook-abs-path drift, which CI does not provision)"

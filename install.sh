@@ -9,6 +9,7 @@
 #   ./install.sh             # symlink everything
 #   ./install.sh --dry-run   # print what would happen, change nothing
 #   ./install.sh --force     # overwrite existing symlinks (still backs up regular files)
+#   ./install.sh --ci        # non-interactive (no prompts); also via CHILLDAWG_CI=1
 # ──────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -16,13 +17,19 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY_RUN=0
 FORCE=0
+CI=0
+
+# CI can also be requested via env (CHILLDAWG_CI=1) so the GitHub Action can set it
+# without juggling flags.
+[ "${CHILLDAWG_CI:-0}" = "1" ] && CI=1
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
     --force) FORCE=1 ;;
+    --ci) CI=1 ;;   # non-interactive: never prompt (e.g. for CI / headless). Proceeds without secrets.env.
     -h|--help)
-      sed -n '2,15p' "$0"
+      sed -n '2,16p' "$0"
       exit 0
       ;;
     *)
@@ -91,11 +98,19 @@ if [ ! -f "$HOME/.claude/secrets.env" ]; then
   warn "  chmod 600 ~/.claude/secrets.env"
   warn "  \$EDITOR ~/.claude/secrets.env"
   warn ""
-  read -r -p "Continue without secrets.env? Some things will not work until you create it. [y/N] " ans
-  case "$ans" in
-    y|Y|yes) ;;
-    *) exit 1 ;;
-  esac
+  if [ "$CI" -eq 1 ]; then
+    warn "--ci / CHILLDAWG_CI set — proceeding WITHOUT secrets.env (non-interactive)."
+  elif [ ! -t 0 ]; then
+    # No TTY and not explicitly --ci: refuse rather than hang on a read with no stdin.
+    err "no secrets.env and no TTY to prompt. Re-run with --ci to proceed non-interactively."
+    exit 1
+  else
+    read -r -p "Continue without secrets.env? Some things will not work until you create it. [y/N] " ans
+    case "$ans" in
+      y|Y|yes) ;;
+      *) exit 1 ;;
+    esac
+  fi
 fi
 
 # ── shell dotfiles ──────────────────────────────────────────────────────────
@@ -180,12 +195,31 @@ link config/qutebrowser/greasemonkey .config/qutebrowser/greasemonkey
 mkdir -p "$HOME/.config/git"
 link config/git/hooks .config/git/hooks
 
-# ── systemd user units (journal-audit + qb-proxy-doctor timers) ─────────────
-# These drive the daily memory-consolidation audit and the qutebrowser proxy
-# doctor. Symlinking the unit files does NOT enable them — systemd needs a
-# daemon-reload to see new units and an explicit `enable --now` to start the
-# timers (see the post-link step below + INSTALL.md).
-link config/systemd/user .config/systemd/user
+# ── systemd user units (journal-audit, qb-proxy-doctor, deadman, memory-autopush)
+# CRITICAL: ~/.config/systemd/user is a REAL machine-local directory that ALSO
+# holds units this repo does NOT track (wa-sender, daily-brief, reminder-check,
+# macro-news, signal-trader-bridge, wa-behavior-learn — per-machine, with secrets
+# baked into their environment). A whole-DIR `link config/systemd/user ...` would
+# trip link()'s "existing target" branch and `mv` that live dir to .pre-stow —
+# orphaning every load-bearing daemon on the next daemon-reload (data-loss-ish).
+#
+# So we symlink the repo's INDIVIDUAL unit files INTO the existing real dir,
+# leaving the machine-local units untouched alongside them. Idempotent + safe
+# whether or not the live dir already exists / already has the units.
+log "=== systemd user unit files (per-file, into the real dir) ==="
+SYSTEMD_USER_DST="$HOME/.config/systemd/user"
+if [ -d "$REPO_DIR/config/systemd/user" ]; then
+  [ "$DRY_RUN" -eq 0 ] && mkdir -p "$SYSTEMD_USER_DST"
+  shopt -s nullglob
+  for unit_src in "$REPO_DIR"/config/systemd/user/*.service "$REPO_DIR"/config/systemd/user/*.timer; do
+    unit="$(basename "$unit_src")"
+    # link() takes repo-relative src + home-relative dst; build those.
+    link "config/systemd/user/$unit" ".config/systemd/user/$unit"
+  done
+  shopt -u nullglob
+else
+  warn "no config/systemd/user dir in repo — skipping systemd unit links"
+fi
 
 # ── oh-my-posh config (lives in ~/Documents per christopher's setup) ────────
 link config/oh-my-posh/chris.omp.json Documents/chris.omp.json
@@ -218,17 +252,22 @@ fi
 # new units and the timers must be explicitly enabled+started. Idempotent:
 # re-enabling an already-enabled timer is a no-op.
 log "=== systemd user timers ==="
+# Only the repo-managed timers are enabled here. Machine-local timers (wa-sender,
+# daily-brief, reminder-check, signal-trader-bridge, macro-news, loop-digest,
+# wa-behavior-learn) are enabled per-machine, out of band.
+REPO_TIMERS="journal-audit.timer qb-proxy-doctor.timer memory-autopush.timer deadman.timer loop-digest.timer"
 if command -v systemctl >/dev/null 2>&1; then
   if [ "$DRY_RUN" -eq 0 ]; then
     systemctl --user daemon-reload 2>/dev/null || warn "systemctl --user daemon-reload failed (no user session bus? run after login)"
-    if systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer memory-autopush.timer 2>/dev/null; then
-      log "enabled + started: journal-audit.timer, qb-proxy-doctor.timer, memory-autopush.timer"
+    # shellcheck disable=SC2086
+    if systemctl --user enable --now $REPO_TIMERS 2>/dev/null; then
+      log "enabled + started: $REPO_TIMERS"
     else
       warn "could not enable timers automatically — run manually after first login:"
-      warn "  systemctl --user daemon-reload && systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer memory-autopush.timer"
+      warn "  systemctl --user daemon-reload && systemctl --user enable --now $REPO_TIMERS"
     fi
   else
-    log "would run: systemctl --user daemon-reload && systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer memory-autopush.timer"
+    log "would run: systemctl --user daemon-reload && systemctl --user enable --now $REPO_TIMERS"
   fi
 else
   warn "systemctl not found — skipping timer enable (not a systemd machine?)"

@@ -1,0 +1,17 @@
+[Unit]
+Description=Autonomous-loop daily digest — summarize overnight decisions/tasks/worker-outcomes into one WhatsApp via the wa-sender queue. Read-only sources.
+Documentation=file:///home/christopher/claude/notes/setup-overhaul-wave1-resilience-2026-06-11/PLAN.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=HOME=/home/christopher
+Environment=TZ=Asia/Jakarta
+Environment=PATH=/home/christopher/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/christopher/.claude/scripts/loop-digest.sh
+SyslogIdentifier=loop-digest
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

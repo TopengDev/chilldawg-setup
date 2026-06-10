@@ -1,0 +1,16 @@
+[Unit]
+Description=Daemon deadman watchdog — alert (via out-of-band email) if wa-sender / signal-trader die. Silent when healthy. READ-ONLY: never restarts any daemon.
+Documentation=file:///home/christopher/claude/notes/setup-overhaul-wave1-resilience-2026-06-11/PLAN.md
+Documentation=file:///home/christopher/.claude/memory/feedback_wa_sender_load_bearing.md
+
+[Service]
+Type=oneshot
+Environment=HOME=/home/christopher
+# Need bun's dir on PATH? No — deadman only uses pgrep/systemctl/python3/sshpass.
+Environment=PATH=/home/linuxbrew/.linuxbrew/bin:/home/christopher/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/christopher/.claude/scripts/deadman.sh
+SyslogIdentifier=deadman
+TimeoutStartSec=90
+
+[Install]
+WantedBy=default.target

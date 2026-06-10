@@ -1,0 +1,16 @@
+[Unit]
+Description=Trigger the autonomous-loop daily digest at 06:30 WIB (just after the morning brief)
+Documentation=file:///home/christopher/claude/notes/setup-overhaul-wave1-resilience-2026-06-11/PLAN.md
+
+[Timer]
+# 06:30 WIB — distinct from /daily-brief (06:00). The brief = day ahead;
+# the digest = night behind. Staggering 30 min apart keeps them from colliding.
+OnCalendar=*-*-* 06:30:00 Asia/Jakarta
+# Run on next boot if the machine was off at 06:30, so an overnight recap still
+# lands rather than being silently skipped.
+Persistent=true
+AccuracySec=1min
+Unit=loop-digest.service
+
+[Install]
+WantedBy=timers.target

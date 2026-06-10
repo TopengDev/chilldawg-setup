@@ -1,0 +1,16 @@
+[Unit]
+Description=Run the daemon deadman watchdog every 3 minutes
+Documentation=file:///home/christopher/claude/notes/setup-overhaul-wave1-resilience-2026-06-11/PLAN.md
+
+[Timer]
+# First probe shortly after login, then every 3 minutes. Healthy = silent no-op.
+OnBootSec=2min
+OnUnitActiveSec=3min
+# Catch a missed tick after suspend/boot so a death that happened while asleep
+# is still noticed promptly.
+Persistent=true
+AccuracySec=20s
+Unit=deadman.service
+
+[Install]
+WantedBy=timers.target

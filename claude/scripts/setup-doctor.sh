@@ -97,6 +97,12 @@ while IFS= read -r line; do
   [ -z "$src" ] || [ -z "$dst" ] && continue
   # guard against the definition line `link() {` slipping through
   case "$src" in *'('*|*'{'*) continue ;; esac
+  # Skip DYNAMIC link calls — those inside a for-loop reference an unexpanded
+  # shell variable (e.g. `link "config/systemd/user/$unit" ...`). The doctor
+  # parses install.sh statically and can't resolve $vars; those targets are
+  # audited by the dedicated systemd-units section (3) instead. Skipping them
+  # avoids a false-positive "repo source MISSING: config/systemd/user/$unit".
+  case "$src$dst" in *'$'*) continue ;; esac
 
   repo_src="$REPO_DIR/$src"
   home_dst="$HOME/$dst"
