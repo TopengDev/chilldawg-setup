@@ -1,0 +1,13 @@
+[Unit]
+Description=Auto-commit + push the live claude memory dir to its PRIVATE remote (TopengDev/claude-memory)
+Documentation=file:///home/christopher/claude/notes/initiatives/setup-overhaul-2026-06.md
+
+[Service]
+Type=oneshot
+Environment=HOME=/home/christopher
+# PATH must include ~/.local/bin so the global pre-push hook can find `gitleaks`
+# (installed there); plus standard dirs for git/coreutils.
+Environment=PATH=/home/christopher/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/christopher/.claude/scripts/memory-autopush.sh
+SyslogIdentifier=memory-autopush
+TimeoutStartSec=120

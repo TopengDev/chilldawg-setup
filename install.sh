@@ -221,14 +221,14 @@ log "=== systemd user timers ==="
 if command -v systemctl >/dev/null 2>&1; then
   if [ "$DRY_RUN" -eq 0 ]; then
     systemctl --user daemon-reload 2>/dev/null || warn "systemctl --user daemon-reload failed (no user session bus? run after login)"
-    if systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer 2>/dev/null; then
-      log "enabled + started: journal-audit.timer, qb-proxy-doctor.timer"
+    if systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer memory-autopush.timer 2>/dev/null; then
+      log "enabled + started: journal-audit.timer, qb-proxy-doctor.timer, memory-autopush.timer"
     else
       warn "could not enable timers automatically — run manually after first login:"
-      warn "  systemctl --user daemon-reload && systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer"
+      warn "  systemctl --user daemon-reload && systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer memory-autopush.timer"
     fi
   else
-    log "would run: systemctl --user daemon-reload && systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer"
+    log "would run: systemctl --user daemon-reload && systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer memory-autopush.timer"
   fi
 else
   warn "systemctl not found — skipping timer enable (not a systemd machine?)"

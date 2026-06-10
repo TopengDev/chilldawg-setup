@@ -1,0 +1,14 @@
+[Unit]
+Description=Fire memory-autopush every 30 min to keep the private memory backup current
+Documentation=file:///home/christopher/claude/notes/initiatives/setup-overhaul-2026-06.md
+
+[Timer]
+# Every 30 minutes, anchored to a stable wall-clock cadence.
+OnCalendar=*:0/30
+# Catch a missed run after sleep/suspend/boot so the backup doesn't go stale.
+Persistent=true
+AccuracySec=1min
+Unit=memory-autopush.service
+
+[Install]
+WantedBy=timers.target
