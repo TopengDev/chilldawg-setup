@@ -75,13 +75,45 @@ sleep 0.5
 # Also use --channels (not --dangerously-load-development-channels) to skip the
 # interactive "I am using this for local development" confirmation prompt that
 # blocks startup.
+#
+# MANDATORY: --remote-control (Toper's rule 2026-05-31) — EVERY new claude
+# session/worker must start with Remote Control on. Named per-worker (= window
+# name) so RC sessions are identifiable; explicit name also avoids the optional
+# [name] arg being misparsed.
 tmux send-keys -t "${TMUX_SESSION}:${NEXT_INDEX}" \
-  "ATTN_SESSION='${WINDOW_NAME}' claude --dangerously-skip-permissions" \
+  "ATTN_SESSION='${WINDOW_NAME}' claude --remote-control '${WINDOW_NAME}' --dangerously-skip-permissions" \
   Enter
 
 # Wait for claude to boot + MCP plugins to register.
-# Empirical: claude prompt usually ready in 4-6s. attn registers shortly after.
-sleep 8
+# Empirical: claude prompt usually ready in 4-6s, but a cold start / slow MCP load
+# can run longer — a fixed `sleep 8` either wastes time on a fast boot or fires the
+# peer check too early on a slow one. Poll the pane for the chat-input readiness
+# markers instead (same markers brief-worker.sh keys on), up to a 30s ceiling.
+# attn/MCP plugins register a beat AFTER the prompt renders, so add a short grace
+# once ready. Main still does the authoritative attn-peers check afterward; this
+# poll only removes the brittle fixed wait. Conservative throughout — on timeout we
+# fall through (don't abort the spawn) so the existing flow is never broken.
+READY_MAX=30          # hard ceiling (seconds) before falling through
+MCP_GRACE=3           # extra settle for attn/MCP registration after prompt appears
+BOOT_READY=0
+for ((waited = 0; waited < READY_MAX; waited++)); do
+  sleep 1
+  PANE_BOOT=$(tmux capture-pane -t "${TMUX_SESSION}:${NEXT_INDEX}" -p -S -15 2>/dev/null || true)
+  # Readiness markers: the INSERT-mode footer, the bypass-permissions banner, or
+  # the chat prompt glyph on its own. Any one means the input box is up.
+  if echo "$PANE_BOOT" | grep -qE -- '-- INSERT --|bypass permissions on|^[[:space:]]*[❯>][[:space:]]'; then
+    BOOT_READY=1
+    break
+  fi
+done
+
+if [[ "$BOOT_READY" == "1" ]]; then
+  sleep "$MCP_GRACE"   # let attn/MCP finish registering now that the prompt is up
+  echo "OK: claude prompt ready after ~$((waited + 1 + MCP_GRACE))s (polled)."
+else
+  echo "WARN: claude prompt not detected within ${READY_MAX}s — proceeding anyway." >&2
+  echo "      (Boot may be slow; the mandatory attn-peers check below is the real gate.)" >&2
+fi
 
 echo "OK: window '$WINDOW_NAME' created, claude launched with attn plugin."
 echo

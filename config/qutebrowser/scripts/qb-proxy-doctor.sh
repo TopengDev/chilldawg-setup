@@ -61,7 +61,10 @@ fi
 
 log "DRIFT: port $PROXY_PORT down while qutebrowser is running — restarting proxy (mirrors config.py)."
 # Clear any wedged/half-dead qb_proxy.py orphan, exactly as config.py does on qb start.
-pkill -f 'qb_proxy.py' 2>/dev/null
+# Anchored regex: '/qb_proxy\.py' followed by end-of-line or whitespace. This matches
+# the real process ("python3 .../scripts/qb_proxy.py") but NOT stray siblings like
+# qb_proxy.py.new / qb_proxy.py.bak (a bare 'qb_proxy.py' substring-matches those).
+pkill -f '/qb_proxy\.py($|[[:space:]])' 2>/dev/null
 sleep 1
 {
   echo ""

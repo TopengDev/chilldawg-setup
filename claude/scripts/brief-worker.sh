@@ -125,6 +125,10 @@ fi
 # so the worker sees the override first and applies it to the rest of the read.
 # See memory feedback_worker_role_clarity.md.
 PREAMBLE_FILE=$(mktemp)
+# Initial cleanup trap (preamble temp file only). It is REPLACED further down by a
+# combined trap that also deletes the per-invocation tmux buffer, once that buffer
+# exists. bash EXIT traps are last-wins, so the later one supersedes this safely
+# (both rm the same PREAMBLE_FILE; rm -f is idempotent).
 trap "rm -f $PREAMBLE_FILE" EXIT
 if [[ "$QUICK" == "1" ]]; then
   # L1 FAST-PATH preamble — lightweight. Role override stays (essential), but the
@@ -185,8 +189,15 @@ EOF
 fi
 cat "$BRIEF" >> "$PREAMBLE_FILE"
 
-tmux load-buffer -b _brief - < "$PREAMBLE_FILE"
-tmux paste-buffer -p -b _brief -t "$PANE"
+# Per-invocation buffer name. The old fixed `_brief` buffer RACES when two
+# spawns run in parallel: the second `load-buffer -b _brief` overwrites the
+# first before its `paste-buffer` fires, so worker A can receive worker B's
+# brief. $$ (this shell's PID) makes the buffer unique per invocation.
+# Clean it up on exit so tmux's buffer stack doesn't accumulate stale entries.
+BRIEF_BUF="_brief_$$"
+trap "rm -f $PREAMBLE_FILE; tmux delete-buffer -b $BRIEF_BUF 2>/dev/null || true" EXIT
+tmux load-buffer -b "$BRIEF_BUF" - < "$PREAMBLE_FILE"
+tmux paste-buffer -p -b "$BRIEF_BUF" -t "$PANE"
 sleep 2  # let claude flush the paste into its input buffer
 
 # Step 4: Submit with Enter (separate send-keys call, NOT combined).
