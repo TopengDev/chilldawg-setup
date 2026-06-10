@@ -19,8 +19,7 @@ Stream music from YouTube via mpv. No ads, no account needed.
 |------|---------|
 | `mpv` | Audio player (streams YouTube via yt-dlp) |
 | `yt-dlp` | YouTube stream extraction (no ads) |
-| `~/.music/profile.json` | User taste profile, mood mappings, dislikes |
-| `~/.music/history.json` | Play history for smart picks |
+| `~/.music/profile.json` | User taste profile, mood mappings, dislikes, favorites, and `.play_history` (used for smart picks) |
 
 ## Playback Control
 

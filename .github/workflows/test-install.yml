@@ -124,6 +124,24 @@ jobs:
           done
           [ "$fail" -eq 0 ] || { echo "::error::executable assertions failed"; exit 1; }
 
+      - name: Validate all skills (skill-eval.sh — structural integrity gate)
+        env:
+          HOME: /root
+        run: |
+          set -uo pipefail
+          # Structural validation of every skill: SKILL.md + frontmatter + companion
+          # files resolve + no dead tool namespaces + evals.json schema-valid. Runs
+          # against the repo's skills dir directly (no install/plugins needed — pure
+          # bash + python). Exits non-zero on any structural break → fails the job.
+          report="$(bash claude/scripts/skill-eval.sh --skills-dir claude/skills --no-color 2>&1)"
+          rc=$?
+          echo "$report"
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::skill-eval found structural break(s) in the skill library"
+            exit 1
+          fi
+          echo "ok: all skills structurally valid"
+
       - name: Assert scripts pass a bash/python syntax check
         env:
           HOME: /root

@@ -2,12 +2,12 @@
 name: whatsapp
 description: Send, read, and manage WhatsApp messages via the whatsapp MCP server. Use when the user wants to send WhatsApp messages, read chats, search conversations, manage groups, or check WhatsApp connection status.
 argument-hint: [message or action]
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__whatsapp__*
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__plugin_whatsapp_whatsapp__*
 ---
 
 # WhatsApp Messaging Skill
 
-You have access to a WhatsApp MCP server (`whatsapp`) that connects via Baileys (WhatsApp Web protocol). Use the `mcp__whatsapp__*` tools to interact with WhatsApp.
+You have access to a WhatsApp MCP server (`whatsapp`) that connects via Baileys (WhatsApp Web protocol). Use the `mcp__plugin_whatsapp_whatsapp__*` tools to interact with WhatsApp — the plugin namespaces every tool as `mcp__plugin_whatsapp_whatsapp__<tool>` (e.g. `mcp__plugin_whatsapp_whatsapp__send_message`, `mcp__plugin_whatsapp_whatsapp__list_chats`). The short tool names used below (`send_message`, `list_chats`, …) all carry that prefix.
 
 ## First-Time Setup
 

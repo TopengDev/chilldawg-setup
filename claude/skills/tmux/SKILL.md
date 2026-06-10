@@ -60,6 +60,17 @@ claude --dangerously-skip-permissions --add-dir ~/claude
 claude --dangerously-skip-permissions
 ```
 
+This `--add-dir ~/claude` guidance is for **manual / ad-hoc** interactive sessions
+you launch by hand. The **automated worker pipeline** (`~/.claude/scripts/spawn-worker.sh`,
+the standard way to spawn delegated workers) takes a different but equally-valid
+approach and does NOT pass `--add-dir`: it launches `claude --remote-control <window>
+--dangerously-skip-permissions` with the window's **cwd defaulting to `~/claude`**
+(so `~/claude/CLAUDE.md` + memory load via cwd) and `brief-worker.sh` injects a
+**role-override preamble** that points the worker at its task context. So if you're
+spawning via `spawn-worker.sh`, you don't add `--add-dir` yourself — the cwd + the
+preamble cover it. Add `--add-dir ~/claude` only for hand-launched sessions whose
+cwd is some other repo and that need `~/claude` memory access.
+
 Also remember: do NOT use `claude -p "$(cat file.txt)"` — special characters break shell expansion. Use interactive mode and send the prompt via send-keys instead.
 
 ## Rules
