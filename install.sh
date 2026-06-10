@@ -108,11 +108,30 @@ link shell/.gitconfig    .gitconfig
 # ── claude code ─────────────────────────────────────────────────────────────
 log "=== claude code (~/.claude) ==="
 link claude/CLAUDE.md     .claude/CLAUDE.md
-link claude/settings.json .claude/settings.json
 link claude/statusline.sh .claude/statusline.sh
-link claude/memory        .claude/memory
 link claude/skills        .claude/skills
 link claude/hooks         .claude/hooks
+link claude/scripts       .claude/scripts   # triage/spawn pipeline (spawn-worker.sh, check-triage.sh, journal-audit.py, …)
+
+# settings.json is NOT symlinked: Claude Code rewrites it live (model, plugin
+# auth state, etc.), so a symlink would push churn back into the repo and a
+# stale committed copy would clobber live changes on the next install. Instead
+# we restore *a* settings.json only if the machine doesn't already have one, and
+# leave re-syncing intentional changes to a manual `cp` (see INSTALL.md).
+if [ ! -e "$HOME/.claude/settings.json" ]; then
+  [ "$DRY_RUN" -eq 0 ] && { mkdir -p "$HOME/.claude"; cp "$REPO_DIR/claude/settings.json" "$HOME/.claude/settings.json"; }
+  log "copied settings.json -> ~/.claude/settings.json (copied, NOT linked — Claude Code rewrites it live; re-sync manually)"
+else
+  log "ok (settings.json already present — left as-is; re-sync manually if the repo copy changed)"
+fi
+
+# Memory: ~/.claude/memory symlinks to claude/memory/ INSIDE the repo (that is
+# where the live files physically sit — Claude Code's autoMemoryDirectory). The
+# directory's CONTENTS are gitignored (private, machine-local, mutated live — see
+# .gitignore), so a fresh clone won't contain it; create the real dir first, then
+# link. The repo path is the physical home; ~/.claude/memory is just the alias.
+[ "$DRY_RUN" -eq 0 ] && mkdir -p "$REPO_DIR/claude/memory"
+link claude/memory        .claude/memory
 
 # email-mcp + whatsapp-mcp: per-child symlinks so node_modules/ and dist/
 # (untracked, machine-local) stay as real dirs alongside the symlinked source.
@@ -153,6 +172,13 @@ link config/qutebrowser/config.py    .config/qutebrowser/config.py
 link config/qutebrowser/scripts      .config/qutebrowser/scripts
 link config/qutebrowser/greasemonkey .config/qutebrowser/greasemonkey
 
+# ── systemd user units (journal-audit + qb-proxy-doctor timers) ─────────────
+# These drive the daily memory-consolidation audit and the qutebrowser proxy
+# doctor. Symlinking the unit files does NOT enable them — systemd needs a
+# daemon-reload to see new units and an explicit `enable --now` to start the
+# timers (see the post-link step below + INSTALL.md).
+link config/systemd/user .config/systemd/user
+
 # ── oh-my-posh config (lives in ~/Documents per christopher's setup) ────────
 link config/oh-my-posh/chris.omp.json Documents/chris.omp.json
 
@@ -177,6 +203,27 @@ else
     git clone "$NVIM_REPO_URL" "$NVIM_TARGET"
   fi
   log "would clone $NVIM_REPO_URL -> ~/.config/nvim"
+fi
+
+# ── enable systemd user timers ──────────────────────────────────────────────
+# Symlinking the unit files is not enough — systemd must reload to discover the
+# new units and the timers must be explicitly enabled+started. Idempotent:
+# re-enabling an already-enabled timer is a no-op.
+log "=== systemd user timers ==="
+if command -v systemctl >/dev/null 2>&1; then
+  if [ "$DRY_RUN" -eq 0 ]; then
+    systemctl --user daemon-reload 2>/dev/null || warn "systemctl --user daemon-reload failed (no user session bus? run after login)"
+    if systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer 2>/dev/null; then
+      log "enabled + started: journal-audit.timer, qb-proxy-doctor.timer"
+    else
+      warn "could not enable timers automatically — run manually after first login:"
+      warn "  systemctl --user daemon-reload && systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer"
+    fi
+  else
+    log "would run: systemctl --user daemon-reload && systemctl --user enable --now journal-audit.timer qb-proxy-doctor.timer"
+  fi
+else
+  warn "systemctl not found — skipping timer enable (not a systemd machine?)"
 fi
 
 # ── done ────────────────────────────────────────────────────────────────────

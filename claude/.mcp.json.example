@@ -1,0 +1,11 @@
+{
+  "//": "Sanitized template for ~/.claude/.mcp.json (the live file is gitignored — see .gitignore). Copy to claude/.mcp.json (or ~/.claude/.mcp.json), then replace <HOME> with your absolute home path. NO secrets live here: the email server reads IMAP/SMTP credentials from claude/email-mcp/config.json (also gitignored), built from config.example.json. The official + marketplace plugins (attn, whatsapp, context7, playwright, etc.) are wired via settings.json enabledPlugins, NOT here — this file is only for the custom local MCP servers.",
+  "mcpServers": {
+    "email": {
+      "command": "node",
+      "args": [
+        "<HOME>/.claude/email-mcp/dist/index.js"
+      ]
+    }
+  }
+}
