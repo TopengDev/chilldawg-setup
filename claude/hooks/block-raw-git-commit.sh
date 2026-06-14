@@ -18,12 +18,40 @@
 #     flow or a deliberate manual merge) so those aren't deadlocked. `git merge --abort` (recovery)
 #     is also caught by the matcher — prefix the sentinel to run it.
 #
+# Content guard (#238): a `git commit` whose proposed message carries an AI-attribution trailer is
+# ALWAYS denied — even with the CLAUDE_COMMIT_SKILL=1 sentinel. The sentinel only proves the /commit
+# skill drove the commit; it does NOT prove the message is clean (the harness-default path can append
+# the footer, and a skill invocation could carry a tainted message). So we ALSO scan the proposed
+# message content. Match is trailer-anchored (line-level) to keep false-positives near-zero:
+#   - a line that IS a `Co-Authored-By:` trailer referencing Claude/Anthropic, or
+#   - a `🤖 Generated with ... Claude Code` line.
+# A generic human `Co-Authored-By: Jane <jane@x.com>` is NOT matched. Prose that merely mentions the
+# phrase mid-sentence is NOT matched (the trailer anchor requires the line to START with the key).
+#
 # This is a nudge toward the proper flow (not a hard security boundary). Ask Christopher before
 # bypassing for anything non-routine.
 
 set -euo pipefail
 
 cmd="$(jq -r '.tool_input.command // ""')"
+
+# AI-attribution content check (applies to ANY git commit, sentinel or not). The proposed message
+# lives inline in the command string (the /commit skill and the harness both pass it via -m/-F/-t).
+# We normalise backslash-n escapes to real newlines so a single-line `-m "...\n\nCo-Authored-By:..."`
+# is matched line-anchored just like a multi-line heredoc/quoted message.
+ai_attribution_in_message() {
+  printf '%s' "$cmd" \
+    | sed 's/\\n/\n/g' \
+    | grep -qiE '^[[:space:]]*Co-Authored-By:[[:space:]]*.*([Cc]laude|[Aa]nthropic|noreply@anthropic)|^[[:space:]]*(🤖[[:space:]]*)?Generated with[[:space:]]+.*Claude Code'
+}
+
+if printf '%s' "$cmd" | grep -qE '\bgit[[:space:]]+commit\b' \
+   && ai_attribution_in_message; then
+  cat <<'EOF'
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"BLOCKED: the commit message contains an AI-attribution trailer (a 'Co-Authored-By:' line referencing Claude/Anthropic, or a 'Generated with Claude Code' line). Christopher's repos must NOT carry AI attribution in commit messages. Strip those trailer line(s) and re-commit. The /commit skill strips them automatically — prefer it. (This guard fires even with the CLAUDE_COMMIT_SKILL=1 sentinel, because the sentinel does not guarantee a clean message.)"}}
+EOF
+  exit 0
+fi
 
 # 1. Raw `git commit` (no /commit sentinel) -> deny.
 if printf '%s' "$cmd" | grep -qE '\bgit[[:space:]]+commit\b' \
