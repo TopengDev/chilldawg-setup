@@ -11,7 +11,7 @@ unalias c 2>/dev/null
 c() {
   if [[ "$1" == "-M" ]]; then
     shift
-    WHATSAPP=1 claude --dangerously-load-development-channels plugin:whatsapp@TopengDev -d "channel" --debug-file /tmp/claude-debug.log --dangerously-load-development-channels plugin:attn@s0nderlabs --dangerously-skip-permissions --resume "$@"
+    WHATSAPP=1 claude --dangerously-load-development-channels plugin:whatsapp@TopengDev -d "channel" --dangerously-load-development-channels plugin:attn@s0nderlabs --dangerously-skip-permissions --remote-control "$@"
   elif [[ "$1" == "-D" ]]; then
     shift
     claude --dangerously-skip-permissions "$@"
