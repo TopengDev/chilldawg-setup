@@ -54,12 +54,15 @@ discover_workers() {
       return 0
     fi
   fi
-  # Fallback: list windows, drop obvious non-workers. This is a heuristic used ONLY
-  # when the registry is empty/unavailable (e.g. workers spawned before this feature).
+  # Fallback: list windows, drop obvious non-workers AND any live supervisor window
+  # (a supervisor must never be miscounted as a worker). Heuristic used ONLY when the
+  # registry is empty/unavailable (e.g. workers spawned before this feature).
   command -v tmux >/dev/null 2>&1 || return 0
   tmux has-session -t "$TMUX_SESSION" 2>/dev/null || return 0
+  local sups; sups="$(cs_live_supervisors 2>/dev/null)"
   tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' 2>/dev/null \
-    | grep -vxE 'main|claude|bash|zsh|shell|0' || true
+    | grep -vxE 'main|claude|bash|zsh|shell|0' \
+    | { if [[ -n "$sups" ]]; then grep -vxF "$sups"; else cat; fi; } || true
 }
 
 # --- resolve a worker's task dir + STATE.md ----------------------------------
@@ -136,6 +139,44 @@ render() {
     fi
   fi
 
+  # --- supervisors (Opus orchestration tier) ---------------------------------
+  # Read-only: list live supervisors with their orchestration-ledger status. Shown
+  # ABOVE workers because they're the higher tier. Absent when none are running.
+  if [[ -r "$sem" ]]; then
+    local scnt smax; scnt="$(cs_live_supervisor_count 2>/dev/null)"; smax="$(_cs_supervisor_max 2>/dev/null)"
+    if [[ "$scnt" =~ ^[0-9]+$ ]] && (( scnt > 0 )); then
+      local scapcol="$C_GRN"; [[ "$smax" =~ ^[0-9]+$ ]] && (( scnt >= smax )) && scapcol="$C_RED"
+      echo
+      echo "  ${C_BOLD}${C_MAG}▰ SUPERVISORS${C_RESET}  ${scapcol}${scnt}/${smax}${C_RESET} ${C_DIM}(cap=CHILLDAWG_MAX_SUPERVISORS)${C_RESET}"
+      local sup sstate sstatus smt sage sagecol sflag sdir sdone stodo
+      while IFS= read -r sup; do
+        [[ -z "$sup" ]] && continue
+        echo "    ${C_BOLD}${C_MAG}◆ ${sup}${C_RESET}"
+        sstate="$(resolve_state "$sup")"
+        if [[ -z "$sstate" ]]; then
+          echo "        ${C_YEL}⚠ no STATE.md (ledger) found${C_RESET}"
+          continue
+        fi
+        sstatus="$(field_from_state "$sstate" "Status")"; sstatus="${sstatus:-?}"
+        smt=$(stat -c %Y "$sstate" 2>/dev/null || echo "$now"); sage=$(( now - smt ))
+        sagecol="$C_DIM"; sflag=""
+        if (( sage > STALE_MIN * 60 )); then
+          sagecol="$C_RED"
+          case "$(echo "$sstatus" | tr '[:lower:]' '[:upper:]')" in
+            *COMPLETE*|*BLOCKED*) sflag="" ;;
+            *) sflag="  ${C_RED}${C_BOLD}⛔ STALLED${C_RESET}" ;;
+          esac
+        fi
+        echo "        status:  $(status_colour "$sstatus")${sstatus}${C_RESET}${sflag}"
+        echo "        updated: ${sagecol}$(human_age "$sage") ago${C_RESET}"
+        sdir="$(field_from_state "$sstate" "Direction")"
+        [[ -n "$sdir" ]] && echo "        direction: ${sdir}"
+        sdone=$(count_matches '^\s*-\s*\[x\]' "$sstate"); stodo=$(count_matches '^\s*-\s*\[ \]' "$sstate")
+        (( sdone + stodo > 0 )) && echo "        orchestration: ${C_GRN}${sdone} done${C_RESET} / ${stodo} remaining"
+      done <<< "$(cs_live_supervisors 2>/dev/null)"
+    fi
+  fi
+
   local workers; workers="$(discover_workers)"
   if [[ -z "$workers" ]]; then
     echo
@@ -176,6 +217,16 @@ render() {
     local scol; scol="$(status_colour "$status")"
     echo "      status:  ${scol}${status}${C_RESET}${flag}"
     echo "      updated: ${agecol}$(human_age "$age") ago${C_RESET}  ${C_DIM}($(date -d "@$mt" '+%H:%M:%S' 2>/dev/null))${C_RESET}"
+
+    # worker model (from triage.json beside STATE.md) — Opus is the expensive
+    # carve-out, so flag it loudly; Sonnet (the floor) renders dim.
+    local wmodel
+    wmodel="$(jq -r '.model // "sonnet"' "$(dirname "$state")/triage.json" 2>/dev/null || echo sonnet)"
+    [[ -z "$wmodel" || "$wmodel" == "null" ]] && wmodel="sonnet"
+    case "$(echo "$wmodel" | tr '[:upper:]' '[:lower:]')" in
+      opus*) echo "      model:   ${C_MAG}${C_BOLD}${wmodel}${C_RESET} ${C_DIM}(opus carve-out)${C_RESET}" ;;
+      *)     echo "      model:   ${C_DIM}${wmodel}${C_RESET}" ;;
+    esac
 
     # checkpoint progress + resume cursor
     cursor="$(field_from_state "$state" "Resume cursor")"

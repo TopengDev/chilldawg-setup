@@ -15,7 +15,8 @@ One `triage.json` per task, living in the task notes dir **beside `STATE.md` and
   "level":     "L1|L2|L3",
   "scope":     "one-line description of what it touches",
   "created":   "2026-05-24T15:52:00+07:00",
-  "signoff":   false
+  "signoff":   false,
+  "model":     "sonnet"
 }
 ```
 
@@ -26,6 +27,20 @@ One `triage.json` per task, living in the task notes dir **beside `STATE.md` and
 | `scope`     | one-line human echo of the `📊 TRIAGE` chat header |
 | `created`   | ISO timestamp |
 | `signoff`   | **L3 only.** Starts `false`. Flips `true` ONLY after Toper's explicit approval (10+ Q + prototype + plan + sign-off). L1/L2 ignore this field. |
+| `model`     | **Optional.** Worker model: `sonnet` (default, the hard floor) or `opus` (carve-out). Omit ⇒ `sonnet`. `spawn-worker.sh` reads it; `CHILLDAWG_WORKER_MODEL` env overrides it. See "Worker model" below. |
+
+## Worker model (Sonnet floor, Opus carve-out — Wave-7, 2026-06-15)
+
+Workers run on **Sonnet by default** (the hard floor) to cut token cost; **Opus**
+is a deliberate **carve-out** for: security-critical work · customer-facing design
+(oneshot/pitch) · genuinely novel root-cause debugging. To run a worker on Opus,
+set `"model":"opus"` in its `triage.json` (or `CHILLDAWG_WORKER_MODEL=opus
+spawn-worker.sh …` for a one-off). Anything that isn't an `opus` token clamps to
+the Sonnet floor (never lower). `spawn-worker.sh` echoes the resolved model at
+spawn; `fleetview.sh` shows it per worker (Opus flagged). Supervisors are spawned
+by `spawn-supervisor.sh` and are **Opus** (orchestration judgment); they are
+capped + tracked separately from the shared worker pool — see CLAUDE.md
+"Supervisor Orchestration Layer".
 
 The `📊 TRIAGE` chat header main prints is the human-readable echo of this file —
 write `triage.json` first, then print the header.

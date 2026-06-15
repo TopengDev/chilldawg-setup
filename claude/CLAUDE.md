@@ -272,7 +272,7 @@ On completion (or terminal block), a full-path worker writes a machine-readable 
 
 ### Concurrency governor (don't over-spawn the 4-vCPU box)
 
-`spawn-worker.sh` now has a **semaphore gate** (after the triage gate, before the window is created): it refuses to spawn if at/over **`CHILLDAWG_MAX_WORKERS`** (default 4) live pipeline workers. The live count = a spawn registry ∩ live tmux windows (precise to pipeline-spawned workers, self-pruning as windows die). **Fail-open**: if the count can't be determined, the spawn is allowed (a counting bug never bricks the pipeline). Override per-spawn: `CHILLDAWG_MAX_WORKERS=6 spawn-worker.sh …`, or queue with `CHILLDAWG_SPAWN_WAIT=120 spawn-worker.sh …` (waits up to 120s for a slot). Refusal exits 5 with an actionable message. Logic lives in the sourceable `worker-semaphore.sh` (`worker-semaphore.sh status` to inspect).
+`spawn-worker.sh` now has a **semaphore gate** (after the triage gate, before the window is created): it refuses to spawn if at/over **`CHILLDAWG_MAX_WORKERS`** (default 6 as of Wave-7; was 4) live pipeline workers. The live count = a spawn registry ∩ live tmux windows (precise to pipeline-spawned workers, self-pruning as windows die). **Fail-open**: if the count can't be determined, the spawn is allowed (a counting bug never bricks the pipeline). Override per-spawn: `CHILLDAWG_MAX_WORKERS=8 spawn-worker.sh …`, or queue with `CHILLDAWG_SPAWN_WAIT=120 spawn-worker.sh …` (waits up to 120s for a slot). Refusal exits 5 with an actionable message. Logic lives in the sourceable `worker-semaphore.sh` (`worker-semaphore.sh status` to inspect).
 
 ### FleetView (live cockpit)
 
@@ -281,6 +281,68 @@ On completion (or terminal block), a full-path worker writes a machine-readable 
 ### Workflow library (codified multi-worker patterns)
 
 `~/.claude/scripts/workflows/` — playbooks for the multi-worker patterns main keeps hand-assembling, each with a brief-shape skeleton + sequencing + verification gates: **fan-out-review** (N parallel lens agents → synthesis, e.g. `/audit`), **recon→implement→verify** (the fitest pattern), **loop-until-green / loop-until-dry** (iterate to a condition with a budget). **`scaffold-workflow.sh <pattern> <run-slug>`** writes the 3-tier pre-spawn artifacts (per-worker task dir with triage.json + STATE.md + role-shaped brief.md) and prints the exact spawn/brief commands. See `workflows/README.md`.
+
+## Worker Model Policy — Sonnet Floor, Opus Carve-Out (Wave-7, 2026-06-15)
+
+**OVERRIDE: Spawned workers run on SONNET by default. Opus is a deliberate carve-out, never the default.** Main (this session) is the smart Opus 4.8 orchestrator; workers are cheap, capable Sonnet 4.6 executors under main's supervision. This is the recommended orchestrator/executor split and it cuts worker token cost by roughly 5x.
+
+### The policy
+
+- **Sonnet is the HARD FLOOR** for every spawned worker. Never lower — no Haiku workers.
+- **Opus is an explicit carve-out**, allowed ONLY for:
+  1. **Security-critical** work (auth, payments, secrets — anything an attacker would target)
+  2. **Customer/recruiter-facing design quality** (oneshot-webapp, pitch/demo sites — where design is priority #1)
+  3. **Genuinely novel root-cause debugging** (vs. applying a KNOWN fix pattern, which Sonnet handles fine)
+- Everything else → Sonnet. When unsure, Sonnet: a cheap Sonnet result that main catches in review is fine; the boomerang (Sonnet fails → main redoes in Opus → net MORE tokens) only happens on the three carve-out classes above, which is exactly why they're carved out.
+
+### Mechanical enforcement (not just prose)
+
+- `triage.json` gains an optional `"model"` field: `sonnet` (default) | `opus`. Set `"model":"opus"` ONLY for a carve-out, and say WHY in the `📊 TRIAGE` header.
+- `spawn-worker.sh` launches the worker with `--model <resolved>`: precedence `CHILLDAWG_WORKER_MODEL` env > `triage.json.model` > default `sonnet`; any non-`opus` token clamps to the Sonnet floor. It echoes the resolved model at spawn.
+- `fleetview.sh` shows each worker's model (Opus flagged) so a stray Opus worker is visible at a glance.
+- Schema: `~/.claude/scripts/TRIAGE-SCHEMA.md` ("Worker model").
+
+### Why this rule exists (verified trigger)
+
+2026-06-15: token spend climbed sharply once the BMS/fitest worker fleet ramped — high-volume, pattern-following execution running on Opus. That work is the textbook Sonnet case. Floor workers at Sonnet; reserve Opus for judgment.
+
+## Supervisor Orchestration Layer — main → supervisor → workers (Wave-7, 2026-06-15)
+
+**OVERRIDE: For a FLEET or a LONG-RUNNING initiative, main spawns an OPUS SUPERVISOR that owns the orchestration — so main stays free as Toper's conversation partner.** A long run must NOT consume main's context. Main is the command center, not a babysitter.
+
+### The three tiers
+
+```
+Toper ──talks──► main (Opus 4.8 — the ONLY WhatsApp session, Toper's partner)
+                   │ spawns + owns (fleets / long-running initiatives only)
+                   ▼
+              supervisor (Opus, idle-cheap / event-driven, one per initiative)
+                   │ delegates + polls + re-spawns
+                   ▼
+              Sonnet workers (1..N)
+```
+
+### When to spawn a supervisor (NOT every task)
+
+- **Spawn one** for: a FLEET (multiple workers) OR a long-running initiative (any L3, or an L2 with a fleet / multi-hour horizon).
+- **Do NOT** for a single-shot L1/L2 task — main spawns the worker directly. A supervisor for one worker is pure overhead.
+
+### The contract (enforced via the supervisor role preamble + ledger)
+
+- **Spawn:** `spawn-supervisor.sh <window> [cwd] [task_dir]` — same triage gate (L3 still needs sign-off), a SEPARATE supervisor cap, launches `claude --model opus`. Then verify attn peer + brief with `brief-worker.sh --supervisor <window> <brief>`.
+- **Delegates, doesn't execute:** the supervisor decomposes the initiative and spawns Sonnet workers (full pre-spawn discipline per worker). It requests an Opus worker only for a carve-out.
+- **Idle-cheap / event-driven:** it is Opus — after spawning the fleet it WAITS, waking to reason only on real events (result.json, stall, milestone, decision). No busy-poll, else it undoes the Sonnet savings.
+- **Reports only meaningful checkpoints up to main via attn:** (1) FIRST its DIRECTION/partition plan BEFORE spawning the fleet (direction confirmation — catch drift in minute 5, not hour 2), (2) milestone boundaries, (3) a blocker needing Toper's decision, (4) a gated/irreversible action, (5) DONE. It does NOT relay every worker ping.
+- **Single interface to Toper:** the supervisor NEVER DMs Toper and NEVER sets `WHATSAPP=1`. Escalations go supervisor → main → Toper. Main is the sole relay (decision 2026-06-15: only main has WhatsApp).
+- **Resumable orchestration ledger:** the supervisor's STATE.md (template `~/claude/notes/templates/SUPERVISOR-STATE.md`) carries Fleet roster + orchestration checkpoints + Direction. If the supervisor dies, it re-reads the ledger and re-attaches to its fleet — it does NOT re-spawn done / in-flight workers.
+
+### Concurrency caps (box-safety — 4 vCPU)
+
+Supervisor cap = **4** (`CHILLDAWG_MAX_SUPERVISORS`). Worker pool = **6 GLOBAL/shared** (`CHILLDAWG_MAX_WORKERS`) across ALL supervisors + main — NOT multiplied per supervisor. Total concurrent claude sessions bounded at main(1) + supervisors(≤4) + workers(≤6); supervisors are idle-cheap so the active load is the workers. Tracked in separate registries by `worker-semaphore.sh` (`status` shows both tiers); `fleetview.sh` renders both.
+
+### Why this rule exists (verified trigger)
+
+2026-06-15: main repeatedly got consumed running long fitest/BMS orchestration, leaving Toper without a brainstorming partner mid-run (the `/insights` recap named exactly this — main runs as an automation engine). Pushing orchestration down to a dedicated idle-cheap Opus supervisor keeps main conversational while the fleet grinds.
 
 ## Autonomous Loop Operations — wake priority + idle backlog (Wave-6, 2026-06-11)
 

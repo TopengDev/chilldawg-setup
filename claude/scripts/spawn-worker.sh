@@ -117,6 +117,45 @@ if declare -F cs_register_worker >/dev/null 2>&1; then
   cs_register_worker "$WINDOW_NAME"
 fi
 
+# WORKER MODEL — Sonnet hard floor, Opus carve-out ----------------------------
+# Policy (CLAUDE.md "Worker Model Policy — Sonnet Floor, Opus Carve-Out"):
+# workers run on SONNET by default to cut token cost; OPUS is a DELIBERATE
+# carve-out (security-critical / customer-facing design / novel root-cause
+# debugging) that must be requested explicitly. Resolution precedence:
+#   1. CHILLDAWG_WORKER_MODEL env   (explicit per-spawn override)
+#   2. .model field in the worker's triage.json
+#   3. default: sonnet
+# Anything that is NOT an 'opus' token clamps to the sonnet FLOOR (never lower,
+# e.g. never Haiku) — "hard floor" per Toper 2026-06-15.
+_resolve_triage_file() {
+  if [[ -n "${TASK_DIR:-}" ]]; then
+    echo "${TASK_DIR%/}/triage.json"; return
+  fi
+  local newest="" m mt=0 d f
+  shopt -s nullglob
+  for d in "$HOME/claude/notes/${WINDOW_NAME}-"*/; do
+    f="${d}triage.json"
+    [[ -f "$f" ]] || continue
+    m=$(stat -c %Y "$f" 2>/dev/null || echo 0)
+    if (( m >= mt )); then mt=$m; newest="$f"; fi
+  done
+  shopt -u nullglob
+  echo "$newest"
+}
+_raw_model="${CHILLDAWG_WORKER_MODEL:-}"
+if [[ -z "$_raw_model" ]]; then
+  _tf="$(_resolve_triage_file)"
+  if [[ -n "$_tf" && -f "$_tf" ]] && command -v jq >/dev/null 2>&1; then
+    _raw_model="$(jq -r '.model // empty' "$_tf" 2>/dev/null || true)"
+  fi
+fi
+case "$(printf '%s' "$_raw_model" | tr '[:upper:]' '[:lower:]')" in
+  opus*) WORKER_MODEL="opus" ;;
+  *)     WORKER_MODEL="sonnet" ;;
+esac
+echo "OK: worker model = '${WORKER_MODEL}' (sonnet floor; opus = explicit carve-out)."
+# -----------------------------------------------------------------------------
+
 # Launch claude with attn.
 # CRITICAL: set ATTN_SESSION env var to a unique name BEFORE claude starts.
 # Without this, attn's checkDuplicateSession rejects the worker because the
@@ -133,7 +172,7 @@ fi
 # name) so RC sessions are identifiable; explicit name also avoids the optional
 # [name] arg being misparsed.
 tmux send-keys -t "${TMUX_SESSION}:${NEXT_INDEX}" \
-  "ATTN_SESSION='${WINDOW_NAME}' claude --remote-control '${WINDOW_NAME}' --dangerously-skip-permissions" \
+  "ATTN_SESSION='${WINDOW_NAME}' claude --model '${WORKER_MODEL}' --remote-control '${WINDOW_NAME}' --dangerously-skip-permissions" \
   Enter
 
 # Wait for claude to boot + MCP plugins to register.

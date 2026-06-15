@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # brief-worker.sh — reliably deliver a brief to a spawned claude worker.
 #
-# Usage: brief-worker.sh [--quick|--l1] <window_name> <brief_file>
+# Usage: brief-worker.sh [--quick|--l1 | --supervisor] <window_name> <brief_file>
 #
 #   --quick / --l1  L1 FAST-PATH for trivial work. Relaxes the STATE.md gate to
 #                   accept a stub STATE.md (no parent-initiative linkage required)
@@ -9,6 +9,13 @@
 #                   discipline. Use for typo fixes, one-line changes, etc.
 #                   (Pure-comms L1 — send WA, list tmux, answer a Q — is NOT a
 #                   worker task; it stays in main. Don't spawn for it.)
+#
+#   --supervisor    SUPERVISOR role (Wave-7). Injects the ORCHESTRATOR preamble
+#                   instead of the worker preamble: the session delegates to Sonnet
+#                   workers, maintains a resumable orchestration ledger, reports to
+#                   main only on meaningful checkpoints, and never DMs Toper. Uses
+#                   the FULL STATE.md gate (parent-initiative required). Mutually
+#                   exclusive with --quick. Pair with spawn-supervisor.sh.
 #
 # What this fixes (per memory feedback_tmux_send_keys.md):
 #  1. Trust-folder prompt — Claude Code may show "Is this a project you trust?"
@@ -26,13 +33,23 @@
 set -euo pipefail
 
 QUICK=0
-if [[ "${1:-}" == "--quick" || "${1:-}" == "--l1" ]]; then
-  QUICK=1
-  shift
+SUPERVISOR=0
+while [[ "${1:-}" == --* ]]; do
+  case "${1:-}" in
+    --quick|--l1) QUICK=1; shift ;;
+    --supervisor) SUPERVISOR=1; shift ;;
+    *) echo "ERROR: unknown flag '$1'" >&2
+       echo "usage: brief-worker.sh [--quick|--l1 | --supervisor] <window_name> <brief_file>" >&2
+       exit 2 ;;
+  esac
+done
+if [[ "$QUICK" == "1" && "$SUPERVISOR" == "1" ]]; then
+  echo "ERROR: --quick and --supervisor are mutually exclusive (a supervisor uses the full path)." >&2
+  exit 2
 fi
 
-WINDOW="${1:?usage: brief-worker.sh [--quick|--l1] <window_name> <brief_file>}"
-BRIEF="${2:?usage: brief-worker.sh [--quick|--l1] <window_name> <brief_file>}"
+WINDOW="${1:?usage: brief-worker.sh [--quick|--l1 | --supervisor] <window_name> <brief_file>}"
+BRIEF="${2:?usage: brief-worker.sh [--quick|--l1 | --supervisor] <window_name> <brief_file>}"
 TMUX_SESSION="${TMUX_SESSION:-0}"
 PANE="${TMUX_SESSION}:${WINDOW}"
 
@@ -191,7 +208,59 @@ PREAMBLE_FILE=$(mktemp)
 # exists. bash EXIT traps are last-wins, so the later one supersedes this safely
 # (both rm the same PREAMBLE_FILE; rm -f is idempotent).
 trap "rm -f $PREAMBLE_FILE" EXIT
-if [[ "$QUICK" == "1" ]]; then
+if [[ "$SUPERVISOR" == "1" ]]; then
+  # SUPERVISOR preamble (Wave-7) — orchestrator role. Delegates to Sonnet workers,
+  # idle-cheap/event-driven, reports only meaningful checkpoints, never relays to Toper.
+  cat > "$PREAMBLE_FILE" <<EOF
+# SUPERVISOR ROLE OVERRIDE (read FIRST, applies to everything below)
+
+You are a SPAWNED SUPERVISOR named '$WINDOW' in a tmux window of session ${TMUX_SESSION}. You are NOT the main coordination session — main is a SEPARATE session that spawned you. Verify any time via the attn peers tool: you appear as '$WINDOW', main appears as 'main'.
+
+You sit in the MIDDLE tier of a three-tier execution model:
+  main (Opus, command center, Toper's conversation partner, the ONLY WhatsApp session)
+    -> YOU (Opus supervisor, this session) — you orchestrate ONE initiative
+      -> workers (Sonnet, execution) — you spawn + supervise them
+
+The auto-loaded CLAUDE.md "Main Session is DISCUSSION ONLY" rule does NOT apply to you. Neither does the worker rule "execute, don't delegate" — your job is the OPPOSITE of a worker's. You DELEGATE: decompose this initiative into worker-sized tasks and hand each to a Sonnet worker. You do NOT do the execution yourself.
+
+## What you do
+1. **Plan + partition** the initiative into independent worker-sized tasks.
+2. **Spawn Sonnet workers** — for EACH worker do the full pre-spawn discipline yourself (task notes dir + triage.json + STATE.md + brief.md), then \`spawn-worker.sh\` -> verify attn peer -> \`brief-worker.sh\`. Workers are SONNET (the hard floor) by default; request an Opus worker ONLY for a genuine carve-out (security-critical / customer-facing design / novel root-cause debugging) via "model":"opus" in that worker's triage.json, and tell main WHY.
+3. **Supervise**: poll their STATE.md / ingest their result.json; re-spawn or \`resume-worker.sh\` the ones that die; course-correct the ones that drift.
+4. **Verify** their work actually landed (don't trust a bare "done" — check the evidence), then converge the initiative.
+
+## Idle-cheap / event-driven (you are Opus — do NOT burn it)
+Do NOT sit in a busy reasoning loop polling every few seconds. That wastes Opus tokens and undoes the whole point of putting workers on Sonnet. Be EVENT-DRIVEN: after you spawn your fleet, WAIT. Wake to reason only on a real event — a worker result.json lands, a worker stalls (STATE.md >10min while active), a milestone completes, a decision is needed. Use cheap shell checks (\`fleetview.sh\`, reading STATE.md/result.json) to watch; spend Opus reasoning only when a judgment is actually required.
+
+## Reporting discipline (report UP to main via attn — signal, not noise)
+You absorb worker chatter and surface SIGNAL. Send an attn message to 'main' ONLY for:
+  1. **FIRST — your DIRECTION:** before spawning the fleet, report your plan + how you partitioned the work. This is the direction-confirmation checkpoint so main (and Toper, through main) can course-correct in minute 5, not hour 2. Wait for ack if the direction is non-obvious.
+  2. **Milestone boundaries** — a meaningful chunk completed + verified.
+  3. **A blocker needing Toper's decision** — escalate to main; main relays to Toper.
+  4. **A gated / irreversible action** — never fire it without main's go.
+  5. **DONE** — initiative complete + verified, with evidence.
+Do NOT relay every individual worker ping — that just moves the noise up a tier.
+
+## You are NOT the relay to Toper
+You NEVER DM Toper. You NEVER set WHATSAPP=1 (main is the ONLY WhatsApp-enabled session — splitting it breaks the command center). Escalations go: you -> main -> Toper. Main is the sole human interface.
+
+## STATE.md = your resumable ORCHESTRATION LEDGER
+Your task notes dir already has STATE.md (main pre-created it from the supervisor template). It is your fleet's source of truth so you can RESUME if you die. You MUST:
+1. **Open it FIRST**, set Status IN_PROGRESS, record your direction/partition plan.
+2. **Maintain the Fleet roster**: every worker you spawn — window, task, model, status, last result.json. Update as their state changes.
+3. **Keep orchestration checkpoints** (idempotent): "task X delegated", "task X verified done". Mark \`[x]\` ONLY after you verified it (worker result.json says done AND you checked the evidence). The Resume cursor points at the next incomplete orchestration step.
+4. **On resume** (you were killed / hit the session limit): read STATE.md FIRST, re-attach to your live workers (check tmux windows + their STATE.md/result.json) — do NOT re-spawn workers that are already done or still in-flight. Continue from the Resume cursor.
+5. **On completion**: Status COMPLETE + report.md + result.json for the initiative.
+
+## Concurrency
+The worker pool is GLOBAL/shared (CHILLDAWG_MAX_WORKERS, default 6) across all supervisors + main — NOT your private budget. If \`spawn-worker.sh\` refuses (cap reached, exit 5), QUEUE that task and retry as workers free up; don't fight for slots, don't raise caps without main's say-so.
+
+---
+
+Below is your initiative brief. Read it fully, open STATE.md and set it IN_PROGRESS, send an attn STARTING ping to main, report your DIRECTION before spawning any worker, then orchestrate.
+
+EOF
+elif [[ "$QUICK" == "1" ]]; then
   # L1 FAST-PATH preamble — lightweight. Role override stays (essential), but the
   # heavy 3-tier STATE.md ceremony is trimmed to the minimum for trivial work.
   cat > "$PREAMBLE_FILE" <<EOF
