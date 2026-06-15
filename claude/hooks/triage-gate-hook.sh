@@ -37,6 +37,19 @@ cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || t
 # Cheap pre-filter: if the string isn't present at all, allow immediately.
 printf '%s' "$cmd" | grep -q 'spawn-worker\.sh' || exit 0
 
+# Collapse shell line-continuations (backslash-newline) BEFORE splitting. Without
+# this, a multi-line command like
+#     git add \
+#       path/to/spawn-worker.sh \
+#       other-file
+# splits at the raw newlines and the ARGUMENT line "path/to/spawn-worker.sh \"
+# looks like a command-position invocation (window parsed as the trailing "\") —
+# a false positive that wrongly denies an innocent `git add` / commit. Joining
+# continuations first makes the first token of that logical command "git" (a
+# mention, correctly allowed), and also lets a REAL multi-line invocation
+# (`spawn-worker.sh \⏎ foo`) parse its window correctly. Fail-open as ever.
+cmd="$(printf '%s' "$cmd" | sed -e ':x' -e '/\\$/{N;s/\\\n//;bx}')"
+
 ltrim() { printf '%s' "$1" | sed -E 's/^[[:space:]]+//'; }
 strip_quotes() { local s="$1"; s="${s%\"}"; s="${s#\"}"; s="${s%\'}"; s="${s#\'}"; printf '%s' "$s"; }
 
