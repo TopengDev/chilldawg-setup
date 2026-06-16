@@ -1,0 +1,26 @@
+# AGENTS.personal.md.example — copy this to AGENTS.personal.md and fill in YOUR values.
+# AGENTS.md imports AGENTS.personal.md (@AGENTS.personal.md) to resolve {{VARS}}.
+# Keep your real AGENTS.personal.md gitignored — it holds personal/private values.
+
+{{USER_NAME}}        = <your full name>
+{{USER_HANDLE}}      = <your short handle / nickname>
+{{WORKSPACE_DIR}}    = <e.g. ~/work>
+{{REPOS_DIR}}        = <e.g. ~/work/repos>
+{{NOTES_DIR}}        = <e.g. ~/work/notes>
+{{AGENT_CONFIG_DIR}} = <e.g. ~/.claude>
+{{MEMORY_DIR}}       = <e.g. {{AGENT_CONFIG_DIR}}/memory>
+{{SKILLS_DIR}}       = <e.g. {{AGENT_CONFIG_DIR}}/skills>
+{{SCRIPTS_DIR}}      = <e.g. {{AGENT_CONFIG_DIR}}/scripts>
+{{TASKS_DIR}}        = <e.g. {{AGENT_CONFIG_DIR}}/tasks>
+{{SECRETS_FILE}}     = <e.g. {{AGENT_CONFIG_DIR}}/secrets.env>
+{{DOTFILES_REPO}}    = <your dotfiles/setup repo name>
+{{ORCH_ENV_PREFIX}}  = <orchestration env-var prefix, e.g. MYORG>
+{{ORG_NAME}}         = <your org / company>
+{{ORG_DOMAIN}}       = <your org primary domain>
+{{PRODUCT_NAME}}     = <your primary product>
+{{TIMEZONE}}         = <e.g. UTC / Asia/Jakarta>
+{{LOCALE_LANG}}      = <primary language, e.g. English>
+{{TARGET_MARKET}}    = <primary market, e.g. US>
+{{MESSAGING_CHANNEL}}= <notification channel, e.g. Slack>
+{{USER_WA_JID}}      = <your messaging JID / id>
+{{DEPLOY_DOMAIN}}    = <domain for one-shot deploys>

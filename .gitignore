@@ -127,3 +127,7 @@ __pycache__/
 *.draft
 *.orig
 *~
+
+# Personal agent-rules overlay (real values — never commit)
+claude/AGENTS.personal.md
+AGENTS.personal.md
