@@ -1,0 +1,33 @@
+{
+  "name": "Brand Name",
+  "colors": {
+    "primary": "#2DDCC7",
+    "secondary": "#1A1A2E",
+    "accent": "#FF6B6B",
+    "background": "#FAFAFA",
+    "text": "#1A1A2E"
+  },
+  "typography": {
+    "heading": "Instrument Sans",
+    "body": "DM Sans",
+    "mono": "JetBrains Mono"
+  },
+  "tone": "professional, clean, modern",
+  "mood": "confident, approachable",
+  "avoid": "busy patterns, neon gradients, clip art, generic stock imagery",
+  "logo": {
+    "path": "./assets/logo.svg",
+    "usage": "top-left or centered, minimum 40px height"
+  },
+  "references": [
+    "./assets/brand-ref-1.png",
+    "./assets/brand-ref-2.png"
+  ],
+  "social": {
+    "instagram_post": "1080x1080",
+    "instagram_story": "1080x1920",
+    "twitter_header": "1500x500",
+    "og_image": "1200x630",
+    "linkedin_post": "1200x627"
+  }
+}

@@ -163,16 +163,28 @@ echo "OK: worker model = '${WORKER_MODEL}' (sonnet floor; opus = explicit carve-
 # "plugin:attn:attn · ✘ failed" in /mcp and no peer registration.
 # Use the tmux window name as the session name — guaranteed unique within session 0.
 #
-# Also use --channels (not --dangerously-load-development-channels) to skip the
-# interactive "I am using this for local development" confirmation prompt that
-# blocks startup.
+# MUST force-load the attn channel plugin. attn is a CHANNEL plugin — being in
+# settings.json `enabledPlugins` is NOT enough to start its MCP/peer daemon; it
+# requires explicit channel activation at launch. Without it the worker loads its
+# other plugins but NEVER starts attn -> no local peer -> "2 setup issues: MCP" ->
+# can't report back. (Verified 2026-06-16: the flag had been dropped from this
+# line; every spawned worker silently lost attn.)
+#
+# Use `--channels plugin:attn@s0nderlabs` (the APPROVED-channels path), NOT
+# `--dangerously-load-development-channels` — the latter triggers a blocking
+# interactive "I am using this for local development" confirm prompt that
+# --dangerously-skip-permissions does NOT bypass, so the worker hangs forever
+# (empirically confirmed 2026-06-16). attn must be in settings.json
+# `allowedChannelPlugins` for --channels to accept it (it is). We load ONLY attn
+# (NOT whatsapp — workers must never load the whatsapp channel; it splits inbound
+# msgs from main per the single-session rule).
 #
 # MANDATORY: --remote-control (Toper's rule 2026-05-31) — EVERY new claude
 # session/worker must start with Remote Control on. Named per-worker (= window
 # name) so RC sessions are identifiable; explicit name also avoids the optional
 # [name] arg being misparsed.
 tmux send-keys -t "${TMUX_SESSION}:${NEXT_INDEX}" \
-  "ATTN_SESSION='${WINDOW_NAME}' claude --model '${WORKER_MODEL}' --remote-control '${WINDOW_NAME}' --dangerously-skip-permissions" \
+  "ATTN_SESSION='${WINDOW_NAME}' claude --model '${WORKER_MODEL}' --channels plugin:attn@s0nderlabs --remote-control '${WINDOW_NAME}' --dangerously-skip-permissions" \
   Enter
 
 # Wait for claude to boot + MCP plugins to register.
