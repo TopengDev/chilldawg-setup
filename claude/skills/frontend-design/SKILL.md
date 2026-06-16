@@ -59,6 +59,56 @@ If any gate fails → build NOT done. Fix before reporting complete.
 
 ---
 
+## 0.7 CRITICAL META-RULE — Component Libraries (Library-First Default)
+
+**OVERRIDE: By default, build UI from a curated component library, NOT from scratch.** After locking the archetype (§2), use that archetype's **primary** library; pull standard app-UI primitives (forms, inputs, tables, nav) the primary lacks from the **base** library (Origin UI); use **Tremor** for any data-viz/dashboard surface. **Only build a component from scratch when no suitable component exists in the chosen libraries.** This keeps every project's components stylish AND consistent.
+
+### Rules
+1. **One PRIMARY library per project.** Pick it from the archetype map below; use it across the whole project for consistency. Never mix two themed/effects libraries in one project.
+2. **Base + layers are expected, not a violation:** primary themed library + **Origin UI** (neutral app-UI base) + **Tremor** (data-viz, only if data-heavy) + **Motion Primitives** (optional animation layer). These are functional layers, not competing themes.
+3. **Scratch-build is the exception.** Reach for it only after confirming no library covers the component; then follow §3–§13 for the scratch component.
+4. **Override slop defaults.** Several libraries default to patterns §8 BANS (purple/blue AI gradients, glow, fonts like Inter). Restyle to comply with §8 — colors are props, swap banned fonts. EXCEPTION: archetypes that legitimately own the effect (e.g. Retro-Future/Synthwave owns neon glow) may keep it.
+5. **Install model:** all are copy-paste / shadcn-registry (you own the code) — verify each component's deps before adding (§13). All are FREE for commercial use.
+6. **Excluded:** **Aceternity UI** is demoted — its defaults ARE the §8 anti-slop (purple gradients/aurora/glow + ships Inter + no RSC); use Magic UI or React Bits for the same dark archetypes. **Lightswind UI** is excluded as a project standard (solo-maintainer, ~700 stars, ~zero production adoption) — selective single-component use only.
+
+### Archetype → library map
+
+| Archetype | Primary | Base / Layers |
+|---|---|---|
+| Editorial Luxury | Bespoke | Origin UI (base) · Motion Primitives |
+| Soft Structuralism | **Cult UI** | Origin UI |
+| Neo-Brutalist | Bespoke (hard-restyled) | Origin UI |
+| Japanese Minimal | **Origin UI** (sparse) | — |
+| Magazine Editorial | Bespoke | Origin UI · Motion Primitives |
+| Warm Craft | Bespoke (warm-restyled) | Origin UI |
+| Dark Cinematic | **React Bits** (Magic UI alt) | Motion Primitives · Origin UI |
+| Corporate Confident | **Origin UI** + **Tremor** (data) | — |
+| Playful Pop | **Kokonut UI** | Origin UI |
+| Gen Z Expressive | **Kokonut UI** + **React Bits** (chaos FX) | Origin UI |
+| Anti-Design / Experimental | **React Bits** | Motion Primitives · Origin UI |
+| Swiss / International Typographic | **Origin UI** (Swiss-restyled) | — |
+| Terminal / Monospace | **Origin UI** (mono) | Cult UI / Magic UI terminal+code comps |
+| Retro-Future / Synthwave | **Magic UI + React Bits** (co) | Origin UI |
+| Opulent Noir | Bespoke | Origin UI · Cult UI (texture) · Motion Primitives |
+| Y2K / Frutiger Aero | Bespoke | Origin UI · Cult UI (glass effects) |
+| Memphis / Postmodern Maximalist | Bespoke | Origin UI · Kokonut / Magic motion |
+| Claymorphism / Soft 3D | **Cult UI** | Origin UI |
+| Risograph / Zine Print | Bespoke | Origin UI |
+
+### The libraries (quick reference)
+- **Origin UI** — 574 neutral, accessible (Radix + React Aria) base app-UI components (forms/inputs/tables/nav). MIT. The universal BASE for ~every archetype. (Rebranding under coss.com; legacy collection stable — reference `coss.com/origin`.)
+- **Cult UI** — ~78 tactile/neumorphic/textured, motion-rich shadcn components. MIT. → Soft Structuralism, Claymorphism, Y2K glass, Dark Cinematic.
+- **React Bits** — 130+ effects-first (text animations, cursors, WebGL/physics backgrounds); CSS-only RSC-safe variants; no forced font. MIT (Commons-Clause: free to build, can't resell). → Dark Cinematic, Anti-Design, Synthwave, Gen Z chaos. ⚠ slop-risk only via the Aurora+SpotlightCard+BlurText "greatest-hits" combo.
+- **Magic UI** — ~70 animated marketing effects (beams, bento, marquee, text). MIT. → Retro-Future/Synthwave, Dark Cinematic (alt). ⚠ purple/blue defaults — override.
+- **Kokonut UI** — 46 free motion-flair marketing components (bento, glitch/matrix text, AI UI). MIT free tier. → Playful Pop, Gen Z. ⚠ gradient/glow defaults — override.
+- **Tremor** — data-viz (charts/KPIs/tables), Radix-accessible, clean/neutral. Apache/MIT. The DATA layer for any dashboard-heavy project (Corporate Confident).
+- **Motion Primitives** — ~33 animation primitives (text/scroll/cursor). MIT. Animation LAYER only — never a sole library. → high-motion archetypes.
+
+### Note
+~7 archetypes (Editorial Luxury, Magazine Editorial, Warm Craft, Opulent Noir, Memphis, Neo-Brutalist, Risograph) have **no good themed library** — build bespoke on the Origin UI base (+ the noted accent layers). This is expected, not a gap to paper over.
+
+---
+
 ## 1. INTERACTIVE SETUP
 
 Before writing any code, run this setup sequence with the user. Present it conversationally — don't dump the whole menu.
@@ -89,7 +139,6 @@ Present three dials. Let the user pick values 1–10, or offer sensible defaults
 | **VISUAL_DENSITY** | Art-gallery sparse, maximal whitespace, breathing room | Normal app density, balanced content-to-space ratio | Cockpit-packed, data-dense dashboards, information-rich layouts |
 
 Default values by vibe:
-- Ethereal Glass → VARIANCE 5, MOTION 7, DENSITY 3
 - Editorial Luxury → VARIANCE 6, MOTION 4, DENSITY 4
 - Soft Structuralism → VARIANCE 4, MOTION 5, DENSITY 5
 - Neo-Brutalist → VARIANCE 8, MOTION 3, DENSITY 6
@@ -101,6 +150,14 @@ Default values by vibe:
 - Playful Pop → VARIANCE 5, MOTION 8, DENSITY 5
 - Gen Z Expressive → VARIANCE 9, MOTION 9, DENSITY 8
 - Anti-Design / Experimental → VARIANCE 10, MOTION 7, DENSITY 4
+- Swiss / International Typographic → VARIANCE 4, MOTION 3, DENSITY 5
+- Terminal / Monospace → VARIANCE 5, MOTION 3, DENSITY 7
+- Retro-Future / Synthwave → VARIANCE 7, MOTION 8, DENSITY 4
+- Opulent Noir → VARIANCE 6, MOTION 5, DENSITY 3
+- Y2K / Frutiger Aero → VARIANCE 6, MOTION 7, DENSITY 5
+- Memphis / Postmodern Maximalist → VARIANCE 8, MOTION 6, DENSITY 6
+- Claymorphism / Soft 3D → VARIANCE 5, MOTION 6, DENSITY 4
+- Risograph / Zine Print → VARIANCE 7, MOTION 4, DENSITY 5
 - Custom → ask the user or pick based on context
 
 ---
@@ -109,14 +166,6 @@ Default values by vibe:
 
 Each archetype is a starting point, not a cage. Remix, combine, or diverge — but always have a clear aesthetic direction.
 
-### Ethereal Glass
-**Best for**: SaaS, AI products, developer tools, tech landing pages
-- **Background**: OLED black (#000000 allowed here only) or deep navy, mesh gradients as ambient light
-- **Surfaces**: backdrop-blur cards with 1px border at white/5–10%, layered at multiple depths
-- **Typography**: Geist, Satoshi, or Instrument Sans for body; Geist Mono or JetBrains Mono for code
-- **Color**: Single vivid accent (electric blue, mint, or violet), everything else monochrome
-- **Signature**: Frosted glass depth, glowing edges, ambient gradient orbs behind content
-
 ### Editorial Luxury
 **Best for**: Lifestyle brands, agencies, portfolios, editorial sites
 - **Background**: Warm cream (#FAF7F2), parchment, or muted stone; CSS noise overlay (SVG filter) at 2–4% opacity
@@ -124,6 +173,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Serif display headers (Playfair Display, EB Garamond, Cormorant); clean sans body (DM Sans, General Sans)
 - **Color**: Muted earth palette — ochre, burgundy, forest — never neon; max 1 accent
 - **Signature**: Magazine-style layouts, oversized type, dramatic whitespace, image-driven storytelling
+- **Recommended library:** `Bespoke (Origin UI base + Motion Primitives) — no themed library fits editorial; see §0.7`
 
 ### Soft Structuralism
 **Best for**: Consumer apps, health/wellness, fintech, modern SaaS
@@ -132,6 +182,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Massive grotesk display type (Instrument Sans, Plus Jakarta Sans, Switzer); body at comfortable 16–18px
 - **Color**: Desaturated palette with one punchy accent; saturation < 70% on backgrounds
 - **Signature**: Soft depth, rounded everything, approachable density, feels touchable
+- **Recommended library:** `Cult UI (+ Origin UI base) — see §0.7`
 
 ### Neo-Brutalist
 **Best for**: Indie brands, punk/raw creative studios, anti-design agencies
@@ -140,6 +191,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Space Mono or JetBrains Mono primary; Bricolage Grotesque for display
 - **Color**: Strictly black + white + ONE accent (usually red #FF3333 or electric blue). No gradients.
 - **Signature**: Intentionally "broken" layouts, overlapping elements, raw hover states, cursor: crosshair
+- **Recommended library:** `Bespoke, hard-restyled on Origin UI base — see §0.7`
 
 ### Japanese Minimal
 **Best for**: High-end retail, ceramics, tea, luxury goods, artisanal products
@@ -148,6 +200,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Small body text (14px), generous letter-spacing. Cormorant Garamond or Noto Serif JP for display; Inter Tight at 300 weight for body
 - **Color**: Charcoal #2B2B2B + one muted accent (indigo #3D4F7C or moss #6B7B5E). Max 3 colors total.
 - **Signature**: Ultra-restrained — if it feels like anything was "designed," remove more
+- **Recommended library:** `Origin UI (used sparsely) — see §0.7`
 
 ### Magazine Editorial
 **Best for**: Media, publishing, fashion, lifestyle magazines, content-heavy sites
@@ -156,6 +209,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Bold serif display (Playfair Display, Libre Bodoni) at extreme sizes (8rem+). DM Sans body. Mixed weights in same line (thin + black).
 - **Color**: Black + white + one editorial accent (burgundy #7A1B35 or gold #B8860B)
 - **Signature**: Dramatic scale contrast (120px headline next to 14px body), overlapping text on image, mixed column widths
+- **Recommended library:** `Bespoke (Origin UI base + Motion Primitives) — see §0.7`
 
 ### Warm Craft
 **Best for**: Artisan brands, F&B, bakeries, handmade goods, wellness
@@ -164,6 +218,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Fraunces or Vollkorn for display (warm serif); Nunito Sans for body (friendly, rounded)
 - **Color**: Earthy palette — terracotta #C4704D, forest #3D5A3E, cream #F4EDE4, espresso #3E2723. Warm, never cool.
 - **Signature**: Hand-illustrated flourishes, organic blob shapes (SVG, not CSS), visible texture/grain at 5-8% opacity
+- **Recommended library:** `Bespoke, warm-restyled on Origin UI base — see §0.7`
 
 ### Dark Cinematic
 **Best for**: Entertainment, film, music, gaming, nightlife, premium experiences
@@ -172,6 +227,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Instrument Serif or Bodoni Moda for display (high contrast serif); Geist for UI text
 - **Color**: Black + cool white #E8E8E8 + one accent (amber #D4A84B or crimson #8B0000). Extremely limited.
 - **Signature**: Cinematic letterboxing (horizontal bars), slow reveals (2-3s transitions), dramatic scroll parallax, sparse text with long pauses
+- **Recommended library:** `React Bits (Magic UI alt) + Motion Primitives + Origin UI base — see §0.7`
 
 ### Corporate Confident
 **Best for**: Enterprise, B2B, consulting, fintech, legal, institutional
@@ -180,6 +236,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Inter Tight or Geist for both display and body. No serif. Clean, professional, invisible.
 - **Color**: Navy #1B2A4A + charcoal #374151 + white + one muted accent (teal #0D9488 or blue #2563EB). NO warm colors.
 - **Signature**: Data-driven — stat counters, metric grids, progress bars, trust badges. Professional, not creative.
+- **Recommended library:** `Origin UI + Tremor (data-viz layer) — see §0.7`
 
 ### Playful Pop
 **Best for**: Kids/education, consumer social, gaming, creative tools, startup MVPs
@@ -188,6 +245,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Sora or Plus Jakarta Sans at heavy weights for display; Karla for body. Oversized (5rem+).
 - **Color**: Maximum saturation — coral #FF6B6B, electric purple #7C3AED, sunny #FBBF24, mint #34D399. 3-4 colors freely mixed.
 - **Signature**: Bouncy spring physics (stiffness 200, damping 15), emoji as design elements (sparingly), illustrated characters, confetti on success states
+- **Recommended library:** `Kokonut UI (+ Origin UI base) — see §0.7`
 
 ### Gen Z Expressive
 **Best for**: Gen Z brands, TikTok-adjacent, youth culture, meme brands, social-first companies
@@ -196,6 +254,7 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Clash fonts intentionally — mix chunky sans (Clash Display, Space Grotesk 700, Plus Jakarta Sans 800) with pixel fonts (VT323) or monospace. Sizes at 200%. All-caps headers. Type collage with multiple fonts and weights on one layout.
 - **Color**: MAXIMUM expression — 5+ colors freely mixed. Hot pink #FF1493, electric lime #BFFF00, acid yellow #DFFF11, electric blue #00BFFF, neon purple #B026FF, black #000000. No restraint. Dopamine palette.
 - **Signature**: "TikTok generation energy" — if it feels calm, it's wrong. Micro-interactions on every hover. Cursor trails. Kinetic type animations on scroll. Video loops autoplay. Sticker graphics as UI elements. If grandpa would find it overwhelming, it's right.
+- **Recommended library:** `Kokonut UI + React Bits (chaos FX) + Origin UI base — see §0.7`
 
 ### Anti-Design / Experimental
 **Best for**: Avant-garde creative studios, experimental portfolios, art galleries, design agencies that want to break rules
@@ -204,6 +263,79 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Typography**: Deliberately uncomfortable — oversized text bleeding off screen edges, rotated baselines, stacked single characters, text that moves away from cursor, mixed typefaces (serif + grotesque + monospace) in same heading. Broken tracking.
 - **Color**: Either extreme monochrome (all black or all white) or deliberately clashing neon-on-black. Grain/noise overlays, scan-line effects, deliberate JPEG artifacting as texture. No "safe" palettes.
 - **Signature**: Throw away the rule book. Hidden/camouflaged navigation. Full-screen takeover menus with collision-style text. Custom cursor SVGs that lag or distort. Elements that react to mouse proximity (repel/attract). Permanent "loading" states as design elements. If a traditional web designer would say "you can't do that," do exactly that. But it must still be INTENTIONAL, not broken. Reference: Cargo Collective, Hoverstates, Lusion.
+- **Recommended library:** `React Bits + Motion Primitives + Origin UI base — see §0.7`
+
+### Swiss / International Typographic
+**Best for**: Design studios, type foundries, premium editorial, agencies, architecture firms
+- **Background**: Near-white #FCFCFA with faint visible grid columns left as guides (1px rules at 4–6% opacity)
+- **Surfaces**: No cards — content sits directly on the grid. Hairline 1px rules (#1A1A1A) as the only dividers.
+- **Typography**: Monumental grotesk — Söhne, Suisse Int'l, Archivo, or Space Grotesk (NEVER Helvetica/Inter). Flush-left ragged-right, tight leading (1.05–1.15), oversized folio numbers.
+- **Color**: Black #111111 + white + ONE bold accent (International Klein Blue #002FA7 or signal red #E2231A). Nothing else.
+- **Signature**: Rigorous visible modular grid, asymmetric balance, type-as-image, baseline-grid alignment, big numerals as compositional anchors
+- **Recommended library:** `Origin UI (Swiss-restyled) — see §0.7`
+
+### Terminal / Monospace
+**Best for**: Dev tools, crypto/web3, infra/CLI products, technical docs, hacker-brands
+- **Background**: Near-black #0B0E0C OR paper #F4F4EC (two modes), optional faint scanlines (repeating-linear-gradient at 2–3% opacity)
+- **Surfaces**: ASCII / box-drawing borders, 1px solid, 0–2px radius. No shadows, no blur.
+- **Typography**: Monospace everything — JetBrains Mono, IBM Plex Mono, Space Mono, or Geist Mono; optional Space Grotesk for large display headers
+- **Color**: Terminal palette — near-black + phosphor green #4AF626 OR amber #FFB000 + muted greys (or light paper + ink + one accent for the paper mode)
+- **Signature**: Blinking cursor, typewriter reveals, `>`/`$` prompt motifs, ASCII dividers, tabular mono data, "system status" UI, zero decorative imagery
+- **Recommended library:** `Origin UI (mono-restyled) + Cult UI/Magic UI terminal & code-block components — see §0.7`
+
+### Retro-Future / Synthwave
+**Best for**: Gaming, music, NFT/crypto launches, nightlife, bold tech launches
+- **Background**: Deep indigo→magenta night-sky gradient, neon perspective grid at the horizon, optional starfield
+- **Surfaces**: Glowing-edge panels (glow is intentional here), chrome/metallic bevels, semi-transparent dark fills
+- **Typography**: Outrun display — Monument Extended, Clash Display, or Orbitron (sparingly); body in Space Grotesk
+- **Color**: Deep purple/navy base + magenta #FF2E97 + cyan #2DE2E6 + sunset orange #FF6C11 — a multi-neon system, not a single accent
+- **Signature**: Neon glow, perspective grid, sunset gradients, chrome text, CRT/VHS artifacts. **Spec-note: this vibe deliberately overrides §8's no-glow + no-blue/purple-gradient bans — neon glow and the purple→magenta gradient ARE the aesthetic here, not slop.**
+- **Recommended library:** `Magic UI + React Bits (co-primary) + Origin UI base — see §0.7`
+
+### Opulent Noir (Couture Dark)
+**Best for**: Jewelry, watches, haute fashion, premium spirits, luxury hospitality, high-end product positioning
+- **Background**: Obsidian #0A0908 with a subtle vignette darkening the edges
+- **Surfaces**: Minimal — 0.5px gold hairline borders, generous negative space, content emerges from the black via light alone
+- **Typography**: High-contrast serif display — Cormorant Garamond, Bodoni Moda, or Playfair Display; body in a refined sans (General Sans, Outfit)
+- **Color**: Black + matte champagne-gold #C8A86B + ivory #F3EDE3. Restraint is the point — three colors, no more.
+- **Signature**: Gold-leaf accents, letterspaced caps, slow elegant reveals, jewelry-box spacing. Distinct from Dark Cinematic — this is couture, not cinema.
+- **Recommended library:** `Bespoke (Origin UI base + Cult UI texture + Motion Primitives) — see §0.7`
+
+### Y2K / Frutiger Aero
+**Best for**: Consumer apps, nostalgia brands, youth products, glossy playful SaaS
+- **Background**: Sky-blue→aqua gradients, glossy bubbles, water/bokeh textures, lush-nature motifs
+- **Surfaces**: Glossy aqua-glass buttons with skeuomorphic shine highlights, pill shapes, soft reflections
+- **Typography**: Rounded humanist/techno — Hubot Sans, Chillax, or a rounded grotesk (never the banned ones)
+- **Color**: Sky blue #4AC4F3 + aqua #7DF9C4 + lush green #5CB85C + glossy-white highlights — an optimistic multi-color system
+- **Signature**: Aqua gloss, lens-flare/bokeh, bubble shapes, skeuomorphic shine, optimistic 2000s–2010 nostalgia. Distinct from flat Soft Structuralism and chaotic Gen Z.
+- **Recommended library:** `Bespoke + Cult UI (glass effects) + Origin UI base — see §0.7`
+
+### Memphis / Postmodern Maximalist
+**Best for**: Creative agencies, kids/education, events, festivals, bold consumer brands
+- **Background**: Off-white or pastel block with scattered Memphis confetti — SVG squiggles, dots, zigzags, triangles
+- **Surfaces**: Bold 3–4px black-bordered blocks, clashing pattern fills, geometric shape collage, hard offset shadows
+- **Typography**: Chunky geometric — Clash Display or Bricolage Grotesque; mixed playful weights on one layout
+- **Color**: Black + hot pink #F5408B + cyan #46C9E5 + yellow #FFD23F + coral — an 80s Memphis clash, a deliberate multi-color system
+- **Signature**: Memphis-Group squiggles / bean shapes / grids, terrazzo textures, geometric confetti, playful clash. A design-history movement — distinct from Gen-Z internet chaos.
+- **Recommended library:** `Bespoke (Origin UI base + Kokonut/Magic motion) — see §0.7`
+
+### Claymorphism / Soft 3D
+**Best for**: Kids apps, fintech onboarding, friendly consumer, wellness, edtech
+- **Background**: Soft pastel dual-tone wash (e.g. lavender→mint)
+- **Surfaces**: Puffy inflated 3D clay shapes — dual soft shadows (light top-left + dark bottom-right), rounded 24–40px radius, 3D-extruded icons
+- **Typography**: Rounded friendly — Quicksand, Baloo 2, or Hubot Sans
+- **Color**: Soft pastels (lavender, mint, peach) with dual-tone clay shading + one slightly-saturated accent for CTAs
+- **Signature**: Inflated 3D clay objects, dual soft shadows, tactile bounce on press, 3D spot illustrations. **Spec-note: keep COLOR contrast (unlike pure neumorphism, where same-color shadows kill legibility) so it stays WCAG-accessible — this is the line that separates it from the banned neumorphism.** 3D-puffy versus Soft Structuralism's flat-soft.
+- **Recommended library:** `Cult UI (+ Origin UI base) — see §0.7`
+
+### Risograph / Zine Print
+**Best for**: Indie brands, music/events, artisan F&B, editorial, cultural orgs
+- **Background**: Cream/newsprint #F2ECDD with heavy grain / paper texture
+- **Surfaces**: Spot-color blocks with deliberate misregistration (offset layers), halftone fills, overprint-multiply blends. No smooth gradients.
+- **Typography**: Bold condensed/woodtype — Bricolage Grotesque, Anton, or Syne; body in a workhorse grotesk
+- **Color**: 2–3 riso spot inks — fluoro pink #FF48B0 + riso blue #0078BF + yellow #FFE800 on cream, overprinting where they overlap
+- **Signature**: Visible grain, halftone dots, misregistered color layers, overprint blends, DIY zine collage, photocopy texture. Print-DIY versus Warm Craft's polished digital warmth.
+- **Recommended library:** `Bespoke (Origin UI base) — see §0.7`
 
 ### Custom Vibe
 When the user describes something that doesn't match an archetype, extract:
@@ -213,6 +345,7 @@ When the user describes something that doesn't match an archetype, extract:
 4. Reference points (any sites, brands, or aesthetics they mention)
 
 Then build a coherent system from those constraints.
+- **Recommended library:** `Pick the closest archetype's library from §0.7, or Origin UI base + bespoke`
 
 ---
 
@@ -257,16 +390,23 @@ Example: Editorial Luxury (V6/M4/D4) + Dark Cinematic (V6/M6/D2) = V6/M5/D3
 | Editorial Luxury | Dark Cinematic | Dramatic editorial | Cinematic mood intensifies editorial drama |
 | Neo-Brutalist | Playful Pop | Punk energy | Pop color adds vibrancy to raw structure |
 | Corporate Confident | Warm Craft | Approachable enterprise | Craft warmth softens corporate rigidity |
-| Ethereal Glass | Dark Cinematic | Moody tech | Both dark-first, cinematic adds drama to glass |
 | Soft Structuralism | Warm Craft | Friendly organic tech | Craft textures warm up structured surfaces |
 | Soft Structuralism | Corporate Confident | Polished SaaS | Corporate structure + soft approachability |
 | Magazine Editorial | Dark Cinematic | Cinematic storytelling | Both dramatic, film grain enhances editorial |
 | Neo-Brutalist | Anti-Design | Maximum provocation | Both rule-breaking, combined = avant-garde punk |
 | Warm Craft | Playful Pop | Friendly fun | Pop energy with artisanal warmth |
-| Ethereal Glass | Corporate Confident | Premium tech | Glass depth + corporate structure = enterprise SaaS |
 | Magazine Editorial | Gen Z Expressive | Loud editorial | Gen Z chaos channels through editorial structure |
 | Dark Cinematic | Anti-Design | Experimental noir | Both dark, anti-design adds unpredictability |
 | Japanese Minimal | Dark Cinematic | Contemplative noir | Minimal restraint + cinematic atmosphere |
+| Opulent Noir | Japanese Minimal | Restrained luxury | Shared discipline — JM's negative space amplifies the couture restraint |
+| Opulent Noir | Magazine Editorial | Fashion editorial | Editorial scale-contrast carries the couture-dark mood into a story |
+| Terminal | Neo-Brutalist | Raw systems | Both anti-decorative — brutalist structure suits the mono/CLI austerity |
+| Retro-Future / Synthwave | Dark Cinematic | Neon noir | Cinematic darkness grounds the neon so the glow reads as mood, not noise |
+| Swiss / International Typographic | Corporate Confident | Rigorous enterprise | Swiss grid discipline gives corporate trust a real backbone |
+| Memphis / Postmodern Maximalist | Playful Pop | Maximum fun | Pop saturation supercharges the Memphis clash without losing legibility |
+| Risograph / Zine Print | Warm Craft | Analog craft | Both tactile and handmade — riso ink texture meets artisanal warmth |
+| Claymorphism / Soft 3D | Playful Pop | Friendly 3D | Pop bounce + puffy clay = approachable, tactile consumer energy |
+| Y2K / Frutiger Aero | Playful Pop | Glossy fun | Aqua gloss + pop saturation = peak optimistic-consumer shine |
 
 #### Incompatible Pairings (NO — these contradict each other)
 
@@ -277,8 +417,11 @@ Example: Editorial Luxury (V6/M4/D4) + Dark Cinematic (V6/M6/D2) = V6/M5/D3
 | Anti-Design | Corporate Confident | Rule-breaking vs rule-following — pure contradiction |
 | Warm Craft | Neo-Brutalist | Soft organic vs raw industrial — opposite textures |
 | Japanese Minimal | Playful Pop | Restraint vs maximalism — mutual destruction |
-| Ethereal Glass | Warm Craft | Cold tech vs warm organic — temperature clash |
 | Gen Z Expressive | Editorial Luxury | Chaotic youth vs refined authority — tone mismatch |
+| Opulent Noir | Memphis / Postmodern Maximalist | Refined hush vs playful chaos — the gold restraint dies in the clash |
+| Terminal | Y2K / Frutiger Aero | Austere CLI vs glossy aqua — opposite surface philosophies |
+| Swiss / International Typographic | Memphis / Postmodern Maximalist | Strict order vs anti-order — the grid and the confetti cancel out |
+| Claymorphism / Soft 3D | Neo-Brutalist | Soft inflated comfort vs raw hard edges — opposite tactility |
 
 ---
 
@@ -633,7 +776,7 @@ Advanced cursor-driven interactions for MOTION_INTENSITY 6+. Each pattern includ
 #### 1. Cursor Follower
 A small circle/dot that follows the cursor with spring physics. Different from Magnetic (which moves the ELEMENT) — Cursor Follower moves a SEPARATE indicator.
 
-**Use with**: Ethereal Glass, Dark Cinematic, Anti-Design / Experimental
+**Use with**: Dark Cinematic, Retro-Future / Synthwave, Anti-Design / Experimental
 **Anti-pattern**: Don't use a cursor follower AND a custom CSS cursor simultaneously — they compete for attention. Pick one.
 
 ```tsx
@@ -711,7 +854,7 @@ export function HoverImageLink({ text, imageSrc }: { text: string; imageSrc: str
 #### 3. Mouse-Driven Parallax
 Background elements shift based on cursor position relative to viewport center. Different from scroll parallax — this responds to WHERE the cursor is on screen.
 
-**Use with**: Ethereal Glass, Dark Cinematic, Soft Structuralism
+**Use with**: Retro-Future / Synthwave, Dark Cinematic, Soft Structuralism
 **Anti-pattern**: Never apply mouse parallax to text — it makes content unreadable. Only use on decorative background elements. Cap displacement at 20-30px max.
 
 ```tsx
@@ -1126,7 +1269,7 @@ export function ParallaxScene() {
 }
 ```
 
-**Best fits:** Dark Cinematic, Ethereal Glass, Warm Craft, Editorial Luxury.
+**Best fits:** Dark Cinematic, Retro-Future / Synthwave, Warm Craft, Editorial Luxury.
 **Anti-pattern:** don't parallax text that the user must read — it makes reading unpleasant. Parallax decorative layers only. Keep depth displacement under 200px on any layer.
 
 ### 7.3 Smooth Scroll Integration (Lenis)
@@ -1229,7 +1372,6 @@ Most scrollytelling patterns are **desktop-first experiences**. Mobile needs a f
 
 | Archetype | Recommended Patterns | Avoid |
 |---|---|---|
-| Ethereal Glass | parallax depth, smooth Lenis, subtle scrub | heavy scroll-jack |
 | Editorial Luxury | sticky hero, scene transitions, multi-beat | scrubbed video, horizontal scroll |
 | Soft Structuralism | scene transitions, scroll-triggered reveals | scroll-jack, video scrub |
 | Neo-Brutalist | hard scrub jumps, jarring transitions | smooth Lenis (contradicts vibe) |
@@ -1241,6 +1383,14 @@ Most scrollytelling patterns are **desktop-first experiences**. Mobile needs a f
 | Playful Pop | bouncy scrubs, scene transitions, parallax | static reveals only (boring for vibe) |
 | Gen Z Expressive | aggressive scroll-jack, scrubbed video, horizontal scroll | restraint of any kind |
 | Anti-Design | unconventional scroll directions, custom scroll behaviors | any "best practice" |
+| Swiss / International Typographic | scroll-triggered reveals, sticky hero, grid-aligned snap | scrubbed video, scroll-jack |
+| Terminal / Monospace | scroll-triggered reveals, typewriter sequences | smooth Lenis, heavy parallax |
+| Retro-Future / Synthwave | scrubbed video, parallax depth, scene transitions | restraint of any kind |
+| Opulent Noir | sticky hero, scene transitions, slow reveals | scrubbed video, scroll-jack |
+| Y2K / Frutiger Aero | bouncy scrubs, scene transitions, parallax depth | austere static reveals (off-vibe) |
+| Memphis / Postmodern Maximalist | scene transitions, bouncy scrubs, horizontal scroll | smooth restraint, slow reveals |
+| Claymorphism / Soft 3D | scene transitions, scroll-triggered reveals (bouncy) | scroll-jack, scrubbed video |
+| Risograph / Zine Print | scroll-triggered reveals, scene transitions | scrubbed video, smooth parallax |
 
 ### 7.8 Implementation Checklist for Scrollytelling Pages
 
@@ -1271,7 +1421,7 @@ These are the "default suggestion" fonts. They signal zero design thought. There
 
 ### Banned Colors
 - **Purple/violet AI gradients** (the "AI startup" look) — BANNED
-- **Pure #000000 on white** — BANNED (use zinc-950 or a tinted near-black) unless Ethereal Glass vibe
+- **Pure #000000 on white** — BANNED (use zinc-950 or a tinted near-black) unless Dark Cinematic vibe
 - **More than 1 accent color** — almost always BANNED. One accent, everything else neutral.
 - **Saturation > 80%** on any large surface — BANNED. High saturation is for tiny accents only.
 - **Blue-to-purple gradients** — BANNED. Find literally any other gradient direction.
@@ -1480,7 +1630,7 @@ When fixing issues found in the audit, follow this order:
 - [ ] Max 1 accent color
 - [ ] Saturation < 80% on large surfaces
 - [ ] Background is not pure white (#fff) — use a tinted white (e.g., zinc-50, slate-50, stone-50)
-- [ ] Dark mode backgrounds are not pure black (unless Ethereal Glass)
+- [ ] Dark mode backgrounds are not pure black (unless Dark Cinematic / Opulent Noir / Terminal)
 - [ ] Colors defined as CSS variables or Tailwind config, not scattered hex values
 - [ ] Accent color has sufficient contrast against its background
 - [ ] Hover/active states have visible color shift
