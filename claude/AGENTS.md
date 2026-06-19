@@ -509,6 +509,22 @@ An unverified "done" is not done. An unreported "done" is invisible. The agent t
 4. **Write a compaction-safe summary** — if the session will be continued from a compaction summary, make sure the summary includes: (a) what was done, (b) what's pending, (c) what state exists on disk/in git, (d) what decisions {{USER_NAME}} made, (e) any open threads with external parties (attn, {{MESSAGING_CHANNEL}}).
 5. **Don't let context hit 95%+ before acting** — by then it's too late to save everything cleanly. The sweet spot is 60-70%: save state, compact, continue fresh.
 
+## HARD GATE — Post-Debugging Memory Dump
+
+**After ANY debugging, investigation, or troubleshooting session lasting more than 30 minutes, a memory file MUST be written before the session moves on.** No exceptions.
+
+The memory file must capture:
+- **What was the problem?** — symptoms, error messages, what triggered it
+- **What was tried?** — every approach attempted, in order, with result
+- **What was the root cause?** — the actual source, not just the fix
+- **How was it verified?** — proof the fix worked or the root cause was identified
+- **What remains unknown?** — loose ends, untested edge cases, residual risk
+
+This ensures that if the session crashes, or a future session encounters the same system, the hard-won knowledge is not lost. It also forces a structured post-mortem that often surfaces gaps missed during reactive debugging.
+
+**Failure mode this prevents (verified 2026-06-19):**
+- 3+ hour attn debugging session. Discovered: cross-agent delivery works, bridge→main DO is specifically stuck, Go daemon status endpoint can force presence_set, pi-remote bot code path for "queued" status. If this session crashes, ALL of it is gone — no memory file was written.
+
 ## Creative Tasks — ALWAYS Delegate
 
 **OVERRIDE: NEVER execute creative tasks in the main session.** Any task in the creative/design domain MUST be delegated to a spawned session. The main session's role for creative work is DISCUSSION and BRAINSTORMING only.
