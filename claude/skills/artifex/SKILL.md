@@ -17,9 +17,9 @@ description: Hand it a website / page / multi-section brief → it produces an u
 |---|---|---|
 | **N1** | **DISTINCT skeleton per section.** No two sections share a layout skeleton. Repeated content (demo 1 / demo 2 / demo 3) must NOT share a layout. | The Variance Audit (§7) fails the build if any skeleton repeats. |
 | **N2** | **DISTINCT signature technique per section, then RETIRE it.** A technique carries exactly ONE section, never the next. | Variance Audit fails if any technique repeats. |
-| **N3** | **Scrollytelling (pinned scroll-scrubbed sequence) used ≤ 1 time on the whole page.** It is ONE technique, not the spine. | Variance Audit fails if scrollytelling count ≥ 2. |
+| **N3** | **Scrollytelling counted by DISTINCT technique — each distinct pinned scroll-scrubbed technique appears ≤ 1 time** (a text-illumination scrub and a screenshot scrub are DIFFERENT techniques, so both may coexist). It is never the spine. | Variance Audit (§7 check C) fails if the SAME scrollytelling technique carries two sections. |
 | **N4** | **≤ 1 heavy effect (WebGL/canvas/3D) on the entire page.** Build ~90% from the Buildable tier; spend the whole hard budget on exactly ONE signature wow; never touch the Elite tier. | Performance Budget (§9) + Feasibility (§10). Audit fails if heavy-effect count ≥ 2. |
-| **N5** | **Distinctive DISPLAY + neutral BODY + a MONO eyebrow layer.** BAN the AI-defaults (Instrument Serif, Plus Jakarta Sans, Inter-only, Roboto). | Typography System (§8) + inherits frontend-design §8 Banned Fonts. |
+| **N5** | **Distinctive DISPLAY + neutral BODY + oversized index/section markers.** Mono is used confidently/integrated — the timid mono micro-label "eyebrow" tell is hard-banned (§7 A2). BAN the AI-defaults (Instrument Serif, Plus Jakarta Sans, Inter-only, Roboto). | Typography System (§8) + §7 Hard-Ban A2 + inherits frontend-design §8 Banned Fonts. |
 | **N6** | **A recurring MOTIF threads ≥ 3 sections.** Variance without a through-line reads as random, not designed. The motif (a brand line, a color callback, a repeated mark) is what licenses the variance. | Variance Audit checks for ≥ 1 motif spanning ≥ 3 sections. |
 | **N7** | **Effects are progressive enhancement.** Scroll must hit 60fps with ALL effects OFF. `prefers-reduced-motion` + coarse-pointer / cheap-Android downgrade to static. | Performance Budget (§9). |
 | **N8** | **Design from the technique library + studied references — NOT from the model's idea of "engaging."** Carry the reference set; name the technique and the ref before building each section. | Grounding (§11). "I'll make it engaging" with no named technique = a violation. |
@@ -100,7 +100,7 @@ If something is covered there, USE it there. The sections below are the layer fr
 | **DESIGN VARIANCE** | The Variance Audit (§7) — a mandatory pre-build gate. List every section's skeleton + technique + transition; assert all skeletons distinct, all techniques distinct, scrollytelling ≤ 1, heavy-effects ≤ 1, ≥ 1 motif over ≥ 3 sections. | Two sections share a layout; one technique carries three sections. |
 | **TECHNIQUE PALETTE** | Design only from the 22-technique library (§5), each tagged **B / H / E**. Build ~90% from **B**, spend the entire hard budget on exactly ONE **H**, never touch **E**. | "I'll add a cool particle thing here and another there" (two H, or an E faked at 40%). |
 | **PERFORMANCE BUDGET** | §9 — ≤ 1 heavy canvas; lazy-load below-fold; `prefers-reduced-motion` + coarse-pointer downgrade; 60fps with effects OFF. | Two WebGL scenes; scroll janks on a mid Android; effects are load-bearing for legibility. |
-| **TYPOGRAPHY-NOT-DEFAULT** | §8 — distinctive DISPLAY + neutral BODY + MONO eyebrow; ship a recommended pairing; tight tracking on big type; BAN Instrument Serif / Plus Jakarta Sans / Inter-only / Roboto. | Instrument Serif headline + Plus Jakarta body = the AI-default look = an instant tell. |
+| **TYPOGRAPHY-NOT-DEFAULT** | §8 — distinctive DISPLAY + neutral BODY + oversized index/section markers (the timid mono eyebrow is hard-banned, §7 A2); ship a recommended pairing; tight tracking on big type; BAN Instrument Serif / Plus Jakarta Sans / Inter-only / Roboto. | Instrument Serif headline + Plus Jakarta body = the AI-default look = an instant tell. |
 | **ANTI-SLOP** | Inherit frontend-design §8 wholesale (centered-hero→3-cards→CTA, purple gradients, stock heroes, glowing-dot pills, lorem ipsum, filler power-words). | Any banned pattern present. |
 | **GROUNDING** | §11 — name the technique + the reference for every section BEFORE building. Carry the reference set (§12). | A section justified by "make it engaging" with no named technique/ref. |
 
@@ -132,14 +132,14 @@ This is the palette you design FROM. Every section's signature technique is one 
 | T14 | **Split layout** (media one side, copy the other) | 50/50: a visual locked to one side, narrative to the other | **B** |
 | T15 | **Custom cursor + momentum (Lenis) smooth scroll** | The whole page feels weighted and bespoke; cursor reacts to targets | **B** |
 | T16 | **Hover-reveal video thumbnails** | Project tiles play a muted clip on hover | **B** |
-| T17 | **Mono / technical eyebrow labels** | Small tracked-out mono labels above headings = "engineered / credible" | **B** |
+| T17 | **Mono / technical labels — used confidently, NOT as a blanket eyebrow** | Tracked-out mono labels, but never a timid tiny separate eyebrow on every header (that tell is hard-banned, §7 A2). Use sparingly + integrated; default to oversized index markers (B3) for section marking | **B** |
 | T18 | **Interactive WebGL physics / particle hero** | A real-time simulation you push with cursor/scroll | **H** (one) / **E** (full) |
 | T19 | **Continuous scroll-driven 3D world morph** | ONE 3D scene transforms through the entire scroll | **E** |
 | T20 | **Synthwave perspective grid + neon** | A receding grid floor + glow = instant retro-tech mood | **B** |
 | T21 | **Product-anchored card swap** | The product stays PINNED to the viewport while benefit cards + illustrations swap around it on scroll | **B** |
 | T22 | **Flat-illustration collage + 3D/photo product** | Playful illustrations layered with one real product = warm F&B identity | **B** |
 
-**Reading the table:** T15 (Lenis + cursor) and T17 (mono eyebrows) are **connective tissue** — apply them across the whole page, they don't count as a section's signature. Every other technique is a one-section signature. The **B**-heavy rows are your workhorses; T11 / T18 / T6-canvas are your *candidates* for the single H splurge; T19 and T18-full are **E — do not attempt.**
+**Reading the table:** T15 (Lenis + cursor) is **connective tissue** — apply it across the whole page; it doesn't count as a section's signature. (T17 mono labels are NOT blanket connective tissue anymore — see §7 A2; use oversized index markers for section marking instead.) Every other technique is a one-section signature. The **B**-heavy rows are your workhorses; T11 / T18 / T6-canvas are your *candidates* for the single H splurge; T19 and T18-full are **E — do not attempt.**
 
 ---
 
@@ -160,7 +160,7 @@ Fill the **Variance Map** table. One row per section. Pull skeletons from the ca
 
 | # | Beat | SKELETON | SIGNATURE TECHNIQUE | The SURPRISE | TRANSITION OUT | Build |
 |---|---|---|---|---|---|---|
-| 1 | HOOK | `full-bleed-type` | T3+T4 + a brand ECG line that draws→flatlines→spikes on the key word; T17 mono eyebrow | the flatline-then-spike answering the question visually | line draws down into §2, screen INVERTS to dark | B |
+| 1 | HOOK | `full-bleed-type` | T3+T4 + a brand ECG line that draws→flatlines→spikes on the key word; an oversized index/section marker (B3) | the flatline-then-spike answering the question visually | line draws down into §2, screen INVERTS to dark | B |
 | 2 | PROBLEM | `full-bleed-dark-scatter` | T1 invert + a messy floating collage that drifts and **dissolves** on scroll | light→dark cut; the chaos literally clears | clean wipe back to light, UI rises | B |
 | 3 | WEDGE | `centered-device` | device frame rises; real screenshot snaps in; **T13 count-up** Rp0→Rp568.000 | the number counting up live, no "wait for kasir" | soft zoom INTO the dashboard → bento | B |
 | 4 | DEMO 1 (analytics) | `bento-grid` | **T7 bento** of live data cards; charts **draw on enter** | the command-center density surfacing the #1 product | bento slides left → split snaps in | B |
@@ -186,13 +186,24 @@ Pick A/B/C/E for a buildable hero; reserve D for the single H budget (and then s
 
 ### Step 5 — Run the Variance Audit (§7). If it fails, fix the map, not the code.
 
-**Connective tissue (applies to ALL sections, doesn't count as a signature):** Lenis momentum scroll + a subtle custom cursor (T15), mono eyebrow labels (T17) on every section header, and ONE recurring motif (the ECG line here) threading beats 1 → 3 → 9. **The motif is what makes the variance feel intentional instead of random — N6.**
+**Connective tissue (applies to ALL sections, doesn't count as a signature):** Lenis momentum scroll + a subtle custom cursor (T15), **oversized index/section markers (B3)** for section marking (NOT timid mono eyebrows — §7 A2), and ONE recurring motif (the ECG line here) threading beats 1 → 3 → 9. **The motif is what makes the variance feel intentional instead of random — N6.**
 
 ---
 
-## 7. ★ THE VARIANCE AUDIT — the hard gate (run before building)
+## 7. ★ THE VARIANCE & QUALITY AUDIT — the hard gate (run before building)
 
-**This is the centerpiece. No build starts until this PASSES.** It is the mechanism that makes the monotone failure impossible. Treat it like an L3 sign-off gate: fill the map, score it, and only proceed on a clean PASS.
+**This is the centerpiece. No build starts until this PASSES.** It is the mechanism that makes the monotone failure impossible. Treat it like an L3 sign-off gate: fill the map, score it, and only proceed on a clean PASS. Two layers run here: a binary **Anti-Slop Hard-Ban** scan (any hit = instant fail) and the scored **A–L** checklist.
+
+### ★ Anti-Slop Hard-Bans — instant auto-fail (scan these FIRST)
+
+> Not scored — binary. **ANY hit auto-FAILS the audit** regardless of the A–L scores. Each was paid for by a specific Pulse-deck rejection. Fix before scoring anything else. (These codes A1–A4 are a separate axis from the scored checks A–L below.)
+
+| # | HARD-BAN | The tell it produces | Required instead |
+|---|---|---|---|
+| **A1** | **Aurora / glow-blobs / blurred-radial gradient orbs / soft gradient haze** as background or hero decor | "immediately looks like AI SLOP" — the hero-v3 aurora was rejected outright | **0** blurred-radial / glow-blob elements. Background richness comes from real photos, structured grids, or geometry — never soft glows. |
+| **A2** | **The timid mono micro-label "eyebrow" tell** — small uppercase/mono label-style accent text set as a tiny separate side-label (e.g. "pulse · POS untuk umkm", "tanpa pulse", "pulse jawabannya") | a recurring AI-slop indicator flagged across multiple sections | **0** timid micro-label eyebrows. Accent text is integrated confidently (oversized / italic / color-accented IN the headline) or becomes an oversized index marker — never a small separate label. |
+| **A3** | **AI-default fonts** — Instrument Serif, Plus Jakarta Sans (+ the full N5 / frontend-design §8 banned list) | reads as "basic" | Confident pairings only (Fraunces × Switzer × IBM Plex Mono is a proven default). |
+| **A4** | **AI-generated photo-realistic backgrounds** | high slop risk | Hero/section photographic backgrounds are REAL + licensed (owned, or CC/Unsplash with attribution) — never AI-generated. |
 
 ### The scored checklist
 
@@ -200,29 +211,41 @@ Pick A/B/C/E for a buildable hero; reserve D for the single H budget (and then s
 |---|---|---|---|---|
 | A | **Skeleton uniqueness** | `distinct_skeletons / total_sections` | **= 1.00** (every section a different skeleton) | Two+ sections share a skeleton → redesign the repeats with a different skeleton from the catalog |
 | B | **Technique uniqueness** | `distinct_signature_techniques / total_sections` | **= 1.00** (no technique carries two sections) | A technique repeats → swap one section to a different T# |
-| C | **Scrollytelling cap** | count of pinned scroll-scrubbed sections | **≤ 1** | ≥ 2 → convert the extras to scroll-*triggered* entrances or a different motion model |
+| C | **Scrollytelling cap (by DISTINCT technique)** | count of pinned scroll-scrubbed sections sharing the SAME technique | **≤ 1 per distinct technique** (a text-line-illumination scrub and a screenshot scrub are DIFFERENT techniques — both may coexist); never the spine | Two sections share the SAME scrollytelling technique → convert the extra to a scroll-*triggered* entrance or a different motion model |
 | D | **Heavy-effect cap** | count of WebGL/canvas/3D sections | **≤ 1** | ≥ 2 → keep the strongest as the splurge, rebuild the others from the B tier |
 | E | **Designed transitions** | `sections_with_a_designed_transition_out / (total − 1)` | **≥ 0.80** (interior boundaries are events, not cuts) | Hard cuts → design a color-invert / mask-wipe / panel-reveal / camera-push for each |
 | F | **Motif through-line** | longest motif chain (sections sharing one recurring motif) | **≥ 3 sections** | No motif spanning ≥ 3 → introduce one (a brand line, a color callback, a repeated mark) and thread it |
 | G | **No banned defaults** | frontend-design §8 scan + N5 fonts | **0 violations** | Any banned font/color/layout/badge → replace per frontend-design §8 |
+| H | **Type-size variance** (B1) | ratio of largest display type to body | **large + intentional** — giant display words / oversized index markers vs small body; never uniform | Uniform/timid sizing → introduce dramatic, unpredictable scale (architectural display + oversized markers). Refs: crescentesicily.com, chungiyoo.com |
+| I | **Confident type moments** (B2/B3) | oversized/abstract/overlapping type per major section + section markers are oversized index numbers | **≥ 1 abstract type moment per major section; markers oversized, not timid labels** | A timid label or no abstract moment → make the accent oversized-in-headline; replace labels with big 01 / 02 / 03 |
+| J | **Eased motion, no snap** (C1/C2/C3) | hard-cut/blink transitions · discrete `text-align` flips · un-layered crosses | **0 hard cuts; alignment driven by a transform tween (not `text-align`); cross/overlap layers have explicit z-index with the image LEADING** | Any blink / text-align flip / default paint order → ease the slide, tween translateX through center, set intentional z-index |
+| K | **Rich hero from frame one** (D1/D2/D3) | the hero's first ~2s | **layered visual content from frame one** — a real bg + a choreographed multi-beat entrance (focus-pull / Ken-Burns / word-ignite); reduced-motion fallback = the rich static end-state; a photo hero is real+licensed+scrim | A near-empty opening (a lone line on a blank stage reads as "nothing happening", not suspense) → add a real bg + layered elements + a designed entrance |
+| L | **Section variance extras** (E1/E2) | scrollytelling counted by distinct technique (see C) + demo/content sections alternate L↔R | **distinct-technique counting honored; L↔R alternation where it fits** | Same-technique scrollytelling repeated → vary or cut; static one-sided demos → alternate image/text sides |
 
 ### The gate
 
-> **PASS = A and B are exactly 1.00, C ≤ 1, D ≤ 1, E ≥ 0.80, F ≥ 3, G = 0.** Anything else = **NOT cleared to build.** Fix the Variance Map and re-run. Do NOT "push through" a failing audit — that is exactly what produced the two Pulse rejections.
+> **PASS = zero Anti-Slop Hard-Ban (A1–A4) hits, AND A and B exactly 1.00, C ≤ 1 per distinct technique, D ≤ 1, E ≥ 0.80, F ≥ 3, G = 0, H–L all satisfied.** Anything else = **NOT cleared to build.** Fix the Variance Map (and any hard-ban hits) and re-run. Do NOT "push through" a failing audit — that is exactly what produced the two Pulse rejections.
 
 ### Worked audit (the §6 map above)
 
 ```
+Hard-bans:    no aurora/glow-blob · no timid mono micro-eyebrow ·
+              no AI-default fonts · no AI-generated photo bg                  → 0 hits ✅
 Sections: 9
 A skeletons:  full-bleed-type · dark-scatter · centered-device · bento · split-pinned ·
               mosaic · horizontal-rail · centered-statement · centered-form  → 9/9 = 1.00 ✅
 B techniques: type+line · invert+dissolve · device+countup · bento-charts · scrub-trail ·
               mosaic+assembly · rail+index · big-number · bookend            → 9/9 = 1.00 ✅
-C scrollytelling: 1 (Beat 5 only)                                            → ≤ 1 ✅
+C scrollytelling: 1 distinct technique (Beat-5 checkout scrub)               → ≤ 1 ✅
 D heavy effects:  ≤ 1 (the Beat-5 scrub OR a hero line splurge, not both)    → ≤ 1 ✅
 E transitions:    8/8 interior boundaries designed                          → 1.00 ✅
 F motif:          ECG line threads beats 1 → 3 → 9                           → 3 ✅
 G banned:         0                                                          → ✅
+H size-variance:  architectural display (~300px) vs ~16px body              → large ✅
+I type moments:   oversized index markers + ≥1 abstract moment per section   → ✅
+J motion:         eased slides; alignment tweened; image leads (z-index)     → 0 snaps ✅
+K hero:           rich frame-one (real photo + focus-pull/Ken-Burns/ignite)  → ✅
+L extras:         distinct-technique scrollytelling; demos alternate L↔R     → ✅
 VERDICT: PASS — cleared to build.
 ```
 
@@ -238,8 +261,10 @@ The single highest-leverage upgrade. Mechanics live in frontend-design §3; the 
 
 1. **One strong DISPLAY face at architectural scale** does the heavy lifting (Mana 334px, Chungi 587px, Wix 158px). Scale + restraint, not decoration. Tight tracking on big type (−1.5 to −3px at display sizes).
 2. **A NEUTRAL workhorse BODY** that stays invisible and legible (the display has personality; the body has none).
-3. **A MONO eyebrow/label layer** — small, tracked-out, often uppercase. The single cheapest upgrade to "engineered / credible." Use on every section header (T17).
+3. **An oversized index / section-marker layer** — big "01 / 02 / 03" markers replace timid section labels. The cheap small mono "eyebrow" reads as an AI-slop tell now (§7 A2, hard-banned); a mono label is allowed ONLY when confident and integrated (sized up, color-accented, part of the composition), NEVER as a tiny separate tracked-out eyebrow on every header.
 4. Used once, not everywhere: **one script or flourish** for a single human touch (optional).
+
+**Size variance is itself a primary engagement lever (B1):** the ratio between the biggest display type / oversized markers and the small body must be dramatic and unpredictable — never uniform, timid sizing. "the unpredictable font sizing is one of the key to engaging user experience." Refs: crescentesicily.com, chungiyoo.com. The audit scores this (§7 check H).
 
 ### BANNED defaults (these ARE the monotone verdict in type form)
 
@@ -251,7 +276,7 @@ The single highest-leverage upgrade. Mechanics live in frontend-design §3; the 
 
 ### Recommended pairings (open-license, basic-Latin, NOT default)
 
-| # | Display | Body | Eyebrow / accent | Personality | Where |
+| # | Display | Body | Marker / mono accent | Personality | Where |
 |---|---|---|---|---|---|
 | **1 ★ Warm-editorial** | **Fraunces** (variable optical serif) | **Switzer** / Inter Tight | **IBM Plex Mono** | Warm, characterful, premium, best all-rounder | Google / Fontshare |
 | **2 Confident-modern** | **Clash Display** (geometric display) | **Satoshi** / General Sans | **JetBrains Mono** | Modern, assured, great for data/analytics | Fontshare (free) |
@@ -259,7 +284,7 @@ The single highest-leverage upgrade. Mechanics live in frontend-design §3; the 
 | **4 Premium-grotesque** | **General Sans** (open Aeonik-alt) | same family | **IBM Plex Mono** | Lusion energy: one grotesque + mono, data-forward | Fontshare (free) |
 | **5 Characterful-neutral** | **Bricolage Grotesque** (display weights) | **Geist** / Inter Tight | Geist Mono | Distinctive yet safe; quirk without loudness | Google (free) |
 
-**Default lead:** pairing **1 (Fraunces × Switzer + IBM Plex Mono eyebrows)** for warm/premium, or **2 (Clash Display × Satoshi)** for bolder/modern. **Add the mono eyebrow layer regardless** — it's the cheapest "engineered" signal there is.
+**Default lead:** pairing **1 (Fraunces × Switzer + IBM Plex Mono accents)** for warm/premium, or **2 (Clash Display × Satoshi)** for bolder/modern. **Use the mono face for oversized index markers + confident integrated accents — NOT a timid tracked-out eyebrow on every header (§7 A2).**
 
 ---
 
@@ -298,6 +323,7 @@ Award sites are desktop-first and **gate their heavy parts.** Mirror that. Mecha
 
 **N8 is a hard rule, not a vibe.** Before building each section you must be able to say: *"this section's skeleton is `X`, its signature technique is `T#`, modeled on `<reference site>`."* If you can't name the technique and a reference, you are improvising the model's idea of "engaging" — which is exactly what produces slop.
 
+- **Study the reference sites FIRST (F1)** — open and read them (qutebrowser / `/agent-browser`, or Playwright) BEFORE reworking a design; don't guess from memory. hyperframe / crescente / chungiyoo were studied before the first pass, which is why it landed.
 - Carry the reference set (§12 / `references/`). Study the montage for the technique you're about to build.
 - When in doubt or the brief is novel, **capture 2–3 fresh references** (Awwwards / Godly / the live site) with `/agent-browser` before designing — don't invent.
 - The Variance Map (§6) IS the grounding artifact: every row names a technique + a reference. A row with no named technique fails the audit (check G + N8).
@@ -357,13 +383,13 @@ Grounded in a ref-study of 12 award-caliber sites (real fonts read from the DOM,
 ## 15. EXECUTION FLOW
 
 1. **Frame** — confirm this is an `/artifex` job (dazzle, not maintain — §2). Lock the section/beat list, the audience, the base archetype + palette, the theming rule (inherit host skill's: pitch = light-only).
-2. **Pick the type system** — a §8 pairing (default Fraunces × Switzer + Plex Mono eyebrows). Confirm none of N5's banned fonts.
+2. **Pick the type system** — a §8 pairing (default Fraunces × Switzer + Plex Mono markers/accents). Confirm none of N5's banned fonts; plan oversized index markers, not timid eyebrows (§7 A2).
 3. **Variance-map** — fill the §6 Variance Map: distinct skeleton + technique + transition per section, name a reference per row, pick the ONE H splurge (or zero).
 4. **★ Run the Variance Audit (§7)** — score A–G. **PASS or fix the map.** Emit the filled audit block as the first artifact. NO CODE until PASS.
 5. **Build static-first** — assemble every section's skeleton + content with effects OFF; confirm 60fps scroll and legibility (N7).
-6. **Layer motion + the ONE effect** — apply connective tissue (Lenis + cursor + mono eyebrows + the motif), then each section's signature technique, then the single splurge behind a loader.
+6. **Layer motion + the ONE effect** — apply connective tissue (Lenis + cursor + oversized index/section markers + the motif), then each section's signature technique, then the single splurge behind a loader.
 7. **Downgrade paths** — `prefers-reduced-motion` + coarse-pointer/cheap-Android static fallbacks (§9).
-8. **Verify** — perf gate (§9), frontend-design §8 anti-slop scan, re-confirm the audit still holds (no skeleton/technique drift crept in during build), test on a throttled mid Android.
+8. **Verify (live screenshots + honest self-check at each gate — F2)** — capture live screenshots at the WOW-prototype gate and post-build, and self-check honestly against this audit (this caught real bugs last rebuild: count-up separators, invisible bars, pre-hydration flash). Run the perf gate (§9), the frontend-design §8 + §7 Anti-Slop Hard-Ban scan, re-confirm the audit still holds (no skeleton/technique/hard-ban drift crept in during build), test on a throttled mid Android.
 9. **Deliver** — present with the filled Variance Audit block + the per-section technique/reference map as the proof of variance.
 
 > Don't hold back. Award-caliber means committing fully to a distinctive vision — but `/artifex`'s discipline is that the distinctiveness is **engineered and audited**, not improvised. Variance you can prove beats "engaging" you can only assert.
