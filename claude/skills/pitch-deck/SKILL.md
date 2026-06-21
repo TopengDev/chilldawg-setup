@@ -323,37 +323,15 @@ Use `/frontend-design` to set the archetype. Pitch decks map to these safe prese
 | Stock photo heroes | Signals "not a real product" | Real screenshots from Stage 4 capture |
 | Plain Inter/Roboto as display face | Default = generic | Distinctive pairing from `/frontend-design` §5 |
 
-### Section architecture template
+### Section architecture — invoke /artifex (variance-first)
 
-Map the approved narrative outline to scroll sections. Each section is a **scroll-pinned unit** with its own trigger and reveal:
+**Do NOT lay sections out from a fixed template.** A fixed template is exactly what produced the twice-rejected *"MONOTONE / basic"* verdict (every section the same skeleton; ONE technique — scrollytelling — repeated x9). Drive the build instead with **`/artifex`** (`~/.claude/skills/artifex/SKILL.md`) — `/frontend-design`'s variance-first counterpart, which exists specifically to kill that failure:
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  SECTION MAP (adapt to approved narrative — this is the template)   │
-├─────────────┬───────────────────────────────────────────────────────┤
-│ HOOK (pin)  │ Full-viewport type statement. Scroll-in word-by-word │
-│             │ or line-by-line. No hero image needed. Just message. │
-├─────────────┼───────────────────────────────────────────────────────┤
-│ PROBLEM     │ Scroll-linked counter or stat build. Pain made vivid. │
-│ (pin)       │ Before-state screenshot fades in on scroll.           │
-├─────────────┼───────────────────────────────────────────────────────┤
-│ SOLUTION    │ The wedge reveal. Split-screen or before/after.       │
-│ (pin)       │ Product screenshot appears as you scroll down.        │
-├─────────────┼───────────────────────────────────────────────────────┤
-│ DEMO FLOW 1 │ Scroll-synced screenshot trail. The user story plays  │
-│ (scrub)     │ frame-by-frame as user scrolls. Feels like a slow-mo  │
-│             │ demo. ~4-6 screenshots, cross-faded on scroll.        │
-├─────────────┼───────────────────────────────────────────────────────┤
-│ DEMO FLOW 2 │ Same pattern, different hero story.                   │
-│ (scrub)     │                                                        │
-├─────────────┼───────────────────────────────────────────────────────┤
-│ PROOF /     │ Real metrics animated in (counters). Testimonials if  │
-│ TRACTION    │ real and available (N4 — no fabrication).             │
-├─────────────┼───────────────────────────────────────────────────────┤
-│ THE ASK /   │ Clean, minimal. ONE CTA. High contrast. No clutter.   │
-│ CTA (pin)   │ The decision point. Make it easy to say yes.          │
-└─────────────┴───────────────────────────────────────────────────────┘
-```
+1. Take the archetype chosen in **Design direction** (above) as `/artifex`'s BASE palette — type / color / mood stay coherent across the page.
+2. Feed the **approved Stage-5 narrative beats** into `/artifex`'s **Variance Method (§6)** — assign each beat a DISTINCT skeleton + a DISTINCT signature technique + a designed transition out. (The worked 9-beat example, the 22-technique B/H/E library, and the hero playbook all live there.)
+3. **Clear `/artifex`'s Variance Audit (§7) BEFORE building** — the scored gate: every skeleton distinct (=1.00), every technique distinct (=1.00), scrollytelling <= 1, heavy-effects <= 1, a motif threading >= 3 sections, 0 banned defaults. Emit the filled audit block as the first build artifact. **PASS or you do not build.**
+
+This replaces the old fixed section template — `/artifex` is what makes "9 different sections" mechanical instead of aspirational. Everything else in Stage 6 (the WOW-prototype self-check, the performance audit, deploy) stays exactly as below.
 
 ### Internal self-validation: WOW prototype (MANDATORY before full build)
 
