@@ -492,9 +492,7 @@ Stage 6 (Build) → recon→implement→verify:
 
 | Worker | Model | Reason |
 |---|---|---|
-| Stage 4 exploration workers | **Sonnet** | Pattern-following screenshot capture — no novel judgment |
-| Stage 6 build worker | **Opus** | Customer/recruiter-facing design quality = Opus carve-out |
-| Stage 5 narrative | **Sonnet** | Template-filling with real data from Stages 2-4 |
+| **ALL pitch-deck workers** (explore / narrative / build) | **Opus** | Toper's standing call (2026-06-20): the ENTIRE pipeline is design-judgment work — seeding realism, hero-flow selection, narrative arc, and the cinematic build all need Opus. The customer-facing design-quality carve-out covers the whole skill, not just Stage 6. Default every pitch-deck worker to Opus. |
 
 ---
 
