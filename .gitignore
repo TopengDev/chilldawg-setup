@@ -16,6 +16,12 @@ secrets.env
 .gh.json
 .netrc
 
+# ─── /atlas dossiers (live product captures: screenshots + data) ─────────────
+# Product dossiers are real captured app screenshots + data_observed from live
+# tenants (e.g. Pulse / Alamanda Coffee). They are large, regenerable, and may
+# contain customer/tenant data. NEVER commit them.
+claude/skills/atlas/dossiers/
+
 # ─── Secrets (encrypted-at-rest + keys) ──────────────────────────────────────
 # The age master key (lose it = lose every secret) + the encrypted secrets blob
 # + any age/encrypted artifact. These are machine-local and MUST NEVER be

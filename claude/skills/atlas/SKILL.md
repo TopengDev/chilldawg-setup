@@ -472,7 +472,7 @@ How each capture primitive maps to agent-browser:
 
 | Need | Command | Notes |
 |---|---|---|
-| Navigate (cross-origin / new surface) | `agent-browser tab new <url>` | handles TLS; `open` over the proxy fails on HTTPS cert |
+| Navigate (cross-origin / new surface) | claim a port, `export AGENT_BROWSER_CDP=$PORT`, `agent-browser connect $PORT`, then `agent-browser open <url>` | `tab new` FAILS (exit 144) in this env; use connect + open (see 13.3) |
 | SPA in-app nav | `agent-browser open <path>` then `wait --load networkidle` | SPA needs the wait before snapshot |
 | **Enumerate elements** | `agent-browser snapshot -i -c --json` | the accessibility tree with `@eN` refs = THE element-inventory primitive |
 | Interact / drive flows | `click @e` / `fill @e` / `find role\|text\|label ... <action>` | see N10 on ref volatility |
@@ -495,6 +495,17 @@ Never carry an `@eN` ref across a click that mutated the DOM.
 ### 13.2 Tab-pinning / coordination
 
 Other sessions (e.g. another worker) may share the single proxy. /atlas must PIN its own product tab target before operating and CLEAR the pin when done, so it never steals another worker's active tab. Under the multi-port proxy (Section 12.1) this becomes per-port isolation and the pin is the `/claim`.
+
+### 13.3 Verified agent-browser frictions (ALL confirmed in the field; do these or lose hours)
+
+1. **`tab new` fails (exit 144).** Do NOT navigate with `agent-browser tab new <url>`. Instead: claim a port, `export AGENT_BROWSER_CDP=$PORT`, `agent-browser connect $PORT`, then `agent-browser open <url>`. The `connect` MUST happen within the `/claim` reservation TTL (about 30s) or the reservation lapses.
+2. **Parallel isolation requires a UNIQUE `AGENT_BROWSER_SESSION` per worker PLUS a claimed port PLUS `/release` on teardown.** Without the unique session name the shared default daemon re-clobbers the tab regardless of the proxy. The `/claim` pins a dedicated tab; `/release?port=N` closes it. Persist `AGENT_BROWSER_CDP` + `AGENT_BROWSER_SESSION` to a small env file and `source` it each step (the shell does not persist env between tool calls).
+3. **CDP screenshots time out / return blank under concurrent load** -> retry once after 2-3s, then fall back to `qb-shoot <url-slug> <path>` (native Qt path, does not go through CDP). Never silently skip a screenshot.
+4. **CDP color-scheme can default to DARK after a browser restart** even though qutebrowser displays light, so screenshots come out dark-mode while the live page is light. FIX: `export AGENT_BROWSER_COLOR_SCHEME=light` (persist it in the env file). The `agent-browser media light` subcommand may be absent in some builds; the env var is what works. AUDIT every batch of shots: a light page composited over white should mean about 0.95; a full-page dark frame means about 0.10. Detecting this is hard from the downscaled inline preview (a dark page with white form fields can look light when shrunk) -> use ImageMagick `convert <f> -background white -flatten -colorspace Gray -format '%[fx:mean]' info:` and re-shoot anything under ~0.6.
+5. **The dedicated `/claim` tab is reaped after a long idle gap (about 600s), and qutebrowser itself can CRASH and take the proxy down.** On any `Connection refused` / `All CDP discovery methods failed`: re-`/claim` a fresh port, reconnect, and re-verify the session. The `qb-proxy-doctor` watchdog only restarts the PROXY when qutebrowser is UP; if qutebrowser itself died it must be relaunched (its config.py then auto-restarts the proxy). Relaunching the user's GUI browser is an outward/intrusive action on their live desktop -> flag the human, do not do it unilaterally from a worker.
+6. **The auth session can EXPIRE mid-run, and a fresh login defaults to the EN locale + a tenant-selector.** After any unexpected `/login` redirect: re-login, RE-SELECT the tenant, and RESET the locale to match the rest of the dossier (the cookie jar persists across a browser restart, so a restart alone usually does NOT log you out, but a token timeout will).
+7. **Radix/React Select comboboxes do not open via `@eN` click or JS** (the `role=combobox` element is not the click target; an inner `generic [onclick]` is). They DO open via keyboard: `agent-browser focus @ref` then `agent-browser press Enter`. Radix TAB lists, by contrast, are clickable via their `@eN` tab refs. Native HTML5 required-validation tooltips do not persist in a screenshot (capture the form state; note the constraint in the surface JSON).
+8. **POS-style flows have their own gotchas (Pulse-specific but generalizable):** `/terminal` requires selecting a location that does NOT persist across full reloads (re-select after every reload); an order's "open" (Terbuka) state was reached by ENTERING the payment flow then abandoning it (which confirms it server-side), NOT by recall; partial cash payment is blocked (disabled "short by Rp X" button).
 
 ---
 
