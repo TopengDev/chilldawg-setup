@@ -141,6 +141,8 @@ This is the palette you design FROM. Every section's signature technique is one 
 
 **Reading the table:** T15 (Lenis + cursor) is **connective tissue** — apply it across the whole page; it doesn't count as a section's signature. (T17 mono labels are NOT blanket connective tissue anymore — see §7 A2; use oversized index markers for section marking instead.) Every other technique is a one-section signature. The **B**-heavy rows are your workhorses; T11 / T18 / T6-canvas are your *candidates* for the single H splurge; T19 and T18-full are **E — do not attempt.**
 
+> **Pinning implementation (T10 pinned rail / T21 product-pinned swap / any pinned scroll-scrubbed section):** pin via CSS `position:sticky`, **never GSAP `pin:true`** — GSAP pin's `position:fixed` swap lands ~1 frame late on fast scroll and flashes a neighbour-sliver. Keep ScrollTrigger for the scrub only. Full rule + fix: §7 audit **C4**.
+
 ---
 
 ## 6. THE METHOD — variance-mapping a multi-section page
@@ -218,13 +220,21 @@ Pick A/B/C/E for a buildable hero; reserve D for the single H budget (and then s
 | G | **No banned defaults** | frontend-design §8 scan + N5 fonts | **0 violations** | Any banned font/color/layout/badge → replace per frontend-design §8 |
 | H | **Type-size variance** (B1) | ratio of largest display type to body | **large + intentional** — giant display words / oversized index markers vs small body; never uniform | Uniform/timid sizing → introduce dramatic, unpredictable scale (architectural display + oversized markers). Refs: crescentesicily.com, chungiyoo.com |
 | I | **Confident type moments** (B2/B3) | oversized/abstract/overlapping type per major section + section markers are oversized index numbers | **≥ 1 abstract type moment per major section; markers oversized, not timid labels** | A timid label or no abstract moment → make the accent oversized-in-headline; replace labels with big 01 / 02 / 03 |
-| J | **Eased motion, no snap** (C1/C2/C3) | hard-cut/blink transitions · discrete `text-align` flips · un-layered crosses | **0 hard cuts; alignment driven by a transform tween (not `text-align`); cross/overlap layers have explicit z-index with the image LEADING** | Any blink / text-align flip / default paint order → ease the slide, tween translateX through center, set intentional z-index |
+| J | **Eased motion, no snap** (C1/C2/C3/C4) | hard-cut/blink transitions · discrete `text-align` flips · un-layered crosses · **pinned sections that flash a neighbour-sliver on fast scroll** | **0 hard cuts; alignment driven by a transform tween (not `text-align`); cross/overlap layers have explicit z-index with image LEADING; pinned sections pinned via CSS `position:sticky` (NOT GSAP `pin:true`), tested on FAST/flick scroll** | Any blink / text-align flip / default paint order / GSAP-pin sliver-flash → ease the slide, tween translateX through center, set intentional z-index, convert GSAP pin → CSS sticky (see C4 addendum) |
 | K | **Rich hero from frame one** (D1/D2/D3) | the hero's first ~2s | **layered visual content from frame one** — a real bg + a choreographed multi-beat entrance (focus-pull / Ken-Burns / word-ignite); reduced-motion fallback = the rich static end-state; a photo hero is real+licensed+scrim | A near-empty opening (a lone line on a blank stage reads as "nothing happening", not suspense) → add a real bg + layered elements + a designed entrance |
 | L | **Section variance extras** (E1/E2) | scrollytelling counted by distinct technique (see C) + demo/content sections alternate L↔R | **distinct-technique counting honored; L↔R alternation where it fits** | Same-technique scrollytelling repeated → vary or cut; static one-sided demos → alternate image/text sides |
+| M | **Display-type containment** (C5) | largest display type (giant count-up numbers, architectural headers) vs its container width across 320–1920px | **0 off-screen overflow — big display type lives in a `w-full text-center` block + the `clamp()` keeps it ≲85% of content width at every breakpoint (fits + centered, never edge-kissing), esp. mobile** | A huge `clamp()` font inside a narrow `max-width` box renders wider than the box → left-anchors + overflows right off-screen → wrap in `w-full text-center` and tighten the `clamp()` max so it fits |
+
+### Motion & type addenda (C4 / C5) — the specific structural rules behind checks J & M
+
+> Two hard-won, easy-to-reintroduce bugs. Both reproduce only at the edges (fast scroll / narrow viewport), so they survive slow-scroll QA — test the edge explicitly.
+
+- **C4 — Pin via CSS `position: sticky`, NEVER GSAP `pin: true`.** GSAP pin swaps the element to `position: fixed` at the boundary; on a FAST/flick scroll (large per-frame delta) that swap lands ~1 frame late, so a ~100–150px sliver of the adjacent section flashes ("blink"). `anticipatePin` only nudges the engage point earlier — it does **NOT** fix the late fixed-swap (shipped as a "v2" and it still blinked). Fix structurally: pin via CSS `position: sticky` (`top:0`, tall outer wrapper for the scroll distance), keep ScrollTrigger for the **scrub only** (no GSAP pin) — CSS sticky is composited every frame so it structurally can't flash. Belt-and-suspenders: give the pinned section an **opaque full-viewport background** so even a 1-frame mismatch can't show the neighbour through. **Always test pinned sections with FAST/flick scroll, both directions — slow scroll hides this.**
+- **C5 — Large display type must be CONTAINED + centered, never overflow.** A huge `clamp()` font (e.g. a giant count-up number, an architectural header) placed inside a narrow `max-width` box renders far wider than the box, so it left-anchors and overflows off the right edge — worst on mobile. Rule: put big display type in a `w-full text-center` block and clamp the font so it stays ≲85% of the content width across 320–1920px (fits + centered, never edge-kissing). Verify at 320px, not just desktop.
 
 ### The gate
 
-> **PASS = zero Anti-Slop Hard-Ban (A1–A4) hits, AND A and B exactly 1.00, C ≤ 1 per distinct technique, D ≤ 1, E ≥ 0.80, F ≥ 3, G = 0, H–L all satisfied.** Anything else = **NOT cleared to build.** Fix the Variance Map (and any hard-ban hits) and re-run. Do NOT "push through" a failing audit — that is exactly what produced the two Pulse rejections.
+> **PASS = zero Anti-Slop Hard-Ban (A1–A4) hits, AND A and B exactly 1.00, C ≤ 1 per distinct technique, D ≤ 1, E ≥ 0.80, F ≥ 3, G = 0, H–M all satisfied.** Anything else = **NOT cleared to build.** Fix the Variance Map (and any hard-ban hits) and re-run. Do NOT "push through" a failing audit — that is exactly what produced the two Pulse rejections.
 
 ### Worked audit (the §6 map above)
 
@@ -243,9 +253,12 @@ F motif:          ECG line threads beats 1 → 3 → 9                          
 G banned:         0                                                          → ✅
 H size-variance:  architectural display (~300px) vs ~16px body              → large ✅
 I type moments:   oversized index markers + ≥1 abstract moment per section   → ✅
-J motion:         eased slides; alignment tweened; image leads (z-index)     → 0 snaps ✅
+J motion:         eased slides; alignment tweened; image leads (z-index);
+                  Beat-5 pinned via CSS sticky (not GSAP pin), flick-tested  → 0 snaps ✅
 K hero:           rich frame-one (real photo + focus-pull/Ken-Burns/ignite)  → ✅
 L extras:         distinct-technique scrollytelling; demos alternate L↔R     → ✅
+M type-contain:   Beat-3/Beat-8 count-ups in w-full text-center, clamp fits
+                  ≲85% width at 320–1920px → no off-screen overflow          → ✅
 VERDICT: PASS — cleared to build.
 ```
 
@@ -259,7 +272,7 @@ The single highest-leverage upgrade. Mechanics live in frontend-design §3; the 
 
 ### The formula (always three layers)
 
-1. **One strong DISPLAY face at architectural scale** does the heavy lifting (Mana 334px, Chungi 587px, Wix 158px). Scale + restraint, not decoration. Tight tracking on big type (−1.5 to −3px at display sizes).
+1. **One strong DISPLAY face at architectural scale** does the heavy lifting (Mana 334px, Chungi 587px, Wix 158px). Scale + restraint, not decoration. Tight tracking on big type (−1.5 to −3px at display sizes). **Contain it:** architectural-scale type (and giant count-up numbers) goes in a `w-full text-center` block with a `clamp()` whose max keeps it ≲85% of content width at every breakpoint — a huge font in a narrow `max-width` box overflows off-screen (worst on mobile). Audited at §7 check M (C5).
 2. **A NEUTRAL workhorse BODY** that stays invisible and legible (the display has personality; the body has none).
 3. **An oversized index / section-marker layer** — big "01 / 02 / 03" markers replace timid section labels. The cheap small mono "eyebrow" reads as an AI-slop tell now (§7 A2, hard-banned); a mono label is allowed ONLY when confident and integrated (sized up, color-accented, part of the composition), NEVER as a tiny separate tracked-out eyebrow on every header.
 4. Used once, not everywhere: **one script or flourish** for a single human touch (optional).
@@ -368,7 +381,7 @@ Grounded in a ref-study of 12 award-caliber sites (real fonts read from the DOM,
 | Decision | Default | Notes |
 |---|---|---|
 | Framework | **Next.js 15 App Router** | RSC by default; `"use client"` only on interactive leaves (frontend-design §13) |
-| Scroll engine | **GSAP + ScrollTrigger** | precise pinning, battle-tested. Pick ONE engine and stick (mixing = lifecycle bugs) |
+| Scroll engine | **GSAP + ScrollTrigger** | battle-tested scrubbing. Pick ONE engine and stick (mixing = lifecycle bugs). **Pin via CSS `position:sticky`, NOT GSAP `pin:true`** — GSAP pin's fixed-swap blinks on fast scroll (§7 C4). Keep ScrollTrigger for the scrub only. |
 | Smooth scroll | **Lenis** | compositor-friendly momentum (T15). Skip if perf testing shows jank on low-end |
 | Animation layer | **Framer Motion** | for React-component animations / `layoutId` transitions |
 | The ONE splurge | **react-three-fiber + a simple shader** | ONLY if you spend the single H budget on a 3D/particle hero. Else omit entirely. |
