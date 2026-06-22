@@ -52,6 +52,8 @@ claude/plans/
 claude/invoices/
 claude/plugins/
 claude/settings.local.json
+# /copywriting stateful per-brand voice banks: runtime state + brand strategy, never committed (public repo). The template + .gitkeep stay tracked.
+claude/skills/copywriting/voice-banks/*.md
 
 # ─── Live memory (private, machine-local, NOT committed) ─────────────────────
 # claude/memory/ holds the running system's long-term memory .md files. It is a
