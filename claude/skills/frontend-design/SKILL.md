@@ -109,6 +109,33 @@ If any gate fails → build NOT done. Fix before reporting complete.
 
 ---
 
+## 0.8 CRITICAL META-RULE - The Quality Bar (how to think, before how to build)
+
+The rest of this skill is mechanics. This section is the operating mindset that decides whether those mechanics produce a 3/10 or a 9/10. In the age of AI, passable output is free and worthless; the only thing that stands out is work that makes someone ask "how did they do that?" Apply these as decisions, not decoration.
+
+### Default, then innovate (the industry bar is the FLOOR, not the goal)
+The apps users touch daily (Linear, iOS, Notion, Stripe, Figma) set an invisible bar for "good." Miss it and people silently discount the work as cheap and move on, they will not tell you why. So START from the proven default (the §2 archetype, the §0.7 library, "what would iOS / a clean shadcn+tailwind app do here"), then push PAST it on every surface. Never start from a blank page (harder, lands below the bar). Never stop AT the default (that IS the generic-AI tell). The bar is where you begin, not where you ship.
+
+### Range before depth
+Before refining one idea, consider structurally DIFFERENT ones, not variations of the same skeleton. Three hero layouts that are all "centered headline + subhead + CTA" is depth on one concept; a split-editorial vs a full-bleed type-poster vs an interactive-object hero is RANGE. Force range by: removing a constraint ("what if this needed no hero section?"), blending a domain ("what would this look like if Muji built it?"), inverting the problem, or forcing N options. Breadth is the hedge against your own taste, you can only pick from what you have seen.
+
+### Then push it to 10 (depth is where great is won)
+Picture a 1 to 10 scale: 1 is the first thing that technically works, 10 is "everything has been considered, tried, edited and improved until it could not be better." Most work ships at 1 to 3, not because that was the ceiling but because stopping is easy. The gap between fine and great is almost never the initial idea, it is how far one idea got pushed. Pick the highest-leverage element on the page (usually the hero, the primary CTA, or the one signature interaction) and push THAT to 10 even if everything else sits at 6. When you do not know what "better" means: zoom in and give one element total attention, remove something, reference a world-class example to reveal the gap, or generate more options to choose from.
+
+### Uncommon care, in the overlooked places
+What people remember and tell others about are the moments someone went further than they had to. Care shows up where most builds stop caring: empty states, error states, the loading moment, the 404, the hover that did not have to feel that good, the number that animates instead of snapping. These are breadcrumbs that a human cared. Spend disproportionate attention there, it is exactly where generic AI output gives up and where this skill's §4 interactive-states + §5 motion rules earn their keep.
+
+### Less, but better
+Fight the urge to add (more sections, more flourish, more color). It is far easier to design LESS and execute it to a high bar than to redeem a cluttered layout. "Daily decrease, hack away the unessential." Before adding an element, try removing one. The §10 Strategic Omissions list is this rule in checklist form, treat it as first-class, not cleanup.
+
+### Notice WHY, not just that
+When something looks off, do not stop at "it feels cheap", name the specific cause: the corner radii disagree, the shadow is one muddy blur instead of two layers, two type sizes are one ratio-step apart so the hierarchy reads flat, the neutral is cool but the accent is warm. Every reaction is data. This naming discipline is what turns the §10 audit and §11 pre-flight from box-ticking into real refinement, and it is the skill the §3 to §6 mechanics exist to serve.
+
+### Facets of quality (define the bar before you grade against it)
+For a given brief, name 3 to 5 SITUATIONAL attributes you want a user to perceive (e.g. "trustworthy / calm / precise" for a fintech, "crafted / fidgetable / inventive" for a playful tool). These are not universals like "usable", they are the specific feeling this thing should give. Rate the build against each on a 1 to 5 scale, stack-rank them, and use them as critique language ("this is not inventive enough, it feels like a 2 where we want a 4") instead of vague "needs work." Carry the chosen facets into the §11 pre-flight as the final subjective gate.
+
+---
+
 ## 1. INTERACTIVE SETUP
 
 Before writing any code, run this setup sequence with the user. Present it conversationally — don't dump the whole menu.
@@ -139,25 +166,25 @@ Present three dials. Let the user pick values 1–10, or offer sensible defaults
 | **VISUAL_DENSITY** | Art-gallery sparse, maximal whitespace, breathing room | Normal app density, balanced content-to-space ratio | Cockpit-packed, data-dense dashboards, information-rich layouts |
 
 Default values by vibe:
-- Editorial Luxury → VARIANCE 6, MOTION 4, DENSITY 4
-- Soft Structuralism → VARIANCE 4, MOTION 5, DENSITY 5
-- Neo-Brutalist → VARIANCE 8, MOTION 3, DENSITY 6
-- Japanese Minimal → VARIANCE 4, MOTION 2, DENSITY 1
-- Magazine Editorial → VARIANCE 7, MOTION 5, DENSITY 5
-- Warm Craft → VARIANCE 4, MOTION 4, DENSITY 4
-- Dark Cinematic → VARIANCE 6, MOTION 6, DENSITY 2
-- Corporate Confident → VARIANCE 3, MOTION 3, DENSITY 6
-- Playful Pop → VARIANCE 5, MOTION 8, DENSITY 5
-- Gen Z Expressive → VARIANCE 9, MOTION 9, DENSITY 8
-- Anti-Design / Experimental → VARIANCE 10, MOTION 7, DENSITY 4
-- Swiss / International Typographic → VARIANCE 4, MOTION 3, DENSITY 5
-- Terminal / Monospace → VARIANCE 5, MOTION 3, DENSITY 7
-- Retro-Future / Synthwave → VARIANCE 7, MOTION 8, DENSITY 4
-- Opulent Noir → VARIANCE 6, MOTION 5, DENSITY 3
-- Y2K / Frutiger Aero → VARIANCE 6, MOTION 7, DENSITY 5
-- Memphis / Postmodern Maximalist → VARIANCE 8, MOTION 6, DENSITY 6
-- Claymorphism / Soft 3D → VARIANCE 5, MOTION 6, DENSITY 4
-- Risograph / Zine Print → VARIANCE 7, MOTION 4, DENSITY 5
+- Editorial Luxury → VARIANCE 7, MOTION 4, DENSITY 4
+- Soft Structuralism → VARIANCE 5, MOTION 5, DENSITY 5
+- Neo-Brutalist → VARIANCE 9, MOTION 3, DENSITY 6
+- Japanese Minimal → VARIANCE 5, MOTION 2, DENSITY 1
+- Magazine Editorial → VARIANCE 8, MOTION 5, DENSITY 5
+- Warm Craft → VARIANCE 5, MOTION 4, DENSITY 4
+- Dark Cinematic → VARIANCE 7, MOTION 6, DENSITY 2
+- Corporate Confident → VARIANCE 4, MOTION 3, DENSITY 6
+- Playful Pop → VARIANCE 6, MOTION 8, DENSITY 5
+- Gen Z Expressive → VARIANCE 10, MOTION 9, DENSITY 8
+- Anti-Design / Experimental → VARIANCE 10, MOTION 8, DENSITY 4
+- Swiss / International Typographic → VARIANCE 5, MOTION 3, DENSITY 5
+- Terminal / Monospace → VARIANCE 6, MOTION 3, DENSITY 7
+- Retro-Future / Synthwave → VARIANCE 8, MOTION 8, DENSITY 4
+- Opulent Noir → VARIANCE 7, MOTION 5, DENSITY 3
+- Y2K / Frutiger Aero → VARIANCE 7, MOTION 7, DENSITY 5
+- Memphis / Postmodern Maximalist → VARIANCE 9, MOTION 6, DENSITY 6
+- Claymorphism / Soft 3D → VARIANCE 6, MOTION 6, DENSITY 4
+- Risograph / Zine Print → VARIANCE 8, MOTION 4, DENSITY 5
 - Custom → ask the user or pick based on context
 
 ---
@@ -569,6 +596,57 @@ Fraunces has a `SOFT` axis (0–100). Animate from SOFT 0 (sharp serifs) to SOFT
 }
 ```
 
+### Measure, Leading & Vertical Rhythm
+
+The numbers above (max-width 65ch, line-height) are the floor. These are the relationships that make type feel typeset rather than typed:
+
+- **Measure** (line length): best readability sits at **45 to 75 characters per line** (`max-width: 66ch`). Go shorter for marketing fragments, never wider for body, long lines lose the reader on the return sweep.
+- **Leading grows with measure, shrinks with scale.** A wider column wants MORE line-height (1.5 to 1.6); a tight column or small text wants less. Big display type reads as a single unit, so pull it tight (1.0 to 1.1). Do not apply one global line-height to every size.
+- **Type scale: cap it at ~5 sizes**, generated as base × ratio (16 × 1.5 → 24 → 36...). A bigger ratio reads editorial/dramatic, a tighter ratio reads utilitarian. Use a GENTLER ratio below the base than above it, so captions and labels do not collapse to unreadable.
+- **Vertical rhythm:** pick a base spacing unit tied to the body line-height and make every margin/padding/gap a multiple of it. This is why the 8pt grid exists, staying on the grid is what makes spacing feel composed instead of arbitrary.
+
+### Setting Type (the typeset-vs-typed details)
+
+- **Proper punctuation** is the cheapest tell of care: curly quotes (" "), real apostrophes ('), an en-dash for ranges (8–10), a single Unicode ellipsis (…) not three periods. Especially visible in serifs. (This applies to copy the interface renders, not to this repo's own no-long-dash house rule.)
+- **Hanging punctuation:** push an opening quote or bullet into the margin (`hanging-punctuation: first` where supported, or a negative text-indent) so the optical left edge of a block stays straight.
+- **Tracking scales inversely with size:** open up small all-caps eyebrows and labels (`letter-spacing: 0.05em` to `0.2em`); tighten large display (the §3 negative-tracking rule). One size does not fit both.
+- **Dark mode weight:** light text on a dark background optically "blooms" and reads heavier. With a variable font, drop the body weight a notch in dark mode (e.g. 400 → 360) so it matches the light-mode color.
+- **Fitting type:** fluid sizing with `clamp(1.375rem, 6cqi, 2.75rem)` (`cqi` = 1% of container width) beats viewport units for component-scoped type. For overflow, `text-overflow: ellipsis` (1 line) or `-webkit-line-clamp` (n lines); **middle-truncate filenames** so the extension survives (`Final_quarterly…review.pdf`).
+- **Text-box-trim:** `text-box: trim-both cap alphabetic` removes a font's built-in leading slack so a label truly optically centers in a button or pill, instead of sitting a hair high.
+
+### OpenType Features (already in the font, easy to miss)
+
+These ship inside good fonts and are off by default. Opting in is a one-line `font-feature-settings` / `font-variant-*` and instantly signals craft:
+
+- **Slashed zero** (`font-feature-settings: "zero"`) for codes, IDs, API keys, anything where 0 vs O matters.
+- **Tabular figures** (`font-variant-numeric: tabular-nums`) for ANY number that animates or sits in a column, so digits do not shift width (the §3 rule, restated because it is the most-skipped one). Right-align numbers in tables and pair with tabular figures.
+- **Fractions** (`"frac"`), **sup/subscript** (`"sups"`/`"subs"`) for real mc² / H₂O glyphs, not shrunk digits.
+- **Small caps** (`font-variant-caps: small-caps` / `"smcp"`) for acronyms set in running prose, real glyphs, not scaled-down caps.
+- **Case-sensitive forms** (`"case"`) raise punctuation (parens, hyphens) to align with all-caps text.
+- **Stylistic / character sets:** Inter exposes `cv01`–`cv13` and `ss02` (slashed-zero + tailed-l + unambiguous-1 bundle), `ss01` rounded quotes. Use them to make a "banned-by-default" workhorse font feel intentional, or to disambiguate UI text.
+
+---
+
+## 3.5 DESIGN ENGINEERING - Color
+
+Color is where AI output most often gives itself away: mismatched temperature, muddy gradients, flat shades, everything at slightly-wrong perceived weight. The §8 bans say what NOT to do; this section is how to build a palette that reads rich and considered.
+
+### Pick one temperature, use it everywhere
+Decide warm or cool and commit, especially for neutrals. A drop of red makes a warm white; a drop of blue makes a cool one. The classic AI tell is cool-grey body copy on a warm cream palette, two temperatures fighting. Instead of declaring a brand-new color for a tint, **use your primary neutral at low opacity** (e.g. `color: hsl(var(--ink) / 0.6)`), so it inherits the underlying tone automatically. Tailwind's families are consistently tinted, pick ~3 neutrals from ONE family (`stone` for warm, `slate`/`zinc` for cool) rather than mixing `gray` with `stone`.
+
+### Equalize PERCEIVED brightness with OKLCH
+Equal HSL Lightness does NOT look equally bright, blue reads darker and yellow-green reads brighter at the same `L`. So category tokens, tag colors, or a row of accents built in HSL come out visually uneven even when "mathematically" equal. Define them in **OKLCH** instead (`oklch(0.7 0.15 250)`), where the first value is perceptual lightness, to make a set of colors feel equal-weight, then deviate ONLY where you intend emphasis. (Reference: oklch.fyi.)
+
+### Darken by shifting hue + raising chroma, not by dropping lightness
+The secret behind palettes that feel rich and saturated instead of muddy: as a color gets darker, **nudge the hue and INCREASE the chroma**, do not just lower lightness toward grey. A "shadow" swatch of a brand color should be a touch more saturated and slightly hue-rotated, not a desaturated version of the base. This is the difference between a premium ramp and a tint/shade that looks washed.
+
+### Gradients: interpolate in OKLCH, and ease the stops
+- **Interpolate in OKLCH:** default CSS gradients interpolate in sRGB, so hues that are far apart pass through a muddy grey midpoint. `linear-gradient(in oklch, var(--a), var(--b))` keeps the midtones rich and dynamic.
+- **Ease the opacity stops:** a fade with equally-spaced stops (especially a dark scrim over an image) leaves a visible "horizon line" where the ramp starts. Sample ~10 to 15 stops eased with smoothstep `t*t*(3-2t)` so the transition dissolves with no seam. (Tool: easing-gradients by Andreas Larsen.)
+
+### Blend modes for vibrant foregrounds (not just opacity)
+Opacity matches the foreground to the background tone and can look flat; blend modes give richer, more saturated results. `mix-blend-mode: plus-lighter` makes a light foreground (a white title or graphic over a colored card) read bright and vivid where 50%-opacity white looks dull. Pair it with `isolation: isolate` on the component (see §4 Compositing) so the blend composites only against the card, not the whole page behind it. `plus-darker` is the inverse for dark foregrounds (currently WebKit-only, sample the implied values from your design tool for Chromium).
+
 ---
 
 ## 4. DESIGN ENGINEERING — Surfaces & Layout
@@ -587,6 +665,17 @@ Concentric border radius math: inner radius = outer radius − padding. If outer
 - Icon-only buttons: add 1–2px extra horizontal padding to compensate for optical centering
 - Icons next to text: the icon often needs 1px visual nudge to align with the text baseline
 - Cards in a grid: when mixing content heights, align to a baseline grid or use `align-items: start`
+
+### Alignment Methods (the "one wrong note" fix)
+That nagging "something is off, like a chord with one wrong note" feeling is almost always alignment. There are five ways things align, and the goal is to use as FEW of them per screen as possible:
+
+- **Edge:** to a shared (often invisible) edge. The most common, interfaces mimic documents.
+- **Axis / spine:** centers aligned to one horizontal or vertical spine. Use for controls or icons whose shapes/bounding-boxes differ.
+- **Baseline:** to the baseline of a key text element.
+- **Mathematical:** consistent values/ratios (inside a single button or card).
+- **Optical:** adjusted to FEEL balanced, deliberately inconsistent values for a more harmonious result.
+
+Three governing rules: (1) **reduce the number of invisible alignment rules** (edges, axes, baselines) on any one screen, a left edge for text plus a spine for icons beats four competing edges; (2) **optimize for feeling balanced over being mathematically consistent**; (3) **reduce the number of alignment METHODS** mixed on one screen. Concrete fixes: a container title's line-height is taller than its cap-height, so **trim its top padding** so the block looks optically centered; in a content list, give icons a vertical spine and text a left edge, and align trailing accessories to a horizontal spine (not the label baseline) when rows vary in line count; an emphasized row that breaks pure edge alignment gets a background or stroke to re-anchor it.
 
 ### Image Outlines
 Add a subtle outline to all images for consistent depth against any background:
@@ -607,7 +696,44 @@ box-shadow:
   0 16px 40px hsl(var(--brand) / 0.04);
 ```
 
-This creates depth that feels organic rather than drawn-on.
+This creates depth that feels organic rather than drawn-on. The principle behind it: a real shadow has a **tight contact edge plus a wide ambient falloff**, so a single `box-shadow` reads fake (the muddy-blur tell). Always stack at least a small/tight layer with a big/soft layer (Tailwind's `shadow-*` classes already do this, do not flatten them to one).
+
+### Borders That Stay Crisp
+A solid-color border looks muddy or blurry over a shadow or against a varying background, because it does not pick up what is behind it. Implement borders as a **transparent outline or an inset box-shadow** so they inherit the underlying contrast and stay crisp everywhere:
+
+```css
+/* instead of: border: 1px solid #e5e5e5; */
+box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);   /* or use a transparent ring */
+```
+
+For an image sitting on a near-same-tone background, add a **subtle low-opacity inset border** (the §4 Image Outlines rule) so it does not float.
+
+### Style Consistency (inconsistency reads as a BUG)
+The single biggest tell between "considered" and "thrown together" is consistent styling. A user does not consciously notice consistency, but they DO read inconsistency as a glitch:
+
+- **One icon style.** Never mix fill vs outline, or two corner radii, or two stroke widths across icons. Pick one and hold it.
+- **Unify radii.** If buttons and cards are generously rounded, a sharp-cornered checkbox or select reads sloppy. Watch overall roundedness, not just concentric-radius math.
+- **Do not mix materialities.** A glassy/blurred control next to a flat high-contrast icon in the same toolbar looks like two pasted-together aesthetics. Pick one surface language per cluster.
+- **Consistent fills and strokes.** A lone outline button among filled controls jumps out, make it a filled-but-clearly-secondary style. A stray stroke on one avatar in an otherwise flat toolbar reads as a leftover, remove it.
+- **Bound controls consistently.** If the `•••` menu sits in a bounded shape, the back icon should too, or neither should. As a rule, bound only primary actions, but apply that rule everywhere.
+
+### Compositing (an interface is a stack of layers)
+Painting order matters, and blends/opacity behave in non-obvious ways when layers overlap:
+
+- **`isolation: isolate`** on a component composites its OWN internal layers first, then places the result, so a blend-mode child (a `plus-lighter` title, §3.5) blends against the card and not the page behind it. This is the realism unlock for any blended foreground.
+- **Group-then-fade.** To fade several overlapping elements (an avatar stack, a card with layered art) as one, wrap them and fade the GROUP (or a pseudo-element), otherwise you see through the overlaps mid-fade.
+- **One border edge in a grid.** Transparent borders that overlap ADD their opacity and look darker on shared edges. In a grid of cells, give each cell a border on only one horizontal and one vertical edge.
+- **True cross-fades.** Two images cross-fading at 50% each sum to 75%, not 100%, so the background bleeds through the midpoint. Group both and use `mix-blend-mode: plus-lighter` to sum the layers for a clean 100% dissolve.
+- **Richer backdrop materiality.** When using `backdrop-filter: blur()` to lift a nav or toolbar, also bump `saturate(1.4)`, the blur alone washes color out; raising saturation approximates the rich frosted look (a cheap stand-in for the heavier color math native UIs do).
+- **Compose graphics in code, not as flat images** when they need to animate, recolor, or adapt, a CSS/SVG/canvas graphic stays maintainable and themeable where a baked PNG does not.
+
+### Masks (hide without cropping)
+A mask hides part of an element without destroying it. Two kinds, by edge:
+
+- **`clip-path`** is geometry, so it gives a CRISP edge: `clip-path: circle(50% at 50% 50%)`, or `inset(0 100% 0 0)` animated to `inset(0)` for a left-to-right wipe/reveal.
+- **`mask-image`** uses an alpha channel (usually a gradient), so it gives a SOFT edge: fade the edges of a scrolling row with `mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)`.
+- **Text masks:** `background-clip: text` + `color: transparent` paints a gradient, image, or video through the letterforms (use sparingly, the §8 ban on gradient-filled large display headers still holds).
+- **Prefer a mask over a gradient OVERLAY.** An overlay element that someone forgets to invert in dark mode becomes a bug; a mask travels with the element and does not.
 
 ### Button-in-Button Trailing Icon
 For primary CTAs, embed a visual "inner button" for the trailing arrow/icon:
@@ -665,6 +791,8 @@ Every component must account for all states — not just the happy path:
 - **Empty**: Beautifully composed empty states indicating how to populate data.
 - **Error**: Clear, inline error reporting. No `window.alert()`.
 - **Tactile Feedback**: On `:active`, use `scale-[0.96]` to simulate physical push.
+
+**Map every state before you build, not just the happy path.** For anything with more than two states (an async button: idle → submitting → success → error; a payment row: current / due / overdue / paid / failed, crossed with autopay-on and locked toggles), name ALL of them plus the cross-cutting toggles, and build a throwaway playground that renders them ALL at once behind switches. Designing each state in isolation in your head misses the combinations (locked + overdue, empty + error), which is exactly where the breadcrumbs of uncommon care (§0.8) live. This is also closer to shippable than a dozen static mockups.
 
 ---
 
@@ -745,8 +873,31 @@ Build navbars as floating glass pills, not edge-to-edge sticky bars:
 ### Scroll Interpolation
 Map scroll position to CSS custom properties for parallax-like effects without scroll hijacking. Use `scroll-timeline` or `IntersectionObserver` with `rootMargin` to drive animations proportionally to scroll progress. Never intercept native scroll behavior.
 
+### Interpolation & mapRange (the modulation primitive)
+Most "react this value to that value" motion (scroll-shrinking headers, pointer tilt, load-to-color, rubber-banding) is one function. Keep it in the toolbox:
+
+```js
+const mapRange = (value, [fromLow, fromHigh], [toLow, toHigh], clamp = true) => {
+  let t = (value - fromLow) / (fromHigh - fromLow);
+  if (clamp) t = Math.max(0, Math.min(1, t)); // clamp the FRACTION, not the result
+  return toLow + t * (toHigh - toLow);
+};
+```
+
+- **Ease the input before mapping** to bend the response curve: `easeInOut(t)` then map gives a Mac-dock magnification that ramps by cursor distance instead of linearly.
+- **Dynamic header:** `mapRange(scrollY, [0, 128], [32, 16])` to shrink a title from 32 to 16px over the first 128px of scroll (iOS large-title behavior).
+- **Pointer tilt:** `rotateY = mapRange(px, [0, 1], [-14, 14])` and `rotateX` inverted, where `px` is the cursor's 0 to 1 position across the card, so the midpoint is zero rotation and the card leans toward the cursor in 3D.
+- **Number to color:** lerp per channel (or in OKLCH, §3.5) across stops to drive a load gauge green → amber → red.
+- **Rubber-banding** (the iOS over-scroll feel): clamp WITH resistance via an asymptote rather than a hard stop. `t = pull / (pull + resistance); offset = mapRange(t, [0, 1], [0, 64])`, a bigger `resistance` makes a stiffer wall; the offset approaches but never reaches the ceiling, which reads as a soft boundary. Add a small dead zone so a casual over-drag does not trigger it.
+
 ### Layout Transitions
 Heavily utilize Framer Motion's `layout` and `layoutId` props for smooth re-ordering, resizing, and shared element transitions. Any time elements move, resize, or swap positions, these props create fluid continuity instead of jarring jumps.
+
+### Animation Craft (fast swaps, arcs, meaning)
+- **Swap A for B by animating BOTH at once**, not sequentially. In Framer Motion's `AnimatePresence`, set `mode="popLayout"` so the exiting element pops out of layout flow immediately and the incoming one slides into place, the default `sync` mode leaves a gap or a jump. This is what makes a content swap feel seamless instead of staged.
+- **Real objects travel in arcs, not straight lines.** When something flies across the screen (a card to a slot, a toast to a tray), move X linearly but bow Y with `y -= Math.sin(t * Math.PI) * peak`, and add a slight scale-up plus a growing shadow at the apex so it reads as lifting OFF the page and setting back down. (Framer Motion ships an `arc()` path helper.)
+- **Prefer semantic motion over decorative motion.** Motion should carry meaning: an odometer-style digit roll as a value changes communicates "this number is updating" far better than a fade. Borrow from Disney's 12 principles for richness, but if an animation does not convey information, add delight, or express brand, cut it (the §0.8 less-but-better rule applies to motion too).
+- **Stagger repeated elements** by a small per-item offset rather than animating a whole group at once, a radial menu or a list reads as alive instead of mechanical.
 
 ### Perpetual Micro-Interactions (MOTION_INTENSITY > 5)
 Embed continuous infinite micro-animations in standard components:
@@ -757,6 +908,13 @@ Embed continuous infinite micro-animations in standard components:
 - **Carousel**: infinite horizontal scroll of logos, metrics, or cards
 
 **Performance:** Any perpetual motion MUST be memoized (`React.memo`) and isolated in its own microscopic Client Component. Never trigger re-renders in the parent.
+
+### Wave-Driven Motion & Generative Graphics
+A sine wave `y = sin(2πt)` loops perfectly forever, which makes it a better engine for ANY looping/ambient motion than keyframes (keyframes have a visible seam at each turnaround; a wave is smooth everywhere). Three knobs: **frequency** (cycle speed), **amplitude** (range), **phase** (where the cycle starts).
+
+- **Map a wave (output −1 to 1) onto any property** (scale, opacity, rotation, y-offset) for a float/breathe/pulse, amplitude dials the intensity.
+- **Apply one wave across many elements with a per-element phase offset** (`sin(2π(t + i * 0.08))`) instead of a fixed time delay, the offset version reads organically, like breathing or a wind ripple, where staggered delays look mechanical.
+- **Generative graphic recipe** (how the ambient hero/card art gets made with almost no code): render a row of bars whose width = a wave sampled across X, add a per-frame counter `t` so the field drifts, duplicate the row down the canvas, then add a per-row phase offset (`+ row * rowOffset`). A handful of mapped parameters plus seeded randomness yields a distinctive, animatable graphic, and because it is code (§4 compose-in-code), it recolors and re-themes for free. Combine waves of different frequencies with a persistence factor for more organic shapes.
 
 ### Bento Card Archetypes (Motion-Engine)
 When building Bento grids, implement these specific micro-animated card patterns:
@@ -946,9 +1104,86 @@ export function ScrollSpeedBlur({ children }: { children: React.ReactNode }) {
 
 ---
 
+## 5.5 INTERACTIVE 3D & MOTION, The Enforced Default (the Disciplined Ladder)
+
+**OVERRIDE: every frontend this skill produces ships with motion that feels alive, purposeful, and premium, never flat. This is the enforced default, not an opt-in.** It consolidates and ELEVATES the craft already in §4 (depth, layered shadows, compositing), §5 (mapRange, semantic motion, popLayout, wave-driven loops), and §6 (GPU budget, reduced-motion) into one standing bar. Do not duplicate those sections; this section is the policy that puts them on by default.
+
+The principle is RESTRAINT, not "heavy 3D on everything." If everything moves, nothing stands out, and try-hard 3D-on-everything is its own slop (jank, battery drain, broken accessibility). Motion must have a JOB: reveal hierarchy, carry spatial continuity, or give feedback. The default is a HIGH always-on floor plus ONE signature moment, behind hard guardrails. This calibrates ON TOP of the §1 MOTION_INTENSITY dial and the archetype, it does not override them: the dial scales the AMOUNT and intensity, the floor below sets the QUALITY bar that holds even at MOTION 2 (a Japanese Minimal build still earns real depth, real feedback, and interruptible transitions, it just expresses them quietly and skips the signature 3D moment).
+
+### Tier 1, BASELINE MOTION (mandatory on every frontend, all archetypes)
+
+This is the floor. It is present even on the most restrained, low-MOTION archetype (expressed quietly there, never absent).
+
+- **Genuine depth and material.** A real elevation scale (resting / raised / overlay), each level a layered shadow (tight contact edge plus soft ambient falloff) per §4 Layered Tinted Shadows. Never a flat single-border or single-glow panel. Borders are transparent or inset so they stay crisp over the shadow (§4).
+- **Purposeful, interpolation-driven motion.** Entrances and transitions are driven by `mapRange` / scroll-linked values (§5), shaped to the content, NOT one canned blur-up fade curve reused on every element. Vary the curve and the trigger by role.
+- **Micro-interactions and feedback on EVERY interactive element.** Hover, press (`scale(0.96)` on `:active`, §4), focus-visible, and state changes all get a felt response. This is where §0.8 uncommon care lives.
+- **Tasteful pointer-reactivity on a FEW key elements only.** Subtle tilt / magnetic / pointer-parallax on hero objects and primary cards (the §5 pointer-tilt `mapRange` and Mouse-Driven Parallax patterns). Layer-speed differences of roughly 20 to 30 percent for depth. A few hero areas, never the whole page, and never on text the user must read (§5 anti-pattern).
+- **Scroll choreography that encodes meaning.** Reveals and parallax express hierarchy and narrative (§5 Scroll Entry, §7), not decoration bolted on.
+- **Smooth, interruptible transitions.** CSS transitions for interactive state (they retarget mid-flight, §5), and `AnimatePresence` with `mode="popLayout"` for fast swaps so a content change reads seamless, not staged (§5 Animation Craft).
+- **Stack:** CSS 3D transforms FIRST (zero JS, the first reach for UI depth) plus Framer Motion for UI motion, with GSAP + ScrollTrigger reserved for scroll storytelling. Keep GSAP and any R3F scene in their own isolated component trees, never co-mounted with Framer Motion in one tree, per §6 Animation Library Isolation.
+
+### Tier 2, SIGNATURE MOMENT (default aim: about ONE per page or hero)
+
+One genuine interactive 3D or spatial centerpiece that makes someone ask "how did they do that?" (§0.8). ONE, not many: a second competing 3D scene dilutes the first and doubles the cost.
+
+- **Spline** via `@splinetool/react-spline` (the `@splinetool/react-spline/next` import gives an SSR placeholder), for a designer-authored interactive scene with a one-line embed. Fastest path to polished interactive 3D.
+- **OR React Three Fiber** (`@react-three/fiber` + `@react-three/drei`) for a code/data-driven scene. MUST be loaded with `next/dynamic` and `ssr: false` (R3F has no SSR).
+- **Lazy-load on viewport or interaction** (do not mount it at page load), and always ship a reduced-motion / no-WebGL fallback (a static render, poster image, or the quiet baseline).
+- The signature moment is the DEFAULT AIM, not an absolute requirement. It YIELDS for restraint archetypes (Japanese Minimal, Opulent Noir, Swiss) where a heavy scene would fight the vibe, for mobile-primary builds, for LCP/SEO-critical heroes, and for /oneshot-webapp scope (see the yield clause below). When it yields, Tier 1 still holds.
+
+### Tier 3, GUARDRAILS (always, non-negotiable, this is what stops it becoming slop or jank)
+
+- **60fps / 16.7ms frame budget.** Animate ONLY `transform` and `opacity` (never layout props), per §5 and §6 GPU-Safe Animations. This is the line between premium and janky.
+- **WebGL discipline (for any R3F / Spline scene):** keep draw calls under 100, share materials across meshes, Draco-compress geometry, and watch texture VRAM (oversized textures are the silent memory killer). Dispose geometries/materials/textures on unmount.
+- **`prefers-reduced-motion` is a DIAL, not a kill switch.** Reduce or REPLACE large motion (parallax, scrubbed scenes, big travel) with fades and shortened durations rather than deleting it. Use a tiny non-zero duration (about `0.01ms`, the §6 value) so state-machine and `AnimatePresence` callbacks still fire, never a hard `0` that silently breaks state. Provide a pause control for anything that loops longer than ~5s. This IS the full-respect path §6 ("prefers-reduced-motion: All or Nothing") and §9 demand, the dial is the well-designed static/reduced fallback, NOT a half-measure that leaves some components animating.
+- **Lazy-load heavy scenes (`ssr: false`), never block LCP.** A 3D hero must not be the Largest Contentful Paint blocker, gate it behind viewport/interaction and keep a lightweight first paint (see §9.5 for the landing-page reliability architecture).
+- **Test on real mid-tier mobile, not just devtools.** WebGL thermally throttles and drains battery on phones (§9 known-quirks apply, Samsung battery saver throttles rAF). If it stutters or cooks the device, dial it down or drop to the baseline.
+
+### When NOT to use 3D (reach for the cheaper layer instead)
+
+Do not add a 3D scene when there is no real purpose for it. Specifically skip it (and stay on CSS 3D transforms, Framer Motion, or Lottie) when: the motion has **no job** (decorative only); the build is **mobile-primary** and the scene is heavy; the surface is an **LCP or SEO-critical hero**; the element is **a single icon** (use CSS or Lottie); it is **pure UI chrome** (use CSS plus Framer Motion); or there is **no WebGL expertise on a tight timeline** (use Spline's authored scenes or skip entirely). Forcing 3D into these cases is exactly the try-hard slop this ladder exists to prevent.
+
+### Tool Roster (when to reach for each)
+
+| Tool | Reach for it when | SSR / bundle / perf notes |
+|---|---|---|
+| **CSS 3D transforms** | FIRST choice for UI depth, tilt, card flips, parallax layers | Zero JS, GPU-composited (`transform`/`opacity`). No bundle cost. Always try this before a library. |
+| **Framer Motion** | React UI motion: enter/exit, layout/`layoutId`, micro-interactions, `AnimatePresence` swaps | Client-only (`"use client"` leaves). The default UI-motion layer. Keep isolated from GSAP/R3F trees (§6). |
+| **GSAP + ScrollTrigger** | Scroll storytelling, pinning, scrubbed timelines (§7) | Isolated full-page/canvas use with strict `useEffect` cleanup (§6). Webflow-owned, check the license for the plugin set. On landings, mobile reliability rules in §9.5 still govern. |
+| **React Three Fiber + drei** | Code/data-driven interactive 3D, custom scenes, the signature moment | `next/dynamic` + `ssr: false` mandatory. Heaviest bundle, lazy-load it. drei gives loaders, controls, helpers. Obey the WebGL budget above. |
+| **Spline** (`@splinetool/react-spline`) | Designer-authored interactive 3D with minimal code, the fastest signature moment | `/next` import gives an SSR placeholder. Scene file weight is the cost, lazy-load on viewport. No WebGL coding required. |
+| **Theatre.js** | Declarative, keyframed motion sequencing over R3F or the DOM | Pairs with R3F. Use when a scene needs an authored timeline rather than reactive values. |
+| **Rive** | State-driven interactive vector animation (responds to hover/state, real state machine) | ~200KB wasm runtime. Great for interactive icons/illustrations that have states. Lighter than a 3D scene. |
+| **Lottie** | Lightweight prebaked vector animation (plays a baked clip, not interactive) | ~60KB runtime. Use for a single animated icon/illustration instead of a 3D scene. Not for stateful interaction. |
+| **Raw WebGL / GLSL shaders** | Bespoke shader effects no library covers (custom backgrounds, distortion) | Maximum control, maximum cost and expertise required. Last reach, and only with the WebGL budget enforced. |
+
+### Taxonomy guard, interactive-in-UI vs renders-to-VIDEO
+
+Two layers that are constantly confused. Do not reach for a video tool when the design needs a LIVE scene.
+
+- **Interactive-in-UI (what a signature 3D/motion moment needs):** Spline, React Three Fiber, Theatre.js, GSAP, Framer Motion, Rive, Lottie, CSS 3D transforms. These live and REACT in the running UI.
+- **Renders-to-VIDEO (asset production, NOT in-UI 3D):** hyperframes and Remotion produce MP4/MOV/WebM video assets you drop into a `<video>` tag. They are NOT a live 3D canvas (hyperframes "supports Three.js" but rasterizes it to frames, so interactivity is lost). Use them to PRODUCE a promo/explainer clip, never as the interactive layer.
+
+One-liner: if it has to respond to the user, it is interactive-in-UI (this section's stack). If it is a baked clip, it is a video asset (different tooling, out of scope here).
+
+### /oneshot-webapp YIELD clause
+
+When `/oneshot-webapp` is driving (ship-fast pitch/demo, SAFE preset, light mode only), the **signature 3D moment becomes OPTIONAL** and motion **dials down to the cheap baseline**: ship speed and the safe preset win. The Tier 1 baseline FLOOR still applies (real depth, purposeful entrances, per-element feedback, interruptible transitions) because that is cheap and is exactly the polish that separates a pitch demo from generic shadcn. Skip the WebGL scene unless the brief explicitly asks for it and the timeline allows. This yield mirrors the One-Shot Pitch/Demo Webapps non-negotiables.
+
+---
+
 ## 6. PERFORMANCE
 
 Ship fast interfaces, not just pretty ones.
+
+### Perceived Performance (the fastest interface is the one that FEELS instant)
+Real speed matters, but PERCEIVED speed is what the user judges. The best loading state is one they never see:
+
+- **Mask the wait.** Do unavoidable work in the background behind something worth the user's attention. A short, delightful onboarding or transition animation can buy the seconds needed to fetch/index/sort, so that for most users everything is ready by the time they finish watching, vs staring at a spinner.
+- **Optimistic writes.** Do not block the UI on a server round-trip. Assume success and show the result immediately (the "like" fills the instant it is tapped); on a failure callback, revert and show a retry toast WITHOUT losing the user's place. Scales to multi-step flows: let them proceed, reconcile in the background.
+- **Optimistic reads.** Cache the last state the user saw locally and render it instantly, then reconcile with the server, so the screen never does the jarring blank → default → real-data flip.
+
+A little more engineering, much better felt-quality. This is §0.8 uncommon care applied to the moments between interactions.
 
 ### GPU-Safe Animations
 - `transform` and `opacity` are composited on the GPU — stick to these
@@ -1480,6 +1715,16 @@ This pattern is instantly recognizable as "AI-generated SaaS landing" aesthetic 
 
 For "live" indicators (where the badge is communicating real-time status, not styling), prefer an actual small pulsing dot via CSS `@keyframes` with minimal scale/opacity animation (no filter, no shadow). The animation earns the live-indicator semantic; without animation, the left-dot is decorative noise.
 
+### Banned: Visual Inconsistency (the quiet slop)
+
+Inconsistency is the biggest tell between considered and thrown-together work, and a user reads it as a bug even when they cannot name it. Scan for and eliminate:
+
+- **Mixed icon styles** (fill vs outline, two stroke widths, two corner radii in one set), **disagreeing corner radii** across siblings, **mixed materiality** (a glassy control beside a flat one), and **stray one-off strokes/fills**. Fix per §4 Style Consistency.
+- **Mismatched color temperature** (cool-grey text on a warm palette, or two neutral families mixed). One temperature, ~3 neutrals from one family, per §3.5.
+- **A single muddy `box-shadow`** instead of a layered tight+ambient pair (§4), and **solid-color borders** that blur over shadows instead of transparent/inset ones (§4).
+
+Treat these as hard violations in the §10 / §11 passes, not "nice to fix."
+
 ### Creative Arsenal (High-End Patterns)
 
 Pull from these when the design calls for something elevated:
@@ -1740,6 +1985,17 @@ Run through these checks before delivering any code. Every item must pass.
 15. [ ] prefers-reduced-motion respected
 16. [ ] Staggered reveals use animation-delay
 
+### Interactive 3D & Motion Default, the disciplined ladder (§5.5, M3D-1..M3D-7)
+M3D-1. [ ] Real depth/elevation present, layered tight+ambient shadows, NO flat single-border/glow panels (§4, §5.5 Tier 1)
+M3D-2. [ ] Entrance/transition motion is purposeful and interpolation-driven, NOT one canned blur-up curve reused everywhere (§5, §5.5 Tier 1)
+M3D-3. [ ] Every interactive element has hover + press + focus-visible + state-change feedback (§4, §5.5 Tier 1)
+M3D-4. [ ] At least one signature interactive 3D/spatial moment (Spline or R3F), UNLESS the build is a restraint archetype, mobile-primary, LCP/SEO-critical, or /oneshot-webapp scope (§5.5 Tier 2 + yield)
+M3D-5. [ ] prefers-reduced-motion path implemented as a DIAL and tested (reduce/replace, ~0.01ms not 0, pause control for loops >5s), full-respect per §6/§9 (§5.5 Tier 3)
+M3D-6. [ ] 60fps verified (transform/opacity only); heavy scenes lazy + `ssr:false`; WebGL budget held (draw calls <100, shared materials, Draco, VRAM); LCP not blocked (§5.5 Tier 3, §6)
+M3D-7. [ ] Tested on a real mid-tier mobile device (WebGL throttle/battery), not just devtools (§5.5 Tier 3, §9)
+
+> If any M3D item fails, the frontend is NOT done. Fix before reporting complete.
+
 ### Scrollytelling (if §7 patterns used — 5)
 S1. [ ] Lenis installed + wrapped at root, OR documented reason why not
 S2. [ ] No more than 3 concurrent `useScroll` instances on the page
@@ -1766,6 +2022,15 @@ S5. [ ] Mobile fallback path built + tested on a real device (see §7.6, §9)
 26. [ ] Every text/bg combo verified against WCAG AA (4.5:1 normal text, 3:1 large text)
 27. [ ] Hover states INCLUDED in contrast verification (not just resting state)
 28. [ ] Verification tool used: manual calculation or `npx pa11y <url>`
+
+### Craft Details (Interface Craft pass, C1-C7)
+C1. [ ] Neutrals share ONE temperature + one Tailwind family; tints are the primary neutral at low opacity, not new declared colors (§3.5)
+C2. [ ] Perceived-brightness-sensitive color sets (category tokens, accent rows) built in OKLCH; gradients use `in oklch`; dark scrims use eased/smoothstep opacity stops with no visible horizon line (§3.5)
+C3. [ ] Borders are transparent/inset (crisp over shadows, never solid muddy); every shadow is a layered tight+ambient pair, not one blur (§4)
+C4. [ ] Type: ≤5 sizes on a modular scale, measure 45–75ch, tabular-nums on changing numbers, balance/pretty wrapping, proper punctuation in rendered copy, OpenType opted in where relevant (§3, §3.5)
+C5. [ ] Blended foregrounds wrapped in `isolation: isolate`; overlapping fades grouped-then-faded; one border edge per grid cell (§4)
+C6. [ ] Reactive motion uses mapRange with the FRACTION clamped; looping/ambient motion is wave-driven (no keyframe seams); all component states + cross-cutting toggles were mapped, not imagined (§4, §5)
+C7. [ ] Named 3–5 situational facets (§0.8); the highest-leverage element was pushed past the industry-bar default, not left at it; server round-trips use optimistic UI or a masked wait (§0.8, §6)
 
 ---
 
@@ -1834,11 +2099,12 @@ Before importing ANY 3rd-party library, check `package.json` (or equivalent). If
 
 ## EXECUTION FLOW
 
-1. **Setup**: Run the interactive setup (§1) — mode, vibe, dials
-2. **Design**: Lock in typography, color, layout archetype based on vibe + dials
+0. **Frame**: Internalize §0.8, name the 3 to 5 facets this build is graded on, start from the proven default, and decide the ONE highest-leverage element you will push past it
+1. **Setup**: Run the interactive setup (§1): mode, vibe, dials
+2. **Design**: Lock in typography (§3), color (§3.5), layout archetype based on vibe + dials
 3. **If Redesign**: Run the full audit checklist (§10) first, then fix
-4. **Build**: Write production code following §3–6 rules, layer in scrollytelling from §7 where the vibe calls for it, verify mobile resilience (§9)
-5. **Verify**: Run pre-flight checklist (§11) + deployment readiness (§12) — every item must pass
+4. **Build**: Write production code following §3–6 rules (type §3, color §3.5, surfaces/compositing §4, motion §5, the enforced interactive-3D/motion default §5.5, perceived-perf §6), layer in scrollytelling from §7 where the vibe calls for it, verify mobile resilience (§9)
+5. **Verify**: Run pre-flight checklist (§11, incl. the C1-C7 craft pass) + deployment readiness (§12). Every item must pass
 6. **Deliver**: Present the code with a brief note on the design decisions made
 
 Remember: Claude is capable of extraordinary creative work. Don't hold back — show what can truly be created when thinking outside the box and committing fully to a distinctive vision. Every interface should feel like it was designed by a human with strong opinions, not generated by a machine hedging its bets.

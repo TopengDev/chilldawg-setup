@@ -12,6 +12,15 @@ Multi-phase design loop that generates professional-quality visual assets. Route
 
 **Before Phase 2 (Design Concept), READ `~/.claude/skills/creative/design-theory.md` in full.** This file contains 35 design theories across 5 tiers (Visual Fundamentals, Color Theory, Typography, Layout & Composition, Advanced Conceptual). Every design decision must be informed by these principles. Every self-critique must evaluate against them. If a generated output violates Gestalt, hierarchy, contrast, balance, or any core principle — reject and iterate.
 
+### MANDATORY - The Quality Bar (Uncommon Care + Keep Looking)
+
+In the age of AI, passable imagery is free and therefore worthless. The only output worth delivering makes a viewer ask "how did they make that?" Hold these as the mindset behind every phase below:
+
+- **Uncommon care lives in the details a human would sweat.** What people remember are the touches someone did not have to add: the shadow that actually grounds the object, the one accent doing real work, type that is kerned and placed instead of dropped in. These are breadcrumbs that a person cared. Generic AI output gives up exactly where care would show, that gap is your opening.
+- **Keep looking, your first reaction is shallow.** When you critique an output, do not stop at "it looks off." Name WHY, specifically: the focal point competes with the background, the dark tone went muddy-grey instead of a rich shade, two elements sit on slightly different invisible edges. Then keep looking, there is always a next finer flaw. Vague reactions cannot drive a regeneration; named ones can.
+- **Generation #1 is almost never it.** Treat the first image as a draft to react against, not a candidate to ship. The gap between fine and great is how many intentional iterations you put in (Phase 5), not the luck of the first prompt.
+- **Define the bar before you grade against it (facets).** For each asset, name 3 to 5 SITUATIONAL qualities the viewer should FEEL (e.g. a watch banner: "precise / restrained / covetable"; a kids-app sticker: "playful / friendly / energetic"). These are specific to this brief, not universals like "clean." Carry them into the Phase 4 critique as the sharpest scoring language you have.
+
 ### HARD BANS — Auto-Reject if ANY of These Appear
 
 These are NOT suggestions — they are HARD REJECTIONS. If ANY of the following appear in generated output, the output MUST be rejected and regenerated. No exceptions. Prepend these constraints to EVERY generation prompt.
@@ -401,6 +410,14 @@ Before generating ANY image, write a design brief in prose. This is the creative
 - Avoid: [things to explicitly stay away from]
 ```
 
+### Color Craft (apply when choosing the palette)
+
+How to get richness WITHOUT the banned gradients/glow, through the palette itself. These translate into both the brief rationale and the generation prompt:
+
+- **Commit to ONE temperature**, neutrals included. A warm palette wants warm-leaning greys and off-whites; a cool one wants cool. The most common amateur tell is a cool grey sitting in an otherwise warm composition. Pick warm or cool and hold it across every swatch. (Builds on design-theory #11.)
+- **Build rich shades, not muddy ones.** A darker version of a color should shift its hue slightly and GAIN saturation, never just fade toward grey. In prompt language: "deep saturated [hue] shadows, hue-shifted toward [neighbor], not washed-out grey." This is what separates a premium-looking dark from a dead one.
+- **Balance PERCEIVED brightness, not nominal value.** Equal-value colors do not read equally bright (a blue reads darker than a yellow-green at the same value). When two or more accents must feel equal-weight, balance them by how bright they LOOK, or one silently dominates the composition. When you want one accent to lead, make that intentional, not an accident of hue.
+
 **Present the concept to the user.** Wait for approval before generating. If they say "go" or "looks good," proceed. If they adjust, revise the concept first.
 
 ---
@@ -468,6 +485,15 @@ Build the generation prompt from the Phase 2 concept. Never pass the raw user re
 - The phrase "cropped by the edge of the frame" is understood by Gemini — use it for dramatic oversized type
 - Include design theory language — Gemini responds to "Gestalt closure", "Z-pattern", "scale contrast"
 - End with strong negative constraints — models follow "NO glow" more reliably than "subtle" or "minimal"
+
+### Compositing & Depth (mockups + realistic illustration ONLY)
+
+Think of a composition as an ordered STACK of layers (background plane → mid → focal subject → highlights) and build depth through the stack, not a single flat scene. For photorealistic mockups (FLUX) and illustrations meant to read as real lit objects, these are the difference between flat and believable. **They do NOT override the hard bans for flat graphics, posters, and social, where decorative glow/gradient/drop-shadow stay banned**, they apply only to imagery that is supposed to look like a real, lit thing:
+
+- **Shadows = a tight CONTACT shadow plus a soft AMBIENT falloff.** A single floating drop shadow reads fake (and is the banned decorative kind); a grounded contact-plus-ambient pair reads real. Prompt it: "grounded contact shadow where it meets the surface, soft ambient occlusion, object sitting ON the surface, not floating."
+- **Specular highlights sell the material.** Metal, glass, ceramic, and gloss each catch light differently, name the material AND its highlight: "sharp specular on the polished edge, soft sheen across the matte body."
+- **One light direction, and everything agrees with it.** Name the key light (direction + warmth) and make every shadow and highlight consistent with it. Inconsistent light direction is the number-one realism tell.
+- **Natural edges beat geometric cuts.** A torn, worn, or scratched edge reads more real than a hard clip, describe the edge QUALITY, not just the shape.
 
 **Read the prompt template file** for the selected asset type:
 - `~/.claude/skills/creative/prompts/social.md`
@@ -584,6 +610,8 @@ Key: FLUX prompts should be photographic in nature — describe the scene as if 
 ### Self-Critique
 
 After generation, evaluate BRUTALLY against these criteria. Score 1-10. **Be harsh — if you wouldn't post it on Dribbble, it's not an 8.**
+
+**First, grade the FACETS, then the generic criteria.** Re-state the 3 to 5 situational facets you named for this asset (the quality-bar framing up top), and score the image against EACH on a 1 to 5 scale. The generic table below catches slop; the facets catch whether it nails THIS brief specifically ("it is clean, but it is not COVETABLE, which was the whole point"). Then keep looking: name the single biggest flaw, fix-target it in the next prompt, and after that flaw name the next one. Stop only when the facets AND the criteria both clear the bar.
 
 | Criterion | What to check | Common failure |
 |-----------|---------------|----------------|

@@ -7,7 +7,7 @@ description: Hand it a website / page / multi-section brief → it produces an u
 
 > **frontend-design picks ONE archetype and applies it cleanly across a page. /artifex sequences DIFFERENT treatments per section.** One is coherence-via-sameness (safe, production). The other is richness-via-variance (immersive, award-bait). This skill encodes the craft that makes the second possible so it can't collapse back into the first.
 
-`/artifex` is `/frontend-design`'s immersive sibling. It **inherits** frontend-design's engineering — typography mechanics (§3), motion mechanics (§5), the anti-slop bans (§8), mobile resilience (§9), the component-library map (§0.7). It does **not** re-document them; read them there. What `/artifex` adds is the layer frontend-design has no mechanism for: **forced design variance, an immersion technique vocabulary, a section-by-section variance method, and a hard audit gate that refuses a monotone build.**
+`/artifex` is `/frontend-design`'s immersive sibling. It **inherits** frontend-design's full engineering and craft base: read `~/.claude/skills/frontend-design/SKILL.md` in full and treat all of it as artifex's baseline. Key anchors include typography mechanics (§3), color craft (§3.5), the quality bar and operating mindset (§0.8), motion mechanics and the enforced interactive-3D default (§5, §5.5), the anti-slop bans (§8), mobile resilience (§9), and the component-library map (§0.7). It does **not** re-document them; read them there. What `/artifex` adds is the layer frontend-design has no mechanism for: **forced design variance, an immersion technique vocabulary, a section-by-section variance method, and a hard audit gate that refuses a monotone build.**
 
 ---
 
@@ -75,21 +75,26 @@ Three rules every studied award site obeys:
 
 ## 3. THE ENGINEERING YOU INHERIT (do not re-derive)
 
-`/artifex` does not restate frontend-design's mechanics. Open `~/.claude/skills/frontend-design/SKILL.md` and apply:
+`/artifex` does not restate frontend-design's mechanics. **Read `~/.claude/skills/frontend-design/SKILL.md` IN FULL and treat ALL of it as artifex's engineering and craft base. Apply all of it.** The table below is a guide to where the key pieces live, NOT a boundary on what to inherit. If it is in frontend-design, it applies here.
 
 | Need | Where in frontend-design |
 |---|---|
 | Archetype palettes (the BASE for your page) | §2 Vibe Archetypes |
 | Type mechanics (tracking, modular scale, variable-font axes) | §3 |
+| Color craft (temperature, OKLCH, gradients, blend modes) | §3.5 DESIGN ENGINEERING - Color |
 | Surface/layout primitives (bezel cards, optical alignment, eyebrows) | §4 |
 | Motion mechanics (interruptible vs keyframe, magnetic hover, cursor patterns, scroll entry) | §5 |
+| Interactive 3D and motion enforced default, one signature 3D moment, guardrails | §5.5 INTERACTIVE 3D & MOTION, The Enforced Default (the Disciplined Ladder) |
 | Scrollytelling patterns + Lenis integration (you'll use ONE of these) | §7 |
 | **Anti-slop banned fonts/colors/layouts/content/icons** | §8 — fully in force here |
 | Mobile animation resilience (`useOnScreen`, IO fallbacks, reduced-motion) | §9 |
 | Component-library map (Origin UI base + archetype primary) | §0.7 |
+| Quality bar operating mindset (range before depth, push to 10, less but better) | §0.8 CRITICAL META-RULE - The Quality Bar (how to think, before how to build) |
 | Architecture rules (RSC boundaries, dep verification, Tailwind v3/v4) | §13 |
 
 If something is covered there, USE it there. The sections below are the layer frontend-design lacks.
+
+frontend-design §5.5 establishes an enforced interactive-3D/motion default with a Tier-1 baseline floor (real depth, purposeful motion, per-element feedback), a Tier-2 signature moment (one interactive 3D centerpiece per page, default aim), and Tier-3 guardrails (60fps budget, reduced-motion as a dial, lazy-load). artifex inherits §5.5 in full as part of its baseline. artifex's own N4 (one heavy effect, one signature wow) and N7 (60fps with effects off, prefers-reduced-motion downgrade) are consistent with and enforce §5.5's guardrails, so they reinforce each other rather than conflict. The §7 Variance Audit check D (heavy-effect cap) is the artifact-level gate for this.
 
 ---
 
@@ -372,7 +377,7 @@ Grounded in a ref-study of 12 award-caliber sites (real fonts read from the DOM,
 |---|---|
 | **/pitch-deck** | `/artifex` **replaces pitch-deck's Stage-6 "Section architecture template"** (which hard-codes the monotone bug: 3× `(pin)` + "DEMO 2: same pattern"). Run pitch-deck Stages 1–5 (intake → narrative outline) as-is; at Stage 6, feed the narrative beats into the **Variance Method (§6)** and clear the **Variance Audit (§7)** before building. The audit becomes pitch-deck's pre-build gate. |
 | **/oneshot-webapp** | oneshot's house rule is **SAFE presets only / light-only** (recruiter demos). `/artifex` is the **explicit-override path**: invoke it only when Toper says "go immersive / award-caliber" in the brief. Otherwise oneshot stays on `/frontend-design` SAFE mode. When invoked, still honor oneshot's light-only + server-side-secrets + deploy rules — `/artifex` changes the *design method*, not the deploy/secrets discipline. |
-| **/frontend-design** | The sibling. `/artifex` borrows its archetype as a BASE palette and inherits all its engineering (§3). The difference: frontend-design applies ONE archetype consistently (SAFE); `/artifex` varies skeleton+technique+transition per section (IMMERSIVE) and gates it with the audit. Use frontend-design for product UI; `/artifex` for the dazzle. |
+| **/frontend-design** | The sibling. `/artifex` reads frontend-design in full as its engineering and craft base (§3). The difference: frontend-design applies ONE archetype consistently (SAFE); `/artifex` varies skeleton+technique+transition per section (IMMERSIVE) and gates it with the audit. Use frontend-design for product UI; `/artifex` for the dazzle. |
 
 ---
 
