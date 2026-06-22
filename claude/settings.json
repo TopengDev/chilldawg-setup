@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreCompact\",\"additionalContext\":\"MEMORY REVIEW: Context is about to be compacted. Scan the conversation for unsaved decisions, corrections, new projects, references, or feedback. Run /remember review to persist anything important before compaction loses it.\"}}'",
+            "command": "echo '{\"systemMessage\":\"MEMORY REVIEW: about to compact — save unsaved decisions/corrections/projects/refs/feedback to memory before context is lost (/remember review).\"}'",
             "timeout": 5,
             "statusMessage": "Checking for unsaved memories..."
           }
