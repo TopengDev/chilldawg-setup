@@ -3,7 +3,7 @@
 #
 # Fires ONLY when the edited file lives under the memory dir (~/.claude/memory).
 # For such writes it:
-#   (a) validates frontmatter (name + description + type present & well-formed),
+#   (a) validates frontmatter (name + description + (namespace|type) present & well-formed),
 #   (b) scans the written content for LITERAL secrets/PII (reusing the gitleaks
 #       prefixes: sk-ant- / ghp_ / sk- / AKIA / password=<literal> / phone #s),
 #   (c) keeps MEMORY.md current by (debounced) regenerating the index when this
@@ -67,9 +67,10 @@ esac
 BASE="$(basename "$FILE_REAL")"
 
 # Skip files that are not memory ENTRIES (index, journal, prev/tmp, non-md, and
-# anything inside archive/).
+# anything inside archive/ or indexes/).
 case "$FILE_REAL" in
   "$MEM_REAL"/archive/*) emit_clean_exit ;;
+  "$MEM_REAL"/indexes/*) emit_clean_exit ;;
 esac
 case "$BASE" in
   MEMORY.md|MEMORY.md.prev|MEMORY.md.tmp|journal.md) emit_clean_exit ;;
@@ -122,7 +123,11 @@ for raw in fm.splitlines():
         in_meta = False
     mm = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*:", raw)
     if mm: keys.add(mm.group(1))
-missing = [k for k in ("name", "description", "type") if k not in keys]
+# v2: a memory entry needs name + description + a category key.
+# The category key is `namespace` (v2) OR legacy `type` (v1) — either satisfies it.
+missing = [k for k in ("name", "description") if k not in keys]
+if "namespace" not in keys and "type" not in keys:
+    missing.append("namespace|type")
 if missing:
     print("MISSING:" + ",".join(missing))
 PYEOF
@@ -133,7 +138,7 @@ PYEOF
     UNCLOSED_FRONTMATTER)
       add_warn "frontmatter in ${BASE} is not closed by a second '---' fence." ;;
     MISSING:*)
-      add_warn "frontmatter in ${BASE} is missing required field(s): ${FM_REPORT#MISSING:} (need name + description + type)." ;;
+      add_warn "frontmatter in ${BASE} is missing required field(s): ${FM_REPORT#MISSING:} (need name + description + namespace|type)." ;;
   esac
 fi
 
