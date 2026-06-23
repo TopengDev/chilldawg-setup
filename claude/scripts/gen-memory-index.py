@@ -56,6 +56,16 @@ import re
 import sys
 from pathlib import Path
 
+# PyYAML is used purely for frontmatter parsing (it ships in this environment and
+# correctly handles the nested `metadata:` block the harness re-introduces). If it
+# is somehow unavailable we fall back to the hand-rolled line parser below.
+try:
+    import yaml  # type: ignore
+
+    _HAVE_YAML = True
+except Exception:  # pragma: no cover - PyYAML is present in this env
+    _HAVE_YAML = False
+
 HOME = Path(os.environ.get("HOME", str(Path.home())))
 # MEMORY_DIR overridable via env for testing (defaults to the real dir).
 MEMORY_DIR = Path(os.environ.get("MEMORY_DIR_OVERRIDE", str(HOME / ".claude" / "memory")))
@@ -121,11 +131,13 @@ def _strip_val(v: str) -> str:
     return v.strip()
 
 
-def parse_frontmatter(fm: str) -> dict:
-    """Parse the (small, well-formed) frontmatter we control. Handles flat keys
-    AND a nested `metadata:` block. Captures (at least, when present):
-    name, description, title, namespace, type."""
-    out: dict[str, str] = {}
+def _parse_frontmatter_lines(fm: str) -> dict:
+    """Hand-rolled fallback frontmatter parser (used only if PyYAML is missing).
+    Handles flat keys AND a nested `metadata:` block. Captures (at least, when
+    present): name, description, title, namespace, type — and mirrors the nested
+    metadata children up to the top level so field() can find them either way."""
+    out: dict[str, object] = {}
+    md: dict[str, object] = {}
     in_metadata = False
     for raw in fm.splitlines():
         if not raw.strip():
@@ -139,9 +151,8 @@ def parse_frontmatter(fm: str) -> dict:
             mm = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$", child)
             if mm:
                 key, val = mm.group(1), _strip_val(mm.group(2))
-                if key in ("type", "created", "updated", "node_type",
-                           "namespace", "title") and key not in out:
-                    out[key] = val
+                if key not in md:
+                    md[key] = val
             continue
         if in_metadata and not indented:
             in_metadata = False
@@ -151,7 +162,38 @@ def parse_frontmatter(fm: str) -> dict:
             # top-level always wins for these display/grouping keys
             if key not in out or key in ("name", "description", "title", "namespace", "type"):
                 out[key] = val
+    if md:
+        out["metadata"] = md
     return out
+
+
+def parse_frontmatter(fm: str) -> dict:
+    """Parse the frontmatter. Prefer PyYAML (correctly handles the nested
+    `metadata:` block the harness re-introduces); fall back to the line parser.
+    Returns the raw parsed dict — read individual fields via field()."""
+    if _HAVE_YAML:
+        try:
+            loaded = yaml.safe_load(fm)
+            if isinstance(loaded, dict):
+                return loaded
+        except Exception:
+            pass
+    return _parse_frontmatter_lines(fm)
+
+
+def field(meta: dict, key: str):
+    """Read a field TOP-LEVEL first, else from the nested `metadata:` block.
+    The harness re-nests Write/Edit-saved memory files under `metadata:`; the
+    corpus is mixed (flat v2 + nested), so every display/grouping field resolves
+    both ways. Top-level always wins for flat files."""
+    if not isinstance(meta, dict):
+        return None
+    if key in meta and meta[key] is not None:
+        return meta[key]
+    md = meta.get("metadata")
+    if isinstance(md, dict):
+        return md.get(key)
+    return None
 
 
 def first_heading_title(body: str) -> str | None:
@@ -198,12 +240,12 @@ def humanize_stem(filename: str) -> str:
 
 
 def derive_title(meta: dict, body: str, filename: str) -> str:
-    # v2: prefer the explicit human `title:` field.
-    title = (meta.get("title") or "").strip()
+    # v2: prefer the explicit human `title:` field (top-level or nested).
+    title = str(field(meta, "title") or "").strip()
     if title:
         return title
     # v1 fallback: the old `name:` field IF it's not a bare slug/stem.
-    name = (meta.get("name") or "").strip()
+    name = str(field(meta, "name") or "").strip()
     stem = filename[:-3] if filename.endswith(".md") else filename
     if name and name != stem and not name.lower().endswith(".md"):
         return name
@@ -214,7 +256,7 @@ def derive_title(meta: dict, body: str, filename: str) -> str:
 
 
 def derive_hook(meta: dict, body: str) -> str:
-    desc = (meta.get("description") or "").strip()
+    desc = str(field(meta, "description") or "").strip()
     if desc:
         return re.sub(r"\s+", " ", desc)
     for line in body.splitlines():
@@ -225,12 +267,12 @@ def derive_hook(meta: dict, body: str) -> str:
 
 
 def infer_namespace(meta: dict, filename: str) -> str:
-    # v2: explicit namespace wins.
-    ns = (meta.get("namespace") or "").strip().lower()
+    # v2: explicit namespace wins (top-level or nested under metadata:).
+    ns = str(field(meta, "namespace") or "").strip().lower()
     if ns in ALL_NAMESPACES:
         return ns
     # legacy type -> namespace
-    t = (meta.get("type") or "").strip().lower()
+    t = str(field(meta, "type") or "").strip().lower()
     if t in LEGACY_TYPE_TO_NS:
         cand = LEGACY_TYPE_TO_NS[t]
         # a whatsapp_style file with legacy type=reference is really a contact

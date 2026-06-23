@@ -117,7 +117,11 @@ def build_golden(n: int = 30, seed: int = 7) -> dict:
             meta = yaml.safe_load(fm_str) or {}
         except Exception:
             meta = memory_retrieve._minimal_frontmatter_parse(fm_str)
-        hqs = memory_retrieve._as_text_list(meta.get("hypothetical_questions"))
+        # Resolve top-level-first, else from the nested `metadata:` block, so a
+        # harness-nested memory still contributes its hypothetical_questions to
+        # the golden set (mirrors the engine's read-both parsing).
+        hqs = memory_retrieve._as_text_list(
+            memory_retrieve.field(meta, "hypothetical_questions"))
         hqs = [q.strip() for q in hqs if q and len(q.strip()) > 8]
         if not hqs:
             continue

@@ -11,8 +11,8 @@ Systematically save, update, and clean up persistent memories.
 
 ## Memory Directory
 
-- **Index:** `~/.claude/memory/MEMORY.md`
-- **Files:** `~/.claude/memory/<type>_<topic>.md`
+- **Index:** `~/.claude/memory/MEMORY.md` (auto-generated — never hand-edit; run `~/.claude/scripts/gen-memory-index.py` to regenerate from frontmatter)
+- **Files:** `~/.claude/memory/<namespace>_<topic>.md` (e.g. `feedback_no_dev_in_main.md`, `project_skills.md`)
 
 ## Modes
 
@@ -21,18 +21,27 @@ Systematically save, update, and clean up persistent memories.
 When given something specific to save:
 
 1. Read `MEMORY.md` to check for duplicates or existing memories to update
-2. Determine the type: `user`, `feedback`, `project`, or `reference`
+2. Determine the `namespace`: `identity`, `feedback`, `project`, `reference`, `contact`, or `credential`
 3. Check if an existing memory file covers this topic — **update** instead of creating a duplicate
-4. Write/update the memory file with proper frontmatter:
+4. Write/update the memory file with **schema v2** frontmatter:
 
 ```markdown
 ---
-name: <clear, specific name>
+name: <filename stem slug — MUST equal the file's basename without .md>
+title: <human-readable title (shown in the index)>
+namespace: <identity | feedback | project | reference | contact | credential>
+tier: <1-3 importance, 1 = top>
+status: <active | archived>   # project namespace only
 description: <one-line — used for relevance matching, be precise>
-type: <user | feedback | project | reference>
+tags: [<topical tags>]
+entities: [<names of people / tools / services / files this is about>]
+aliases: [<alternate phrasings of the title>]
+trigger_keywords: [<short query terms that should surface this memory>]
+hypothetical_questions:
+  - <a question a future session might ask that this memory answers>
+  - <another — these bridge the query-vs-statement gap for retrieval>
 created: <YYYY-MM-DD>
 updated: <YYYY-MM-DD>
-tags: [<relevant-tags>]
 ---
 
 ## Summary
@@ -45,17 +54,22 @@ tags: [<relevant-tags>]
 <why this matters>
 ```
 
-5. Update `MEMORY.md` index — one line per entry, under 150 chars
+The five enrichment fields (`tags` / `entities` / `aliases` / `trigger_keywords` / `hypothetical_questions`) feed the local BM25 retrieval engine (`~/.claude/scripts/memory-retrieve.py`) — fill them; they are how a memory gets found.
+
+> **Harness nesting is fine.** When you write a memory through the Write/Edit tool, Claude Code's `autoMemoryDirectory` normaliser may re-nest these fields under a `metadata:` block (and re-add `node_type` / `originSessionId`). The retrieval tooling reads BOTH the flat top-level keys AND the nested `metadata:` block, so either layout retrieves correctly — don't fight it. The one hard invariant: **`name` must equal the filename stem** (everything keys off the stem slug).
+
+5. Regenerate the index with `~/.claude/scripts/gen-memory-index.py` (do NOT hand-edit `MEMORY.md` — it is auto-generated from frontmatter and verified before replace)
 
 ### 2. Review (`/remember review`)
 
 Scan the current conversation for unsaved insights. Check for:
 
-- **Decisions made** (project direction, architecture, strategy) → `project` type
-- **Corrections or confirmations** ("don't do X", "yes that approach works") → `feedback` type
-- **New people, tools, services, external systems** → `reference` type
-- **User preferences or profile details** → `user` type
-- **Credentials or access details shared** → `reference` type
+- **Decisions made** (project direction, architecture, strategy) → `project` namespace
+- **Corrections or confirmations** ("don't do X", "yes that approach works") → `feedback` namespace
+- **New tools, services, external systems** → `reference` namespace
+- **A person (name, how to talk to them, JIDs)** → `contact` namespace
+- **User preferences or profile details** → `identity` namespace
+- **Credentials or access details shared** → `credential` namespace
 
 For each found:
 1. Check MEMORY.md — is it already saved?
@@ -83,9 +97,11 @@ For each found:
 - **Never save ephemeral task details** — use tasks for in-progress work
 - **Convert relative dates to absolute** — "next Thursday" → "2026-04-03"
 - **One topic per file** — don't dump unrelated things together
-- **Keep MEMORY.md under 200 lines** — truncation happens after that
-- **For feedback type:** include **Why** and **How to apply** lines
-- **For project type:** include **Why** and **How to apply** lines
+- **`name` must equal the filename stem** — everything keys off the stem slug; keep them in sync
+- **Fill the enrichment fields** (`tags` / `entities` / `aliases` / `trigger_keywords` / `hypothetical_questions`) — they are how the BM25 engine finds the memory
+- **Don't hand-edit `MEMORY.md`** — it's auto-generated + sharded (contacts/credentials → `indexes/`); regenerate via `gen-memory-index.py`
+- **For feedback namespace:** include **Why** and **How to apply** lines
+- **For project namespace:** include **Why** and **How to apply** lines
 
 ## Shared Memory (for tmux-spawned agents)
 
@@ -98,8 +114,8 @@ Shared memories to be aware of (read these files for context):
 - ~/.claude/memory/reference_cloudflare.md
 
 If you learn something worth persisting across sessions, write it to:
-~/.claude/memory/
-and update MEMORY.md index.
+~/.claude/memory/<namespace>_<topic>.md  (schema v2 frontmatter — see the Save section)
+then regenerate the index: ~/.claude/scripts/gen-memory-index.py
 ```
 
 Only include memories relevant to the agent's task, not all of them.

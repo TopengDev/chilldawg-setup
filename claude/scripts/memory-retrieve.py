@@ -193,6 +193,26 @@ def _minimal_frontmatter_parse(fm: str) -> dict:
     return data
 
 
+def field(fm: dict, key: str):
+    """
+    Read a frontmatter field that may live at the TOP LEVEL (flat schema v2) OR
+    nested under a `metadata:` block. The Claude Code `autoMemoryDirectory`
+    normaliser re-nests any file written through the Write/Edit tool, lifting
+    namespace/title/tier/tags/entities/aliases/trigger_keywords/
+    hypothetical_questions INTO a `metadata:` block. The corpus is therefore
+    MIXED (flat + nested), so EVERY consumed field resolves top-level FIRST,
+    then falls back to the nested block. Top-level always wins for flat files.
+    """
+    if not isinstance(fm, dict):
+        return None
+    if key in fm and fm[key] is not None:
+        return fm[key]
+    md = fm.get("metadata")
+    if isinstance(md, dict):
+        return md.get(key)
+    return None
+
+
 def _as_text_list(v) -> List[str]:
     """Coerce a frontmatter value into a flat list of strings."""
     if v is None:
@@ -248,15 +268,16 @@ def _build_doc(path: Path, root: Path) -> Optional[Doc]:
             meta = _minimal_frontmatter_parse(fm_str)
 
     stem = path.stem
-    title = str(meta.get("title") or meta.get("name") or stem)
-    namespace = str(meta.get("namespace") or meta.get("type") or "")
-    description = str(meta.get("description") or "")
+    # Resolve every field top-level-first, else from the nested `metadata:` block.
+    title = str(field(meta, "title") or field(meta, "name") or stem)
+    namespace = str(field(meta, "namespace") or field(meta, "type") or "")
+    description = str(field(meta, "description") or "")
 
-    aliases = _as_text_list(meta.get("aliases"))
-    trigger_keywords = _as_text_list(meta.get("trigger_keywords"))
-    hypotheticals = _as_text_list(meta.get("hypothetical_questions"))
-    tags = _as_text_list(meta.get("tags"))
-    entities = _as_text_list(meta.get("entities"))
+    aliases = _as_text_list(field(meta, "aliases"))
+    trigger_keywords = _as_text_list(field(meta, "trigger_keywords"))
+    hypotheticals = _as_text_list(field(meta, "hypothetical_questions"))
+    tags = _as_text_list(field(meta, "tags"))
+    entities = _as_text_list(field(meta, "entities"))
 
     # ---- weighted term bag -------------------------------------------------- #
     tf: Counter = Counter()
