@@ -167,6 +167,7 @@ Present three dials. Let the user pick values 1–10, or offer sensible defaults
 
 Default values by vibe:
 - Editorial Luxury → VARIANCE 7, MOTION 4, DENSITY 4
+- Technical Editorial → VARIANCE 5, MOTION 4, DENSITY 4
 - Soft Structuralism → VARIANCE 5, MOTION 5, DENSITY 5
 - Neo-Brutalist → VARIANCE 9, MOTION 3, DENSITY 6
 - Japanese Minimal → VARIANCE 5, MOTION 2, DENSITY 1
@@ -201,6 +202,26 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge — b
 - **Color**: Muted earth palette — ochre, burgundy, forest — never neon; max 1 accent
 - **Signature**: Magazine-style layouts, oversized type, dramatic whitespace, image-driven storytelling
 - **Recommended library:** `Bespoke (Origin UI base + Motion Primitives) — no themed library fits editorial; see §0.7`
+
+### Technical Editorial
+**Best for**: Dev tools, crypto/web3, infra/API products, technical SaaS that wants editorial-grade credibility. Premium, restrained, "the page is lit"
+- **Background**: Warm cream #f9f8f6 (light) / warm near-black #0e0d0a (dark, NEVER pure black). Signature texture is an oklab ambient gradient field, NOT an SVG noise overlay: four large fixed radial glows in the corners, blended in oklab so there are no muddy sRGB midpoints. A faint paper-grain on top is optional, not the texture. Recipe:
+  ```css
+  body {
+    background:
+      radial-gradient(62rem 62rem at 2% -14%, color-mix(in oklab, #7d9fe6 30%, transparent), transparent 60%),
+      radial-gradient(54rem 54rem at 110% 16%, color-mix(in oklab, #e89a6b 28%, transparent), transparent 60%),
+      radial-gradient(50rem 50rem at 16% 116%, color-mix(in oklab, #5fc294 24%, transparent), transparent 58%),
+      radial-gradient(38rem 38rem at 86% 104%, color-mix(in oklab, #b58ad6 20%, transparent), transparent 62%),
+      var(--page);
+    background-attachment: fixed;
+  }
+  ```
+- **Surfaces**: Restrained editorial composition, generous whitespace, container ~1140px. Rounded cards (22-24px) on warm-TINTED shadows (e.g. `0 30px 80px -40px rgba(70,50,30,0.35)`), never grey shadows. Mono-labeled section headers. Fluid `clamp()` type throughout.
+- **Typography**: House defaults per §3.1 (Ethereal Glamour display/serif + Switzer body/sans), PLUS a true monospace (Geist Mono, or the house mono) as the LABELING LANGUAGE. Every eyebrow, tag, step-number, caption, and metadata field is tracked-uppercase mono: `font-mono text-[11px] uppercase tracking-[0.18em]`. The mono-as-labels layer is the defining "technical editorial" signal. **Note:** the arca reference used Playfair Display for a more classic-editorial serif, so reach for Playfair (the on-mood alternative) if Ethereal Glamour's glam character fights the technical restraint; the user picks.
+- **Color**: Warm-charcoal inks (ink #0e0d0a / secondary #46443d / muted #8c887e) on the warm cream/near-black page. ONE restrained cool accent: ink-navy #2a3858 (light) / soft periwinkle #93a7d6 (dark). Light + dark + system. No second accent, no neon.
+- **Signature**: A faux-OS / live-component hero is the showpiece: a JSX terminal that types in real time, a process-stepper, or a chat that demonstrates the product live (NOT screenshots). Editorial calm with technical precision. **Spec-note: the oklab ambient field deliberately replaces §8's noise-overlay default for this archetype, since the perceptual oklab blend IS the texture here, not slop.** Distinct from Editorial Luxury: this differs by the mono-technical labeling layer, the oklab-gradient ambient (vs noise overlay), a restrained cool/navy accent (vs earth tones), and a dev-tool/crypto framing with a live faux-OS hero (vs image-driven luxury). Reference: arca (`github.com/tamaa13/arca`).
+- **Recommended library:** `Bespoke (Origin UI base + Motion Primitives), editorial-restrained + mono-labeled; see §0.7`
 
 ### Soft Structuralism
 **Best for**: Consumer apps, health/wellness, fintech, modern SaaS
@@ -465,8 +486,27 @@ Typography is the single highest-leverage design decision. Get this right and th
 - Size scale: use a modular scale (1.2–1.333 ratio) rather than arbitrary sizes
 - Line height: display text 1.0–1.15, body text 1.5–1.7
 
+### 3.1 Default Typefaces (House Defaults)
+
+The house default pairing is **Ethereal Glamour (display/serif) + Switzer (body/sans)**. Reach for this baseline unless a specific archetype or brief genuinely demands a different face.
+
+**Ethereal Glamour** (display / heading / serif-accent role):
+- Decorative glam display font, **single weight (Regular only)**, self-hosted (not on Google Fonts).
+- TTF installed at `~/.local/share/fonts/EtherealGlamour-Regular.ttf`; generated projects self-host it in `public/fonts/`.
+- Use ONLY at large display sizes. Never for body text.
+- If a heavier weight is needed, faux-bold is acceptable since the face ships Regular only.
+- Archetypes with a defining type identity (Terminal/Monospace, Retro-Future) may override display choice where the aesthetic truly requires it, but Ethereal Glamour is the default for all decorative heading roles.
+
+**Switzer** (body / workhorse / sans role):
+- Characterful-neutral grotesk from Fontshare (free, open license). Load via `https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap` or self-host.
+- Alternative: **General Sans** (Fontshare, similar profile, solid fallback when Switzer is unavailable).
+- Never use Arial, Liberation Sans, or any metric-compatible Arial-class substitute as the body default. Liberation Sans is metric-identical to Arial, which §8 bans. Switzer is the intentional replacement.
+
+**Mono** role: unchanged, follow the guidance below (JetBrains Mono, Space Mono, Geist Mono per archetype).
+
 ### Font Pairing Strategy
-Always pair a distinctive display font with a refined body font. Never use the same font for both unless it's a deliberate monospace aesthetic. Some strong pairings:
+Always pair a distinctive display font with a refined body font. Never use the same font for both unless it's a deliberate monospace aesthetic. The house default pairing is Ethereal Glamour + Switzer. Other strong pairings:
+- **Ethereal Glamour + Switzer** (house default: glam display + characterful grotesk body)
 - Playfair Display + DM Sans (editorial)
 - Instrument Serif + Instrument Sans (modern)
 - Fraunces + Outfit (warm tech)
@@ -475,7 +515,7 @@ Always pair a distinctive display font with a refined body font. Never use the s
 - Bricolage Grotesque + Inter Tight (bold modern — Inter Tight only, never plain Inter)
 - Sora + Karla (geometric clean)
 
-Load fonts from Google Fonts or Fontsource. Always specify `display=swap`.
+Load fonts from Google Fonts or Fontshare. Always specify `display=swap`. Ethereal Glamour is self-hosted (see §3.1 above).
 
 ### Serif Constraints
 Serif fonts are **BANNED for Dashboard/Software UIs**. Use sans-serif pairings (`Geist` + `Geist Mono`, `Satoshi` + `JetBrains Mono`). Serif is only appropriate for creative/editorial vibes.
