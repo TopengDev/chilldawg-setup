@@ -170,22 +170,49 @@ echo "OK: worker model = '${WORKER_MODEL}' (sonnet floor; opus = explicit carve-
 # can't report back. (Verified 2026-06-16: the flag had been dropped from this
 # line; every spawned worker silently lost attn.)
 #
-# Use `--channels plugin:attn@s0nderlabs` (the APPROVED-channels path), NOT
-# `--dangerously-load-development-channels` — the latter triggers a blocking
-# interactive "I am using this for local development" confirm prompt that
-# --dangerously-skip-permissions does NOT bypass, so the worker hangs forever
-# (empirically confirmed 2026-06-16). attn must be in settings.json
-# `allowedChannelPlugins` for --channels to accept it (it is). We load ONLY attn
-# (NOT whatsapp — workers must never load the whatsapp channel; it splits inbound
-# msgs from main per the single-session rule).
+# Use `--dangerously-load-development-channels plugin:attn@s0nderlabs`, NOT
+# `--channels` — on CC 2.1.179+ the "approved" `--channels` path silently FAILS
+# the allowlist INSIDE spawned worker sessions ("plugin:attn@s0nderlabs · not on
+# the approved channels allowlist" + "1 setup issue: MCP"), so messages never
+# inject and the worker can't send back — even though attn IS in settings.json
+# `allowedChannelPlugins`. The dev-channels flag actually loads the channel:
+# inbound inject AND outbound send both verified working 2026-06-18 (full
+# round-trip main<->worker). The flag triggers a ONE-TIME blocking "I am using
+# this for local development" confirm (option 1 pre-selected); --dangerously-
+# skip-permissions does NOT auto-accept it, so we AUTO-CONFIRM with an Enter right
+# after launch (see the confirm poll below) — that turns the old "hangs forever"
+# failure into a clean boot. Load ONLY attn (NOT whatsapp — workers must never
+# load the whatsapp channel; it splits inbound msgs from main per the
+# single-session rule).
 #
 # MANDATORY: --remote-control (Toper's rule 2026-05-31) — EVERY new claude
 # session/worker must start with Remote Control on. Named per-worker (= window
 # name) so RC sessions are identifiable; explicit name also avoids the optional
 # [name] arg being misparsed.
 tmux send-keys -t "${TMUX_SESSION}:${NEXT_INDEX}" \
-  "ATTN_SESSION='${WINDOW_NAME}' claude --model '${WORKER_MODEL}' --channels plugin:attn@s0nderlabs --remote-control '${WINDOW_NAME}' --dangerously-skip-permissions" \
+  "ATTN_SESSION='${WINDOW_NAME}' claude --model '${WORKER_MODEL}' --dangerously-load-development-channels plugin:attn@s0nderlabs --remote-control '${WINDOW_NAME}' --dangerously-skip-permissions" \
   Enter
+
+# Auto-confirm the --dangerously-load-development-channels prompt.
+# The flag opens a blocking "Loading development channels / 1. I am using this for
+# local development / 2. Exit" prompt with option 1 pre-highlighted; a bare Enter
+# confirms it. --dangerously-skip-permissions does NOT auto-accept this, so without
+# sending Enter ourselves the worker hangs at the prompt forever. Poll for it, then
+# confirm. If the chat input renders first (prompt not shown / already past), stop.
+DEVCH_MAX=20          # ceiling (seconds) to wait for the dev-channels prompt
+for ((dc = 0; dc < DEVCH_MAX; dc++)); do
+  sleep 1
+  PANE_DC=$(tmux capture-pane -t "${TMUX_SESSION}:${NEXT_INDEX}" -p -S -25 2>/dev/null || true)
+  if echo "$PANE_DC" | grep -qE -- 'using this for local development|Loading development channels'; then
+    tmux send-keys -t "${TMUX_SESSION}:${NEXT_INDEX}" Enter
+    echo "OK: auto-confirmed --dangerously-load-development-channels prompt (after ~$((dc + 1))s)."
+    sleep 2
+    break
+  fi
+  if echo "$PANE_DC" | grep -qE -- '-- INSERT --|bypass permissions on'; then
+    break   # input already up — confirm not needed
+  fi
+done
 
 # Wait for claude to boot + MCP plugins to register.
 # Empirical: claude prompt usually ready in 4-6s, but a cold start / slow MCP load
