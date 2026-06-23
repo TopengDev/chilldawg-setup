@@ -1,0 +1,271 @@
+{
+  "_meta": {
+    "generated_by": "memory-eval.py --build",
+    "seed": 7,
+    "n_sampled": 30,
+    "n_handwritten": 6,
+    "corpus_size": 193,
+    "namespaces_covered": [
+      "contact",
+      "credential",
+      "feedback",
+      "identity",
+      "project",
+      "reference"
+    ]
+  },
+  "queries": [
+    {
+      "query": "Who is elpabl0 and what is his relationship to Toper?",
+      "expected_file": "reference_s0nderlabs.md",
+      "namespace": "contact",
+      "source": "hypothetical_question",
+      "title": "s0nderlabs / elpabl0 — Crypto x AI Collaborator"
+    },
+    {
+      "query": "How do I SSH into the VPS?",
+      "expected_file": "reference_vps.md",
+      "namespace": "credential",
+      "source": "hypothetical_question",
+      "title": "VPS SSH Access & Read-Only Rule"
+    },
+    {
+      "query": "How do I avoid creating duplicate memory entries?",
+      "expected_file": "feedback_auto_memory.md",
+      "namespace": "feedback",
+      "source": "hypothetical_question",
+      "title": "Automated Memory Saving"
+    },
+    {
+      "query": "Who is Toper and what are his key roles?",
+      "expected_file": "user_christopher.md",
+      "namespace": "identity",
+      "source": "hypothetical_question",
+      "title": "Christopher — Profile & Work Style"
+    },
+    {
+      "query": "What are the deployed contract addresses on Galileo testnet?",
+      "expected_file": "project_zerog_creative_marketplace.md",
+      "namespace": "project",
+      "source": "hypothetical_question",
+      "title": "AURA — 0G Zero Cup Hackathon (Verifiable Creative Marketplace)"
+    },
+    {
+      "query": "Why did whatsapp-tui crash with a schema error?",
+      "expected_file": "reference_whatsapp_tui_codebases.md",
+      "namespace": "reference",
+      "source": "hypothetical_question",
+      "title": "WhatsApp TUI — Two Codebases Sharing app.db"
+    },
+    {
+      "query": "How should I reply to lufika on WhatsApp?",
+      "expected_file": "contact_lufika.md",
+      "namespace": "contact",
+      "source": "hypothetical_question",
+      "title": "Lufika"
+    },
+    {
+      "query": "What is the difference between the two Pulse test accounts?",
+      "expected_file": "reference_pulse_test_creds.md",
+      "namespace": "credential",
+      "source": "hypothetical_question",
+      "title": "Pulse Test Account Credentials"
+    },
+    {
+      "query": "How often should I check on active workers?",
+      "expected_file": "feedback_worker_polling_5min.md",
+      "namespace": "feedback",
+      "source": "hypothetical_question",
+      "title": "Poll Every Active Worker Every 5 Minutes — Don't Trust attn Pings Alone"
+    },
+    {
+      "query": "What custom skills are available in this setup?",
+      "expected_file": "project_skills.md",
+      "namespace": "project",
+      "source": "hypothetical_question",
+      "title": "Custom Claude Code Skills — Master Catalog"
+    },
+    {
+      "query": "Why is the qutebrowser companion panel showing 'not authenticated'?",
+      "expected_file": "reference_elsummariz00r_companion.md",
+      "namespace": "reference",
+      "source": "hypothetical_question",
+      "title": "elsummariz00r Companion Panel Auth Restart"
+    },
+    {
+      "query": "How do I make sure I'm not sending to Alfiki instead of Alkautsar again?",
+      "expected_file": "whatsapp_style_alfiki_diastama.md",
+      "namespace": "contact",
+      "source": "hypothetical_question",
+      "title": "Alfiki Diastama"
+    },
+    {
+      "query": "Where is the Anthropic API key stored?",
+      "expected_file": "reference_anthropic_api.md",
+      "namespace": "credential",
+      "source": "hypothetical_question",
+      "title": "Anthropic API Key"
+    },
+    {
+      "query": "How do I respond when a contact suspects I'm an AI?",
+      "expected_file": "feedback_disclose_ai_when_asked.md",
+      "namespace": "feedback",
+      "source": "hypothetical_question",
+      "title": "Disclose the AI Honestly When Directly Asked"
+    },
+    {
+      "query": "What are the prerequisites before forming PT Aenoxa?",
+      "expected_file": "project_pt_aenoxa.md",
+      "namespace": "project",
+      "source": "hypothetical_question",
+      "title": "PT Aenoxa — Company Formation"
+    },
+    {
+      "query": "Which aenoxa services are currently broken/dead?",
+      "expected_file": "reference_aenoxa_ecosystem_recon.md",
+      "namespace": "reference",
+      "source": "hypothetical_question",
+      "title": "Aenoxa Ecosystem Recon"
+    },
+    {
+      "query": "Why should I say 'mas' not 'kang' with Miftahudin?",
+      "expected_file": "whatsapp_style_miftahudin.md",
+      "namespace": "contact",
+      "source": "hypothetical_question",
+      "title": "Miftahudin"
+    },
+    {
+      "query": "How do I log into ISI systems or netbird VPN?",
+      "expected_file": "reference_isi_credentials.md",
+      "namespace": "credential",
+      "source": "hypothetical_question",
+      "title": "ISI Solusi Work Credentials"
+    },
+    {
+      "query": "Christopher is venting about his career — how should I respond?",
+      "expected_file": "feedback_no_yesman_sugarcoat.md",
+      "namespace": "feedback",
+      "source": "hypothetical_question",
+      "title": "No Yesman, No Sugarcoat"
+    },
+    {
+      "query": "Is the email MCP server working?",
+      "expected_file": "project_email_mcp.md",
+      "namespace": "project",
+      "source": "hypothetical_question",
+      "title": "Email MCP Server"
+    },
+    {
+      "query": "What causes invalid_grant on the OAuth callback?",
+      "expected_file": "reference_pulse_sw_oauth_navigationpreload.md",
+      "namespace": "reference",
+      "source": "hypothetical_question",
+      "title": "Pulse Service Worker OAuth navigationPreload Double-Fetch"
+    },
+    {
+      "query": "Hezkiel is sharing a new business idea — how should I respond?",
+      "expected_file": "contact_hezkiel.md",
+      "namespace": "contact",
+      "source": "hypothetical_question",
+      "title": "Hezkiel Chandra"
+    },
+    {
+      "query": "Where is the Cloudflare API token stored?",
+      "expected_file": "reference_cloudflare.md",
+      "namespace": "credential",
+      "source": "hypothetical_question",
+      "title": "Cloudflare DNS API Access"
+    },
+    {
+      "query": "Before telling Toper about a production data finding, what should I do?",
+      "expected_file": "feedback_verify_load_bearing_claims.md",
+      "namespace": "feedback",
+      "source": "hypothetical_question",
+      "title": "Verify Load-Bearing Claims Before Asserting"
+    },
+    {
+      "query": "What billing tiers does the landing page SaaS have?",
+      "expected_file": "project_landing_page_saas.md",
+      "namespace": "project",
+      "source": "hypothetical_question",
+      "title": "Beacon Landing Page SaaS"
+    },
+    {
+      "query": "Why does /wa-behavior-learn fail to find WhatsApp tools in headless mode?",
+      "expected_file": "reference_wa_behavior_learn_headless.md",
+      "namespace": "reference",
+      "source": "hypothetical_question",
+      "title": "WhatsApp Behavior Learn — Headless Cron & app.db Source"
+    },
+    {
+      "query": "Is Kenken on the auto-reply whitelist?",
+      "expected_file": "contact_kenken.md",
+      "namespace": "contact",
+      "source": "hypothetical_question",
+      "title": "Kenken"
+    },
+    {
+      "query": "This looks like a Claude Code limitation — should I escalate?",
+      "expected_file": "feedback_dont_blame_external.md",
+      "namespace": "feedback",
+      "source": "hypothetical_question",
+      "title": "Don't Blame External Systems"
+    },
+    {
+      "query": "Where are ideation phase documents stored?",
+      "expected_file": "project_ideate_skill.md",
+      "namespace": "project",
+      "source": "hypothetical_question",
+      "title": "Ideate Skill (/ideate)"
+    },
+    {
+      "query": "Why am I hitting rate limits when I shouldn't be?, What are known Claude Code bugs?",
+      "expected_file": "reference_claude_code_usage_bugs.md",
+      "namespace": "reference",
+      "source": "hypothetical_question",
+      "title": "Claude Code Usage/Limit Bugs (v2.1.90-91) — Stale"
+    },
+    {
+      "query": "how do I message my Aenoxa cofounder",
+      "expected_file": "contact_suryadi.md",
+      "namespace": "(handwritten)",
+      "source": "handwritten",
+      "note": "cofounder = Suryadi"
+    },
+    {
+      "query": "what's the BMS fitest authoring standard",
+      "expected_file": "reference_fitest_bms_authoring_standard.md",
+      "namespace": "(handwritten)",
+      "source": "handwritten",
+      "note": "the enforced authoring standard reference"
+    },
+    {
+      "query": "rule about committing with the commit skill",
+      "expected_file": "feedback_commit_skill_enforced.md",
+      "namespace": "(handwritten)",
+      "source": "handwritten",
+      "note": "never raw git commit"
+    },
+    {
+      "query": "how should I talk to Ryan when delivering a bug report",
+      "expected_file": "whatsapp_style_ryan.md",
+      "namespace": "(handwritten)",
+      "source": "handwritten",
+      "note": "Ryan ISI QA register"
+    },
+    {
+      "query": "main session should not do development work itself",
+      "expected_file": "feedback_no_dev_in_main.md",
+      "namespace": "(handwritten)",
+      "source": "handwritten",
+      "note": "main is discussion-only"
+    },
+    {
+      "query": "do not set WHATSAPP=1 on worker sessions",
+      "expected_file": "feedback_whatsapp_single_session_rule.md",
+      "namespace": "(handwritten)",
+      "source": "handwritten",
+      "note": "WHATSAPP=1 main session only"
+    }
+  ]
+}

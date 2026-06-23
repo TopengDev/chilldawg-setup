@@ -29,6 +29,16 @@
             "statusMessage": "Injecting /oneshot-webapp non-negotiables..."
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/christopher/.claude/scripts/memory-inject-hook.sh",
+            "timeout": 8,
+            "statusMessage": "Retrieving relevant memories..."
+          }
+        ]
       }
     ],
     "PreCompact": [
