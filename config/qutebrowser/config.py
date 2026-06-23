@@ -46,10 +46,31 @@ c.content.cookies.accept = 'all'
 # legitimately needs e.g. mic/camera.
 c.content.notifications.enabled = False
 c.content.geolocation = False
-c.content.media.audio_capture = False
-c.content.media.video_capture = False
-c.content.media.audio_video_capture = False
-c.content.desktop_capture = False
+# audio/video/desktop capture: use "ask" (qutebrowser default) so mic/camera/screen-share
+# work for real use. Automation flows (bms-web-admin etc.) don't request these, so no
+# blocking prompts. Decision is remembered per-site in autoconfig.yml after first allow/deny.
+c.content.media.audio_capture = "ask"
+c.content.media.video_capture = "ask"
+c.content.media.audio_video_capture = "ask"
+c.content.desktop_capture = "ask"
+
+# Per-domain media auto-allow (trusted call/work sites — no prompt; default stays "ask").
+# Toper's trusted sites: Teams, Meet, Zoom, Discord, Aenoxa, Topengdev, Telegram. (2026-06-20)
+_media_trusted = [
+    "*://*.teams.microsoft.com/*",
+    "*://meet.google.com/*",
+    "*://*.zoom.us/*",
+    "*://*.discord.com/*",
+    "*://*.aenoxa.com/*",
+    "*://*.topengdev.com/*",
+    "*://*.telegram.org/*",
+]
+for _site in _media_trusted:
+    config.set("content.media.audio_capture", True, _site)
+    config.set("content.media.video_capture", True, _site)
+    config.set("content.media.audio_video_capture", True, _site)
+    config.set("content.desktop_capture", True, _site)
+
 c.content.javascript.alert = False
 c.content.javascript.modal_dialog = False
 c.content.javascript.prompt = False
