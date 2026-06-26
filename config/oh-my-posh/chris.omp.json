@@ -144,5 +144,10 @@
     }
   ],
   "version": 3,
-    "final_space": true
+  "final_space": true,
+  "transient_prompt": {
+    "template": "<#69FF94>❯</> ",
+    "background": "transparent",
+    "foreground": "#ffffff"
+  }
 }
