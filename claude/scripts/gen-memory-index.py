@@ -80,9 +80,10 @@ SIZE_CAP = 24000
 NON_ENTRY = {"MEMORY.md", "MEMORY.md.prev", "journal.md"}
 
 # Namespaces that live in the MAIN MEMORY.md (in this fixed order).
-MAIN_NAMESPACES = ["identity", "feedback", "project", "reference"]
-# Namespaces sharded out to indexes/<ns>.md.
-SHARD_NAMESPACES = ["contact", "credential"]
+MAIN_NAMESPACES = ["identity", "feedback", "reference"]
+# Namespaces sharded out to indexes/<ns>.md. project sharded 2026-06-24 (MEMORY.md
+# was hitting the 24000B loader cap; project is retrieval-served, not always-resident).
+SHARD_NAMESPACES = ["contact", "credential", "project"]
 ALL_NAMESPACES = MAIN_NAMESPACES + SHARD_NAMESPACES
 
 SECTION_TITLE = {
@@ -329,7 +330,9 @@ def render_main(entries: list[Entry], max_line: int = MAX_LINE) -> str:
     out: list[str] = ["# Memory Index", ""]
     out += _auto_header(
         today,
-        " Contacts + credentials are sharded to indexes/contact.md + indexes/credential.md.",
+        " Sharded namespaces are in: "
+        + ", ".join(f"indexes/{ns}.md" for ns in SHARD_NAMESPACES)
+        + ".",
     )
 
     by_ns: dict[str, list[Entry]] = {ns: [] for ns in MAIN_NAMESPACES}
@@ -346,10 +349,10 @@ def render_main(entries: list[Entry], max_line: int = MAX_LINE) -> str:
             out.append(e.line(max_line))
         out.append("")
 
-    # pointer footer so a reader knows the shards exist
+    # pointer footer so a reader knows the shards exist (derived from SHARD_NAMESPACES)
     out.append("## Other indexes")
-    out.append("- Contacts → [indexes/contact.md](indexes/contact.md)")
-    out.append("- Credentials → [indexes/credential.md](indexes/credential.md)")
+    for ns in SHARD_NAMESPACES:
+        out.append(f"- {SECTION_TITLE[ns]} → [indexes/{ns}.md](indexes/{ns}.md)")
     out.append("")
     return "\n".join(out).rstrip() + "\n"
 
