@@ -61,6 +61,8 @@ DECISIONS_LOG="$HOME/claude/state/decisions.log"
 TASKS_DIR="$HOME/.claude/tasks"
 NOTES_DIR="$HOME/claude/notes"
 QUEUE="$HOME/claude/Git/repositories/signal-trader/wa-sender/queue/events.jsonl"
+# Headless (systemd) has no ~/.bashrc, so pull identity vars from secrets.env directly.
+[ -r "$HOME/.claude/secrets.env" ] && . "$HOME/.claude/secrets.env"
 TOPER_JID="${TOPER_WA_JID:?TOPER_WA_JID not set (define in ~/.claude/secrets.env)}"   # Toper WhatsApp JID (from secrets.env)
 STATE_DIR="$HOME/.claude/state"
 LAST_RUN_FILE="$STATE_DIR/loop-digest.lastrun"

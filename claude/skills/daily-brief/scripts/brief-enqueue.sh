@@ -32,6 +32,8 @@ QUEUE="${DAILY_BRIEF_QUEUE:-$HOME/claude/Git/repositories/signal-trader/wa-sende
 LOCK="${DAILY_BRIEF_ENQUEUE_LOCK:-$HOME/.local/share/daily-brief/enqueue.lock}"
 # Phone-format JID is the PROVEN wa-sender surface. Both this and the legacy
 # @lid reach Toper, but wa-sender only delivers to @s.whatsapp.net in practice.
+# Headless (systemd/cron) has no ~/.bashrc, so pull identity vars from secrets.env directly.
+[ -r "$HOME/.claude/secrets.env" ] && . "$HOME/.claude/secrets.env"
 TO="${DAILY_BRIEF_JID:?DAILY_BRIEF_JID not set (define in ~/.claude/secrets.env)}"
 KIND="daily-brief"
 MSGFILE=""
