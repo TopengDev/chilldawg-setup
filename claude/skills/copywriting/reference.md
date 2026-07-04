@@ -142,3 +142,142 @@ You cannot write simply, you can only rewrite simply. The worked centerpiece (th
 7. **Feedback** from people whose taste you respect; show 3 variants, take the one sentence they point to, graft it in.
 8. **Design last**, in the final medium (write the ad in Figma, the newsletter in the newsletter). Copy and design are one (N10).
 9. **The done test:** walk around the garden, come back, "I cannot take anything away from this. One line flows to the next." Ship at a 9-out-of-10 bar, not before. Your standards are your work.
+
+---
+
+## §F. Toper first-person voice (the full transcription + worked contrasts)
+
+SKILL §2b picks the register; this is the full ruleset for the two Toper-voice registers plus the worked before/after. Authority: `feedback_toper_writing_style` (the split, verified 2026-06-29) + `feedback_no_long_hyphens` (N8, universal). This governs copy written in Toper's OWN first person ONLY, NEVER brand copy.
+
+### F1. The OUTREACH / recruiter-DM register (strict symbol-only)
+- **NO emoji, none.**
+- **ONLY these symbols:** `@ & + ( ) / * " ' : ; ! ?`
+- **NO period, comma, hyphen, em/en dash, or bullet in prose.**
+- **Line breaks** separate clauses and sentences (in place of periods/commas); `:` for labels; `&` / `+` to join; `!` / `?` for emphasis.
+- **Keep technical names + URLs intact:** `Next.js`, `topengdev.com`, `gRPC`, `signal-trader` retain their real punctuation (do not mangle a proper noun to fit the symbol set).
+- **Why so strict:** it is his authentic personal register; he rejected emoji + comma + dash drafts twice (2026-05-30, @itsmasiam) before pinning the exact symbol set. When in doubt in this register, ask once.
+
+### F2. The PUBLIC Threads / X register (natural viral voice)
+- **Natural viral-post voice**, the voice of his actual +170k posts (RESOLVED 2026-06-29).
+- **Normal punctuation** (periods, commas, apostrophe contractions: It's, can't).
+- **Occasional emoji allowed** (the ☕-class, as in his +170k post).
+- **NO em/en dash** (N8 still holds, universal, comma or line break instead).
+- **Story / insight-first, value-led, casual, NEVER an ad.** That formula is what went viral. Study his recent posts for tone before drafting.
+
+### F3. Worked contrast A, OUTREACH (normal draft then symbol-only rewrite)
+
+DRAFT (normal punctuation, WRONG for this register):
+"Hey, I saw your post about hiring a fullstack dev. I built a POS app with Next.js and it's live at topengdev.com. Would love to chat."
+
+REWRITE (F1 symbol-only, line breaks, tech names intact):
+```
+saw you're hiring a fullstack dev
+
+i shipped a POS app on Next.js
+live at topengdev.com
+
+open to talk?
+```
+Audit note: zero periods / commas / dashes, no emoji, only allowed symbols, `Next.js` + `topengdev.com` kept intact. This is the register Toper approves. (The SEND still defers to `/outreach`, N14.)
+
+### F4. Worked contrast B, PUBLIC Threads (natural viral voice)
+
+DRAFT (ad-like, WRONG for this register, also fails anti-slop on "seamless / elevate / solution"):
+"Introducing Pulse: the seamless POS solution to elevate your business!"
+
+REWRITE (F2 natural voice, story-first, one ☕-class emoji, real periods):
+"Spent two years watching warung owners count cash by hand every night. Built the thing that closes the day in one tap instead. ☕"
+Audit note: normal punctuation, one emoji, insight-first not an ad, no product pitch, no em/en dash. This is the formula that goes viral.
+
+### F5. Worked contrast C, BRAND COPY counter-example (do NOT cross the registers)
+
+This is Pulse BRAND copy, NOT Toper's first person. It uses **normal punctuation** and must NEVER be stripped to the symbol-only F1 set:
+
+"Tutup toko, angkanya udah ada."  (the shipped Pulse hero, `voice-banks/pulse.md`, HAS a period, correct)
+
+If you ever find yourself deleting the period from a brand line to "match Toper's style", STOP, you just crossed F1 (his outreach voice) into brand copy. Brand copy is register row 1 (§2b): normal clean punctuation, no em/en dash (N8). The registers are opposite; keep them apart.
+
+---
+
+## §G. /atlas-consumer cookbook (real facts before writing, N12)
+
+SKILL §4b is the summary; this is the runnable cookbook. Every recipe is CITED from atlas `references/QUERY-GUIDE.md` (verified against the real `dossiers/pulse/` on 2026-07-02), do not re-derive them. Run from the dossier dir, or pass the dossier path. All read-only.
+
+### G1. Freshness FIRST (QUERY-GUIDE R0), the mandatory gate
+```bash
+bash ~/.claude/skills/atlas/scripts/atlas-freshness.sh ~/.claude/skills/atlas/dossiers/<slug>
+# prints: verdict FRESH / AGING / STALE + per-bucket counts. Writes nothing, touches no browser.
+```
+Verdict meaning (atlas SKILL 11.2): fresh < 50% of `ttl_days`, aging 50 to 100%, stale > `ttl_days`. **STALE is the gate trigger.**
+
+**Live Pulse example:** the whole dossier was captured 2026-06-22 with `ttl_days` 14, so it goes **STALE on 2026-07-06**. Before that it reads AGING (real verdict on 2026-07-03: AGING, 61 of 61 surfaces). After 2026-07-06: attach the §G5 disclaimer or refresh.
+
+### G2. The real observed numbers (QUERY-GUIDE R8), Rule 2 proof
+```bash
+# falsifiable proof numbers, per surface
+jq -r '[.id, (.data_observed | tostring | .[0:120])] | @tsv' surfaces/*.json
+```
+Real Pulse output includes `inventory-stock  {"product_count":14,"categories":["Kopi","Non-Kopi","Pastry","Makanan","Add-on"],...}`. So the honest line is built on `product_count` = 14, a real falsifiable number, NOT an invented "hundreds of products". DO pull the real number; DONT invent a stat.
+
+### G3. The locale worklist (QUERY-GUIDE R8), which strings to transcreate
+```bash
+# i18n gaps /atlas already flagged
+jq -r 'select(.gaps != null) | .id as $s | .gaps[] | select(.severity=="i18n") | [$s, .what] | @tsv' surfaces/*.json
+# dossier-level i18n finding
+jq -r '.gaps[] | select(.severity=="i18n") | .what' manifest.json
+```
+Real Pulse reality (`locale_observed`): en headings like "Stock Levels" / "Goods Receiving" sit over id form labels ("Nama", "Satuan"), and THREE date formats coexist across surfaces. That is the exact §9 ID-string worklist, real gaps, not guessed ones.
+
+### G4. Field to rule mapping (expanded)
+| Field | jq | Feeds |
+|---|---|---|
+| `data_observed` | `jq '.data_observed' surfaces/<id>.json` | Rule 2 numbers, C4 precision |
+| `locale_observed` | `jq -r '.locale_observed' surfaces/*.json` | §9 transcreation worklist |
+| `what_it_does` | `jq -r '.what_it_does' surfaces/*.json` | Phase 2 "the one thing" |
+| `signals` | `jq '.signals' surfaces/*.json` | which feature is worth writing about |
+
+### G5. The STALE-dossier disclaimer (attach verbatim when freshness = STALE)
+> Note: these product facts are from an /atlas dossier captured <DATE>, now STALE (ttl <N>d exceeded). Numbers may have drifted; verify against the live product or trigger an atlas refresh before publishing.
+
+Refresh ONLY the stale surfaces (QUERY-GUIDE R10: `atlas-freshness.sh . --list-stale`), a targeted re-capture, not a full re-crawl. `/copywriting` does NOT run the crawl itself; it requests the refresh.
+
+---
+
+## §H. Failure-mode encyclopedia (expanded from SKILL §13b)
+
+The SKILL 13b table is the quick reference; here is the depth per failure, with the reasoning and the exact recovery. The §7/§8 gate NEVER relaxes in any of these.
+
+### H1. Thin brief (no audience / offer / VoC)
+- **Cause:** a bare `/copy write me a hero` with no reader, no product facts.
+- **Fix:** infer the single most likely reader + offer from context + the voice bank (§11); if it is a real product, pull atlas `data_observed` (§G) for facts. Write the copy, then list EVERY inferred input under "Assumptions made" in the §10 rationale.
+- **Verify:** the output carries audited PASS lines AND a visible assumptions list. It never stalls, and never pretends an inferred input was given.
+
+### H2. Only inferred VoC (no mined phrases)
+- **Cause:** the voice bank has only `inferred (verify)` phrases (as `voice-banks/pulse.md` does today).
+- **Fix:** never cite an inferred phrase as proof (N13); flag any line resting on it as an assumption; prefer a REAL atlas `data_observed` number over an invented quote.
+- **Verify:** re-read your own rationale, no inferred phrase is presented as falsifiable, every inferred dependency is named.
+
+### H3. STALE atlas dossier
+- **Cause:** `atlas-freshness.sh` returns STALE (age > `ttl_days`). Pulse example: any run after 2026-07-06.
+- **Fix:** attach the §G5 disclaimer to every cited number; prefer a targeted refresh (R10) over shipping the stat.
+- **Verify:** either the freshness re-run reads FRESH/AGING, or the disclaimer travels with the number into the output.
+
+### H4. Panel without sub-agents
+- **Cause:** the `Agent` tool is unavailable in the current context.
+- **Fix:** run the four lenses (§6.P: PAS-conflict, Ogilvy big-idea, VoC-literal, Schwartz-mechanism) sequentially yourself in one pass, then judge. Never silently collapse to one draft.
+- **Verify:** the output shows four lens candidates + a judged winner, with a note that it ran sequentially.
+
+### H5. ID reads like a literal translation
+- **Cause:** the ID line was translated from the EN, not transcreated (N9 violation).
+- **Fix:** discard the literal ID; re-draft from the ID reader's OWN mental image (a warung owner at the 2pm rush, a kasir closing the till), then audit that ID line in its OWN §7 table.
+- **Verify:** the ID line passes visualize / falsify / nobody-else on its own, and localizes the cultural image (not "dads in Ohio" rendered word-for-word).
+
+### H6. A line will not pass after ~15 rewrites
+- **Cause:** almost always the claim is bigger than the truth (N5 sincerity); the gate is correctly refusing a hollow line.
+- **Fix:** shrink the claim to what is sincerely true ("move conversions 1% to 2%", not "10x overnight"). If the shrunk-but-true line still cannot pass, the asset itself may not be worth writing, CUT it and say so.
+- **Verify:** the shrunk line passes the §7 table honestly (not by lowering the bar), or the asset is dropped with a one-line reason.
+
+### H7. Wrong register detected
+- **Cause:** skipped the §2b pick, so emoji/commas leaked into Toper outreach, or periods got stripped from brand copy.
+- **Fix:** re-run the §2b decision table from question 1; re-apply the correct punctuation regime; re-check against §F for the two Toper registers.
+- **Verify:** the copy matches its register row exactly (N11), brand copy keeps its periods, outreach uses only the symbol set.

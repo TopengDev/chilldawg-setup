@@ -2,6 +2,9 @@
 
 In Next.js 15+, `params`, `searchParams`, `cookies()`, and `headers()` are asynchronous.
 
+> **Version gate:** synchronous access to these was a deprecated compatibility shim in 15
+> (it warned but worked); it is **REMOVED in Next 16** — awaiting them is mandatory there.
+
 ## Async Params and SearchParams
 
 Always type them as `Promise<...>` and await them.

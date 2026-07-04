@@ -1,10 +1,18 @@
 # Illustration — Prompt Template
 
+> Doctrine (SKILL.md): the 20 hard bans apply to FLAT graphics. Illustrations that read as real, lit
+> objects may use the compositing/depth carve-out (contact+ambient shadow, one consistent light
+> direction, material speculars) — but that carve-out does NOT unlock decorative glow/gradient/
+> drop-shadow on flat illustration. When in doubt, keep it flat and ban-clean.
+>
+> Model reality (2026-07-03): **Gemini Pro is the verified primary.** FLUX and Recraft are
+> **UNVERIFIED optional lanes** — smoke-test first (`references/models.md` §7).
+
 ## Recommended Models
 
-1. **Gemini Pro** (primary) — good all-rounder, compositional planning, editing support
-2. **FLUX.2** (photorealistic illustration) — best for editorial and hyper-detailed scenes
-3. **Recraft V4** (vector illustration) — if SVG output needed for scalable illustrations
+1. **Gemini Pro** (primary, verified) — good all-rounder, compositional planning, editing support
+2. **FLUX 1.1 Pro (`flux-pro-1.1`)** (UNVERIFIED) — best for photoreal editorial and hyper-detailed scenes
+3. **Recraft V4** (UNVERIFIED) — vector illustration if SVG output is needed for scalable illustrations
 
 ## Common Dimensions
 

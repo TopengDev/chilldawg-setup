@@ -85,3 +85,7 @@ Return a YAML array of findings. Each finding MUST include every field below —
 - **confirmed** — you traced it and saw the problem.
 - **probable** — pattern is clearly present but whether it's causing trouble depends on runtime behavior you can't see.
 - **theoretical** — pattern match only, context unclear.
+
+## Verified safe (required output addition)
+
+Alongside findings, return `verified_safe`: up to 8 quality properties you explicitly checked and found sound, each one line with a `file:line` citation (e.g. `- error boundaries present on every route — app/routes/*/error.tsx`). Only what you actually traced — an empty list is honest. This feeds the report's per-dimension "Verified safe:" line.

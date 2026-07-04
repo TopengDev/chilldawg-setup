@@ -1,244 +1,329 @@
 ---
 name: remindme
-description: Schedule natural-language reminders that fire as WhatsApp DMs to Toper. Supports one-shot + recurring schedules, snooze-via-reply, list/cancel sub-commands, and a 60-second test mode. Use when the user says /remindme, "remind me to…", "nudge me…", or wants to schedule a reminder/alert/heads-up.
-argument-hint: <natural language reminder | list | cancel <slug-or-id> | cancel all | test in 60 seconds <content>>
-allowed-tools: Bash, Read, ScheduleWakeup, CronCreate, CronList, CronDelete, mcp__plugin_whatsapp_whatsapp__send_message
+description: Schedule natural-language reminders that fire as WhatsApp DMs to Toper via a durable systemd backend. One-shot + recurring, snooze-via-reply, list/cancel/pause sub-commands, and a ~1-minute test mode. Use when the user says /remindme, "remind me to...", "nudge me...", or wants to schedule a reminder/alert/heads-up.
+argument-hint: <natural language reminder | list | cancel <slug> | pause <slug> | resume <slug> | test <content>>
+allowed-tools: Bash, Read, CronCreate, CronList, CronDelete, mcp__plugin_whatsapp_whatsapp__send_message, mcp__claude_ai_Google_Calendar__create_event
 ---
 
-> ⚠️ **Routing note (Task #130, 2026-05-24):** On this host, `CronCreate(durable:true)` is silently
-> NOT persisted (reported `[session-only]`), so CronCreate reminders die on session restart/compact.
-> The durable reminder path is the **systemd `reminder-check` service** reading
-> `~/reminders/reminders.jsonl` (appends to the wa-sender queue). For any reminder that must survive
-> a restart, add a row to that store instead of (or in addition to) CronCreate — see "How to operate"
-> in `~/claude/notes/reminder-infra-vps-2026-05-24/report.md`. **Do not enter the same reminder in
-> BOTH** `reminders.jsonl` AND a `/remindme` CronCreate job — that's the only way to manufacture a
-> duplicate WhatsApp send, since the two paths use different stores and different send channels and
-> share no dedup key.
+# /remindme - durable WhatsApp reminder scheduler
 
-# /remindme — WhatsApp Reminder Scheduler
+Turns a natural-language request into a reminder that fires a formatted WhatsApp DM to Toper. This skill is
+the canonical, correct implementation of `feedback_time_promise_scheduling`: **every durable time-promise
+routes to the systemd jsonl store**, which fires with no Claude session required.
 
-Turns a natural-language request into a scheduled job that fires a formatted WhatsApp reminder to Toper. `CronCreate` is the backbone for every real reminder (one-shot + recurring); `ScheduleWakeup` is used only for the 60-second test mode; `CronList`/`CronDelete` power list/cancel.
+## MECHANISM TRUTH (read this first - the old skill got it backwards)
 
-## Hard facts about the scheduling tools (verified — do not guess)
+```
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║  DURABLE BACKBONE  =  ~/reminders/reminders.jsonl  +  systemd reminder-check.timer     ║
+║  Append a row -> a systemd timer fires it every minute into the wa-sender queue -> WA.  ║
+║  Survives session restart / compact / exit / reboot. No session needed. NO 7-day cap.  ║
+║  You drive it ONLY through scripts/remindctl (flock-guarded). This is the PRIMARY path.║
+║                                                                                        ║
+║  CronCreate  =  session-only CONVENIENCE, NOT durable.                                  ║
+║  Its own live schema: durable "Has no effect ... all jobs are session-only, gone when  ║
+║  this Claude session ends." Use it ONLY for a same-session in-session action, NEVER as  ║
+║  the sole mechanism for anything that must survive a restart.                           ║
+║                                                                                        ║
+║  ScheduleWakeup  =  REMOVED from this harness. Does not exist. Never reference it.      ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
+```
 
-| Tool | Lifetime | Precision | Listable/Cancellable | Use for |
-|---|---|---|---|---|
-| `CronCreate` (recurring:false) | auto-deletes after it fires | minute | YES (via CronList/CronDelete) | **every one-shot reminder** (short or long) |
-| `CronCreate` (recurring:true) | repeats; **auto-expires after 7 days** | minute | YES | recurring reminders (+ auto-renew) |
-| `durable: true` | persists to `.claude/scheduled_tasks.json`, survives restart | — | YES | every reminder (set it always) |
-| `ScheduleWakeup` | in-session; clamped to **[60, 3600] s** | seconds | **NO** (no list/cancel API) | **test mode only** (60 s sub-minute fire) |
+Why this matters: the old version of this skill declared "CronCreate is the backbone" and told you to
+"always set `durable:true`". That is verified-false - `durable` is a no-op, so every reminder built that
+way silently evaporated on the next restart (worst for the highest-stakes far-future ones). The durable
+engine has been installed and E2E-verified since 2026-05-24. Full engine contract:
+`references/backend-architecture.md`. Tool semantics: `references/tool-facts.md`.
 
-**Why CronCreate is the backbone (verified):** `CronCreate`'s own spec markets it for *"both recurring schedules and one-shot reminders"* ("remind me to check X tomorrow"). `ScheduleWakeup`'s spec, by contrast, describes resuming *"/loop dynamic mode"* and its `prompt` is "the /loop input to fire on wake-up" — it is loop-pacing, not a general reminder scheduler, it can't be listed or cancelled, and it dies on restart. So **all real reminders use CronCreate** (minute precision is plenty; a one-shot can be pinned to the very next minute for "remind me in a few minutes"). `ScheduleWakeup` is used **only** for the throwaway 60-second test mode, where sub-minute timing matters and listability does not.
+---
 
-Critical mechanics:
-1. **Cron is 5-field LOCAL time:** `minute hour day-of-month month day-of-week`. This host runs **WIB (UTC+7)** — Toper's timezone — so write times in WIB directly. No conversion. (Always confirm with `date +%Z` if unsure.)
-2. **A fire enqueues a PROMPT, not a message.** When the job fires, *this Claude session executes the prompt*. The prompt is what tells Claude to send the WhatsApp. So the scheduled prompt must be fully self-contained: recipient JID + exact message body + the `[REMINDME …]` marker + (for recurring) the auto-renew instruction.
-3. **Jobs fire only while the session is idle and alive.** Create reminders from the long-lived command-center (main) session. Use `durable: true` on cron jobs so they survive a restart. `ScheduleWakeup` jobs are in-memory only — they die on restart and cannot be listed or cancelled.
-4. **day-of-week:** `0` or `7` = Sunday, `1` = Monday … `6` = Saturday.
+## HARD RULES (NEVER / ALWAYS)
+
+1. **NEVER** claim `CronCreate durable:true` persists. The live schema says it has NO effect; all
+   CronCreate jobs die when the session ends.
+2. **NEVER** use CronCreate as the SOLE mechanism for any reminder that must survive a restart (anything
+   beyond the current session / more than ~1 hour out). Those MUST be a jsonl row.
+3. **ALWAYS** write a durable reminder as a row appended to `~/reminders/reminders.jsonl` via
+   `scripts/remindctl`. NEVER hand-roll an unlocked `jq`/editor edit of the store - the timer rewrites it
+   every minute under an `flock`, and an unlocked edit can drop or resurrect a row.
+4. **NEVER** reference `ScheduleWakeup` and NEVER list it in `allowed-tools` (removed from the harness).
+5. **ALWAYS** deliver to the phone-format JID `$TOPER_WA_JID` for the wa-sender path
+   (`target_jid` default). NEVER swap in the LID `...@lid` for this transport (that is the MCP-based
+   ritual skills' JID, not this one's).
+6. **NEVER** enter the same reminder in BOTH `reminders.jsonl` AND a CronCreate job. The two paths share no
+   dedup key; double-entry is the only way to manufacture a duplicate WhatsApp send.
+7. **NEVER** schedule the daily standup, daily-brief, or weekly retro through /remindme - they own
+   dedicated timers and duplicating them double-messages Toper. Route to their skills (see Boundary table).
+8. **ALWAYS** emit one-shot `fire_at` with an explicit `+07:00` offset and `:00` seconds. NEVER a bare,
+   ambiguous local time.
+9. **ALWAYS** run the pre-flight pipeline-health check before promising delivery. If `wa-sender.service`
+   is down, reminders enqueue but silently never deliver.
+10. **ALWAYS** re-read the store after writing (verify-after-write) and show the concrete next fire.
+11. For a `>~7-days-out` or high-stakes commitment, **ALSO** create a Google Calendar event (durable,
+    phone popup) per `feedback_time_promise_scheduling`.
+12. **NEVER** set `WHATSAPP=1` anywhere - the durable path goes through the wa-sender queue, not the Claude
+    WA MCP, and `WHATSAPP=1` is main-session-only.
+13. **NEVER** kill or restart `wa-sender.service` to "fix" delivery - it is load-bearing; restart is
+    Toper-gated (`feedback_wa_sender_load_bearing`).
+
+---
 
 ## Constants
 
-- **Toper's WhatsApp JID:** `62817712289@s.whatsapp.net` (pre-verified SUPERUSER number — send directly, no lookup needed).
-- **Marker:** every cron job created here gets a prompt beginning with `[REMINDME id=<slug>]`. The slug is a short kebab-case label derived from the reminder content (e.g. `weekly-retro`, `standup`, `call-mom`). This makes `list` and `cancel` work even after auto-renew rotates the underlying job id.
+- **Toper's WhatsApp JID (wa-sender transport):** `$TOPER_WA_JID` - pre-verified, phone-format,
+  the engine's `REMINDER_JID` default. Send directly, no lookup.
+- **Store:** `~/reminders/reminders.jsonl` (env `REMINDER_STORE`). Driven only via `scripts/remindctl`.
+- **Helper:** `~/.claude/skills/remindme/scripts/remindctl` (flock-guarded CRUD; `--help` for usage).
+- **Timezone:** host + engine are WIB (Asia/Jakarta, UTC+7, no DST). Write times in WIB directly, no
+  conversion. Confirm with `date +%Z` if ever unsure.
+- **day-of-week in cron:** `0` or `7` = Sunday, `1` = Mon ... `6` = Sat (matches the engine).
 
 ---
 
-## Step 0: Parse the invocation
+## Step 0: parse the invocation
 
-Read `$ARGUMENTS` and classify intent:
+Read `$ARGUMENTS` and classify:
 
-| If `$ARGUMENTS`… | Intent |
+| If `$ARGUMENTS`... | Intent |
 |---|---|
-| starts with `list` | → **LIST** (jump to "Sub-command: list") |
-| starts with `cancel all` | → **CANCEL ALL** |
-| starts with `cancel <x>` | → **CANCEL** one |
-| starts with `test ` | → **TEST MODE** (short-circuit, ignore stated duration) |
-| anything else | → **CREATE** a reminder |
+| starts with `list` | -> **LIST** |
+| starts with `cancel <slug>` | -> **CANCEL** |
+| starts with `pause <slug>` / `resume <slug>` | -> **PAUSE / RESUME** |
+| starts with `test ` | -> **TEST MODE** (jsonl one-shot ~70 s out) |
+| anything else | -> **CREATE** a reminder |
 | empty | ask: "What should I remind you about, and when?" |
 
 ---
 
-## Step 1 (CREATE): get the current clock
+## Step 1 (CREATE): get the real clock
 
-Always anchor to the real clock — never hand-calculate dates. Run:
-
+Never hand-calculate dates. Anchor to the clock:
 ```bash
 date '+now: %Y-%m-%d %H:%M:%S %Z (epoch %s, dow %u)'
 ```
 
-You'll compute cron fields and delays relative to this.
+## Step 2 (CREATE): horizon -> mechanism decision gate
 
-## Step 2 (CREATE): determine the schedule type + compute fields
+Pick the mechanism from the horizon. **The jsonl store is the primary path in every row below** - CronCreate
+appears only as an explicit opt-in convenience, never as the durability guarantee.
 
-Decide the dispatch path from the parsed time expression:
+| Horizon / shape | Mechanism (primary) | Notes |
+|---|---|---|
+| **(a)** now -> ~55 min, one-shot | **jsonl one-shot** (`remindctl add-once`) | Default. Durable even if the session dies. Use a CronCreate convenience *in addition* only if you also want an in-session action at fire time. |
+| **(b)** hours -> days, or ANY pinned future date/time | **jsonl one-shot**, MANDATORY | The old CronCreate path would silently die before it fired. |
+| **(c)** `>~7 days` out OR high-stakes / irreversible | **jsonl one-shot + Google Calendar event** | Belt-and-suspenders per `feedback_time_promise_scheduling`. |
+| **(d)** recurring ("every ...") | **jsonl `kind:cron`** (`remindctl add-cron`) | No 7-day cap (unlike CronCreate recurring), no auto-renew needed. |
+| **(e)** test / smoke fire | **jsonl one-shot at `now + ~70 s`** | The every-minute timer fires it within the minute. Replaces the dead ScheduleWakeup test mode. |
 
-### A. TEST MODE — `/remindme test in 60 seconds <content>`
-Short-circuit **all** time parsing. Always schedule exactly 60 seconds out via `ScheduleWakeup`, regardless of any duration the user typed. (The phrase "in 60 seconds" is cosmetic — test mode is always 60 s.) Go to Step 3, path = ScheduleWakeup, delaySeconds = 60. This is the **only** path that uses ScheduleWakeup.
+**Ambiguous time** ("later", "soon", "this evening" with no hour) -> do NOT guess. Ask for a concrete time.
+Committing to a vague time is an anti-pattern; one concrete mechanism per reminder.
 
-### B/C. Any one-shot (short OR long, OR a pinned date) → `CronCreate` (recurring:false, durable:true)
-e.g. "in 30 minutes", "in 2 hours", "tonight at 9pm", "tomorrow at 9am", "on May 30 at noon".
-Compute the pinned fields with `date -d` so you never miscalculate a minute/hour/day/month rollover:
+**Past time** ("at 8am" when it is already 09:00) -> assume the next occurrence (tomorrow) and say so.
+
+### Early-nudge (approximate clock times)
+When Toper gives an approximate clock time, land it **1-2 minutes early** so it arrives a touch early rather
+than late:
+- "9am" -> `08:58`  ·  "7am" -> `06:58`  ·  "noon" -> `11:58`  ·  "every hour" -> minute `37`
+
+Use the exact minute (`:00`/`:30`) only when he says "sharp"/"exactly" or is coordinating with a meeting.
+
+> Rationale note: on this LOCAL systemd timer there is no shared-fleet collision (that concern is specific to
+> the CronCreate *cloud* path). Here the early-nudge is purely a "better early than late" UX choice - but
+> keep it, it is the right default.
+
+## Step 3 (CREATE): write the reminder
+
+Compute the time field with `date -d` (never by hand), then append via `remindctl`. `<slug>` is a short
+kebab-case label from the content (`take-bread-out`, `pay-rent`, `call-mom`); it IS the native id used by
+list/cancel. If `remindctl` rejects a slug as a live duplicate, retry with a `-2` suffix.
+
+### Recipe A - durable one-shot (paths a / b / c)
 ```bash
-# "in 30 minutes"
-date -d "+30 minutes"   +"%-M %-H %-d %-m"      # -> "minute hour dom month"
-# "in 2 hours"
-date -d "+2 hours"      +"%-M %-H %-d %-m"
-# "tomorrow at 9am"  (early-nudge handled below)
-date -d "tomorrow"      +"%-d %-m"              # -> "dom month", set minute/hour yourself
-# "on May 30"
-date -d "2026-05-30"    +"%-d %-m"
+RC=~/.claude/skills/remindme/scripts/remindctl
+FIRE_AT=$(date -d "+30 minutes" +"%Y-%m-%dT%H:%M:00+07:00")   # or: date -d "tomorrow 08:58" / "2026-07-30 11:58"
+"$RC" add-once --id take-bread-out --fire-at "$FIRE_AT" \
+  --content "take the bread out" --schedule-human "today at ~2:30pm WIB"
 ```
-Assemble cron `M H DOM MON *` with `recurring:false, durable:true`. Go to Step 3.
-Minute precision is fine even for "in a few minutes" — pin to the next minute and it fires within ~60 s. Using CronCreate (not ScheduleWakeup) here is deliberate: the reminder then shows up in `/remindme list`, is cancellable, and survives a restart.
+`fire_at` MUST carry the explicit `+07:00` and `:00` seconds. `date -d` with the format string above does
+both. The engine fires when `now >= fire_at`, checked at each minute tick.
 
-### D. Recurring → `CronCreate` (recurring:true, durable:true, + auto-renew)
-e.g. "every day at 7am", "every Monday at 7am", "every weekday at 9am", "every hour", "every 15 minutes".
-Build the recurring cron expression (examples in the table below). Set `recurring:true, durable:true`. The fire-prompt MUST include the auto-renew clause (Step 4) so the job re-arms past the 7-day cap. Go to Step 3.
-
-### Early-nudge rule (applies to B/C/D when the user names a clock time)
-A reminder that arrives late is useless, and the cron tool warns that everyone's "9am" collides on `0 9`. So when the user gives an approximate clock time, fire **1–2 minutes early** on an off-:00/:30 minute:
-- "9am" → minute `58`, hour `8` (i.e. 08:58)
-- "7am" → minute `58`, hour `6`
-- "noon" → minute `58`, hour `11`
-- "every hour" → minute `37` (not `0`)
-Only land on `:00`/`:30` exactly if the user says "sharp", "exactly", or is coordinating with a specific meeting time.
-
-### Cron quick-reference (WIB)
-
-| Request | cron | recurring | durable |
-|---|---|---|---|
-| every day at 7am | `58 6 * * *` | true | true |
-| every Monday at 7am | `58 6 * * 1` | true | true |
-| every weekday at 9am | `58 8 * * 1-5` | true | true |
-| every Sat & Sun at 10am | `58 9 * * 0,6` | true | true |
-| every hour | `37 * * * *` | true | true |
-| every 15 minutes | `*/15 * * * *` | true | true |
-| tomorrow at 9am (one-shot) | `58 8 <tom_dom> <tom_mon> *` | false | true |
-| on May 30 at noon (one-shot) | `58 11 30 5 *` | false | true |
-
-## Step 3: build the fire-prompt and schedule
-
-The **fire-prompt** is the text the job runs when it fires. Build it from this template:
-
+### Recipe B - durable recurring (path d)
+```bash
+RC=~/.claude/skills/remindme/scripts/remindctl
+"$RC" add-cron --id weekly-planning --cron "58 6 * * 0" \
+  --content "weekly planning" --schedule-human "every Sunday 07:00 WIB"
 ```
-[REMINDME id=<slug>] Send a WhatsApp message via mcp__plugin_whatsapp_whatsapp__send_message
-to 62817712289@s.whatsapp.net with EXACTLY this body (preserve the line breaks):
+5-field WIB cron `M H DOM MON DOW`, off-`:00`/`:30` minute, `dow 0/7 = Sun`. No auto-renew clause - the
+engine loops forever with no 7-day cap.
 
-⏰ REMINDER
-
-Topic: <content>
-Scheduled: <human-readable original schedule, e.g. "every Monday at 7am" or "today at 9pm">
-
-(reply "snooze <duration>" within 5 min to postpone)
-<AUTO_RENEW_CLAUSE>
+### Recipe C - test fire (path e)
+```bash
+RC=~/.claude/skills/remindme/scripts/remindctl
+FIRE_AT=$(date -d "+70 seconds" +"%Y-%m-%dT%H:%M:00+07:00")
+"$RC" add-once --id smoke-test --fire-at "$FIRE_AT" \
+  --content "smoke test" --schedule-human "test (~1 min)"
 ```
 
-- `<content>` = the thing to be reminded of, verbatim from the user.
-- `<slug>` = short kebab-case label (e.g. `weekly-retro`).
-- `<human-readable original schedule>` = how the user phrased it, for the "Scheduled:" line (decision A).
-- `<AUTO_RENEW_CLAUSE>`:
-  - **Recurring jobs only**, append:
-    ```
-    AFTER sending, immediately call CronCreate again with the IDENTICAL cron, recurring:true,
-    durable:true, and this same prompt — this re-arms the 7-day expiry window so the reminder
-    never silently dies.
-    ```
-  - **One-shot jobs**: omit it (leave blank).
+### Optional - CronCreate convenience (rare)
+Only when you deliberately want an **in-session action** at fire time AND the session is certainly alive AND
+losing it on restart is acceptable. Session-only. Recipe + marker in `references/tool-facts.md`. This is
+NEVER the durability guarantee, and NEVER used together with a jsonl row for the same reminder (rule 6).
 
-Then dispatch on the path chosen in Step 2:
-- **ScheduleWakeup** (path A, test mode only): `ScheduleWakeup(delaySeconds=60, reason="[REMINDME] <slug>", prompt=<fire-prompt>)`.
-- **CronCreate** (paths B/C one-shot, D recurring): `CronCreate(cron=<expr>, prompt=<fire-prompt>, recurring=<false|true>, durable=true)`. Capture the returned job id.
-
-## Step 4: confirm immediately (decision D)
-
-Right after scheduling succeeds, reply to the user in the session with a confirmation:
-
+### `>7 days` / high-stakes - also add the calendar event (path c)
 ```
-✅ Reminder set — <slug>
-   Topic:     <content>
-   Fires:     <human schedule>  (next: <concrete next datetime, computed via `date -d`>)
-   Mechanism: <ScheduleWakeup 60s | one-shot cron #<id> | recurring cron #<id>, auto-renew on>
-   Cancel:    /remindme cancel <slug>      (test-mode 60 s reminders: not cancellable)
+mcp__claude_ai_Google_Calendar__create_event(
+  summary="<content>", startTime="<ISO>", endTime="<ISO +~15min>",
+  timeZone="Asia/Jakarta", overrideReminders=[{"method":"popup","minutes":0}])
+```
+Target `$TOPER_EMAIL`. This is a SECOND durable layer on top of the jsonl row, not a replacement.
+
+## Step 4 (CREATE): pre-flight + verify-after-write
+
+**Pre-flight (all three must pass; else print `DEGRADED:<which>` and warn Toper before confirming):**
+```bash
+systemctl --user is-active reminder-check.timer   # expect: active   (NOT the oneshot .service - it is inactive between ticks)
+systemctl --user is-active wa-sender.service        # expect: active   (down = enqueue-but-never-deliver)
+test -w ~/reminders/reminders.jsonl && echo store-writable
 ```
 
-Do NOT also WhatsApp Toper at creation time — the WA message is the *reminder itself*, sent only when the job fires.
+**Verify-after-write (mandatory):**
+```bash
+~/.claude/skills/remindme/scripts/remindctl get --id <slug> --json
+```
+Assert: the row is present, `status` is `pending`/`active`, and `next_fire` is a concrete future ISO WIB
+datetime. If the row is missing or unparseable, ABORT and report (do not confirm success). `remindctl`
+already computes `next_fire` using the engine's exact firing rules, so use that as the concrete next fire.
+
+## Step 5 (CREATE): confirm (fixed contract)
+
+Reply in-session with this exact block (do NOT WhatsApp Toper now - the WA message IS the reminder, sent
+only when it fires):
+```
+Reminder set - <slug>
+  Topic:     <content>
+  Mechanism: durable-jsonl (systemd timer, fires with no session)   [or: + gcal | cron-convenience session-only]
+  Next fire: <concrete ISO WIB datetime from remindctl next_fire>
+  Pipeline:  timer active, wa-sender active, store writable          [or: DEGRADED:<which> - warn]
+  Cancel:    /remindme cancel <slug>
+```
 
 ---
 
-## Sub-command: list
+## Sub-commands (all via remindctl - flock-guarded)
 
+**list**
+```bash
+~/.claude/skills/remindme/scripts/remindctl list        # add --json for machine output, --all to include done
 ```
-CronList()
+Shows each live reminder (`pending`/`active`/`paused`): slug, kind, status, next fire, schedule. Append the
+caveat: *"(Any session-only CronCreate convenience jobs are separate - check `CronList` for those.)"*
+
+**cancel <slug>**
+```bash
+~/.claude/skills/remindme/scripts/remindctl cancel --id <slug>   # removes all rows with that id (exit 3 if none)
 ```
-Filter to jobs whose prompt contains `[REMINDME`. For each, show: slug (parsed from `id=<slug>`), the cron expression rendered human-readable, recurring vs one-shot, and the job id. If none match, say "No scheduled reminders." Always append the caveat: *"(Test-mode 60 s reminders run on ScheduleWakeup and aren't listed — they have no query API.)"*
+On no match, run `remindctl list` and show the available slugs so Toper can retry.
 
-## Sub-command: cancel <slug-or-id>
+**pause <slug> / resume <slug>**
+```bash
+~/.claude/skills/remindme/scripts/remindctl pause  --id <slug>   # status -> paused (disable, keep the row)
+~/.claude/skills/remindme/scripts/remindctl resume --id <slug>   # cron -> active, once -> pending
+```
 
-1. `CronList()`, filter to `[REMINDME` jobs.
-2. Match the user's argument against either the `id=<slug>` label **or** the raw job id. Because auto-renew rotates ids, **a slug may map to more than one live job** — cancel ALL matches.
-3. `CronDelete(id=…)` for each match.
-4. Confirm what was cancelled. If no match: list the available reminder slugs so the user can retry.
-
-## Sub-command: cancel all
-
-`CronList()` → for every job whose prompt contains `[REMINDME`, call `CronDelete(id=…)`. Report the count removed. (Test-mode 60 s reminders run on ScheduleWakeup and can't be cancelled.)
+**snooze (inbound WhatsApp reply)**
+The engine's reminder body is byte-fixed (`⏰ REMINDER / Topic: / Scheduled:`) and carries NO snooze line -
+snooze is a main-session capability, not something advertised in the message. When Toper replies
+**"snooze <duration>"** on WhatsApp shortly after a fire (roughly within 10 min), the reply arrives as a
+`<channel source="...whatsapp...">` event in the main session (needs main alive with `WHATSAPP=1`):
+1. Parse `<duration>`.
+2. Append a FRESH one-shot jsonl row at `now + <duration>` with a `-snooze` slug suffix (Recipe A). Do NOT
+   alter a recurring row's cadence - a snooze is one extra delayed fire, not a schedule change.
+3. Reply on WhatsApp: `⏰ Snoozed. I will remind you again in <duration>.`
 
 ---
 
-## Handling snooze replies (decision B)
+## Boundary / routing (do NOT double-schedule)
 
-The reminder body invites `reply "snooze <duration>"`. WhatsApp inbound replies surface in the command-center session as `<channel source="...whatsapp...">` events. When you see Toper reply with **"snooze <duration>"** (e.g. "snooze 1h", "snooze 30m", "snooze 2 hours") shortly after a reminder fired:
+| Want | Owner | Why not /remindme |
+|---|---|---|
+| Ad-hoc "remind me to X at T" | **/remindme** (this skill) | - |
+| Morning/evening daily brief | **/daily-brief** (own systemd timers) | Duplicating collides with `daily-brief-morning/evening`. |
+| Twice-daily standup | **/standup** | Deliberately kept OUT of the reminder store to avoid double-send (see report.md). |
+| Weekly Sunday retro | **/retro** | Owns its own ritual. |
+| Recurring cloud routine (runs without your machine) | **/schedule** | Cloud cron; different tier. |
+| In-session recurring loop | **/loop** | Session-scoped polling. |
+| Passive to-do list (no alarm) | **/tasks** | A list entry is not a scheduled fire. |
 
-1. Parse `<duration>` → seconds.
-2. Re-schedule the **same content** as a fresh one-shot via `CronCreate(recurring:false, durable:true)` pinned to now + `<duration>` (`date -d "+<duration>" +"%-M %-H %-d %-m"`). Reuse the same `<slug>` with a `-snooze` suffix so it's traceable.
-3. Reply on WhatsApp: `⏰ Snoozed — will remind again in <duration>.`
-
-A snooze does **not** cancel a recurring reminder's normal cadence; it just adds one extra delayed fire.
+If Toper asks /remindme to schedule a standup/brief/retro, route him to the owning skill instead of adding a
+second timer.
 
 ---
 
-## Worked examples (input → dispatch)
+## Failure playbooks (condensed - full runbooks in references/failure-playbooks.md)
 
-Assume "now" = Sun 2026-05-24 05:40 WIB.
+- **No reminders arriving:** `systemctl --user is-active wa-sender.service`. If inactive, rows enqueue but
+  never deliver (silent). Surface to Toper; NEVER kill/restart wa-sender (Toper-gated). Queued rows persist.
+- **Nothing fires at all:** check the **timer** (`systemctl --user status reminder-check.timer`), not the
+  oneshot service (it is `inactive` between ticks by design). `journalctl --user -u reminder-check.service`.
+- **Missed while logged out:** `Linger=no` -> units start on login. `Persistent=true` catches up pending
+  one-shots; recurring matches during the logged-out window are lost. Escape hatch (Toper-gated):
+  `loginctl enable-linger christopher`.
+- **Duplicate send:** root cause is double-entry (jsonl AND CronCreate for one reminder). Keep the jsonl row,
+  `CronDelete` the session job.
+- **Bad row:** the engine skips one unparseable line with a `WARN` and fires the rest; `remindctl` preserves
+  it. Validate with the snippet in the failure-playbooks reference.
 
-1. `/remindme test in 60 seconds smoke test`
-   → TEST MODE. `ScheduleWakeup(delaySeconds=60, reason="[REMINDME] smoke-test", prompt="[REMINDME id=smoke-test] Send WA to 62817712289@s.whatsapp.net: ⏰ REMINDER / Topic: smoke test / Scheduled: test (60s) …")`. Confirm "fires in 60s, not listable".
+---
+
+## Worked examples (input -> dispatch)
+
+Assume now = Fri 2026-07-03 08:05 WIB.
+
+1. `/remindme test smoke check`
+   -> TEST. `FIRE_AT=$(date -d "+70 seconds" +"%Y-%m-%dT%H:%M:00+07:00")` ->
+   `remindctl add-once --id smoke-check --fire-at "$FIRE_AT" --content "smoke check" --schedule-human "test (~1 min)"`.
+   Pre-flight, verify, confirm "next fire ~08:06:00, durable-jsonl".
 
 2. `/remindme in 30 minutes take the bread out`
-   → one-shot → `date -d "+30 minutes" +"%-M %-H %-d %-m"` → e.g. `10 6 24 5` → `CronCreate(cron="10 6 24 5 *", recurring=false, durable=true, prompt="[REMINDME id=take-bread-out] …")`. Listable + cancellable.
+   -> jsonl one-shot (a). `FIRE_AT=$(date -d "+30 minutes" +"%Y-%m-%dT%H:%M:00+07:00")` -> `add-once --id take-bread-out`.
 
 3. `/remindme in 2 hours call the bank`
-   → one-shot ≥ 1h → `date -d "+2 hours" +"%-M %-H %-d %-m"` → e.g. `40 7 24 5` → `CronCreate(cron="40 7 24 5 *", recurring=false, durable=true, prompt="[REMINDME id=call-bank] …")`.
+   -> jsonl one-shot (b). `date -d "+2 hours" +"%Y-%m-%dT%H:%M:00+07:00"` -> `add-once --id call-bank`.
 
-4. `/remindme tomorrow at 9am do standup`
-   → one-shot, pinned date. `date -d "tomorrow" +"%-d %-m"` → `25 5`; early-nudge 9am→08:58 → `CronCreate(cron="58 8 25 5 *", recurring=false, durable=true, prompt="[REMINDME id=standup] …Scheduled: tomorrow at 9am…")`.
+4. `/remindme tomorrow at 9am do the standup prep`
+   -> jsonl one-shot (b), early-nudge 08:58. `date -d "tomorrow 08:58" +"%Y-%m-%dT%H:%M:00+07:00"` ->
+   `add-once --id standup-prep --schedule-human "tomorrow at 9am"`. (Note: this is prep, NOT the standup
+   ritual itself - that stays with /standup.)
 
-5. `/remindme every Monday at 7am weekly retro`
-   → recurring → `CronCreate(cron="58 6 * * 1", recurring=true, durable=true, prompt="[REMINDME id=weekly-retro] …Scheduled: every Monday at 7am… <AUTO_RENEW_CLAUSE>")`.
+5. `/remindme every Monday at 7am weekly planning`
+   -> jsonl cron (d). `add-cron --id weekly-planning --cron "58 6 * * 1" --schedule-human "every Monday at 7am"`.
 
 6. `/remindme every weekday at 9am check the deploy queue`
-   → recurring → `cron="58 8 * * 1-5"`, recurring=true, durable=true, auto-renew on.
+   -> jsonl cron (d). `--cron "58 8 * * 1-5"`.
 
 7. `/remindme every hour drink water`
-   → recurring → `cron="37 * * * *"`, recurring=true, durable=true, auto-renew on.
+   -> jsonl cron (d). `--cron "37 * * * *"`.
 
-8. `/remindme on May 30 at noon submit the report`
-   → one-shot pinned → `cron="58 11 30 5 *"`, recurring=false, durable=true.
+8. `/remindme on July 30 at noon submit the quarterly report`
+   -> jsonl one-shot, 27 days out = high-stakes (c). `date -d "2026-07-30 11:58" +"%Y-%m-%dT%H:%M:00+07:00"`
+   -> `add-once --id submit-quarterly-report` **AND** a Google Calendar event (Asia/Jakarta, popup at start).
 
 9. `/remindme list`
-   → CronList → show all `[REMINDME` jobs + the ScheduleWakeup caveat.
+   -> `remindctl list` + the CronList caveat.
 
-10. `/remindme cancel weekly-retro`
-    → CronList → match `id=weekly-retro` (all instances) → CronDelete each → confirm.
+10. `/remindme cancel weekly-planning`
+    -> `remindctl cancel --id weekly-planning` -> confirm the removed count; if none, list available slugs.
 
 ---
 
 ## Edge cases & rules
 
-- **Ambiguous time** ("later", "soon", "this evening" with no hour) → ask for a concrete time rather than guessing.
-- **Past time** ("at 5am" when it's already 05:40) → assume the next occurrence (tomorrow) and say so in the confirmation.
-- **Empty content** → ask what to be reminded about.
-- **Don't double-send.** The WhatsApp message fires only from the scheduled prompt, never at creation.
-- **Verify after firing.** When a reminder fires, confirm the WhatsApp `send_message` returned success; if it errored, retry once and surface the failure rather than silently dropping the reminder.
-- **Recurring durability.** Always set `durable:true` on cron reminders so a session restart doesn't wipe them; auto-renew handles the 7-day cap while the session lives, durability handles restarts.
-- **Stay honest about test-mode limits.** Real reminders (CronCreate) are always listable/cancellable, including short "in a few minutes" ones. Only the 60 s **test-mode** reminder (ScheduleWakeup) cannot be listed or cancelled — never imply otherwise.
+- **Empty content** -> ask what to be reminded about.
+- **Ambiguous time** -> ask for a concrete time; never emit an untethered guess.
+- **Don't double-send / don't double-enter** -> one mechanism per reminder (rule 6); the WA message fires
+  only from the timer, never at creation.
+- **Verify-after-write is not optional** -> a confirmed reminder must be a re-read, present, parseable row.
+- **Slug reuse** -> `remindctl` allows reusing a slug whose only prior instance is `done`; a `cancel` of a
+  reused slug removes the historical `done` row too, so prefer a fresh distinct slug.
+- **Stay honest about limits** -> durable reminders survive restarts (that is the whole point); a CronCreate
+  convenience does not; recurring matches during a logged-out boot are lost. Never imply otherwise.

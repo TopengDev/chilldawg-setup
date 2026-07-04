@@ -1,12 +1,19 @@
 # Photorealistic Mockups — Prompt Template
 
+> Model reality (2026-07-03): the FLUX and GPT lanes below are **UNVERIFIED optional lanes** — run
+> the availability pre-flight + a 1-image smoke test THIS session before using them (`references/models.md`
+> §1, §7). If either fails, Gemini Pro is the fallback for mockups. The auth var is `$FLUX_API_KEY`
+> (NOT `$BFL_API_KEY`, which does not exist). The 20 hard bans apply to flat graphics only; the
+> compositing/depth carve-out (contact+ambient shadow, one light direction, material speculars)
+> applies to these lit-object mockups (SKILL.md).
+
 ## Recommended Models
 
-1. **FLUX.2 Pro** (primary) — best photorealism, simulates optical physics, product visualization
-2. **GPT Image 1.5** (strong alternative) — 87% photorealistic accuracy, iterative editing
-3. **Gemini Pro** (fallback) — decent photorealism, editing support
+1. **FLUX 1.1 Pro (`flux-pro-1.1`)** — best photorealism, simulates optical physics, product visualization (UNVERIFIED lane)
+2. **GPT Image (`gpt-image-1`)** — strong photorealistic accuracy, iterative editing (UNVERIFIED lane)
+3. **Gemini Pro** — verified fallback, decent photorealism, iterative editing support
 
-**Avoid:** Recraft (design-focused, not photo), Ideogram (struggles with photorealism)
+**Avoid:** Recraft (design-focused, not photo)
 
 ## Common Dimensions
 
@@ -64,9 +71,9 @@ Mockups require **photographic language**, not design language. Think like a pho
 FLUX uses async polling. The prompt should be photographic:
 
 ```bash
-# Submit
+# Submit (UNVERIFIED — smoke-test first; auth var is $FLUX_API_KEY)
 TASK_ID=$(curl -s -X POST "https://api.bfl.ai/v1/flux-pro-1.1" \
-  -H "x-key: $BFL_API_KEY" \
+  -H "x-key: $FLUX_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Professional product photograph of [product]. Shot on a [surface] in [setting]. [Lighting description]. [Camera: lens, angle, depth of field]. [Material details]. [Mood/atmosphere]. Commercial product photography quality.",
@@ -76,19 +83,19 @@ TASK_ID=$(curl -s -X POST "https://api.bfl.ai/v1/flux-pro-1.1" \
 
 # Poll (5s intervals, max 60s)
 for i in $(seq 1 12); do
-  RESULT=$(curl -s "https://api.bfl.ai/v1/get_result?id=$TASK_ID" -H "x-key: $BFL_API_KEY")
+  RESULT=$(curl -s "https://api.bfl.ai/v1/get_result?id=$TASK_ID" -H "x-key: $FLUX_API_KEY")
   STATUS=$(echo "$RESULT" | jq -r '.status')
   if [ "$STATUS" = "Ready" ]; then
-    URL=$(echo "$RESULT" | jq -r '.result.sample')
-    curl -s -o "/tmp/creative-output/mockup.png" "$URL"
-    echo "Downloaded to /tmp/creative-output/mockup.png"
+    URL=$(echo "$RESULT" | jq -r '.result.sample')   # signed URL — extract the file, don't paste the full response
+    curl -s -o "$JOB_DIR/variants/mockup.png" "$URL"
+    echo "Downloaded to $JOB_DIR/variants/mockup.png"
     break
   fi
   sleep 5
 done
 ```
 
-## GPT Image 1.5 Pattern
+## GPT Image (`gpt-image-1`) Pattern — UNVERIFIED lane, smoke-test first
 
 Good for mockups that need text on the product (labels, screens, packaging):
 

@@ -22,6 +22,25 @@ export async function POST(request: Request) {
 
 `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`
 
+## Caching Defaults (Next 15+) — Uncached by Default
+
+Since Next 15, **GET route handlers are dynamic/UNCACHED by default** (they were
+cacheable-by-default in 14). NEVER reason "it's a GET, so it's cached" on a 15/16 repo —
+the default inverted. Caching is explicit opt-in:
+
+```tsx
+// Opt a GET handler into static caching
+export const dynamic = 'force-static'
+
+export async function GET() { ... }
+```
+
+- `export const revalidate = 60` — time-based revalidation for the handler
+- Non-GET methods (POST/PUT/PATCH/DELETE) are never cached
+- 16.x with `cacheComponents: true`: those segment exports CONFLICT (build error) — use
+  `'use cache'` + cache profiles instead (see [directives.md](./directives.md))
+- Perf-side reasoning about caching strategy belongs to `/vercel-react-best-practices`
+
 ## GET Handler Conflicts with page.tsx
 
 **A `route.ts` and `page.tsx` cannot coexist in the same folder.**

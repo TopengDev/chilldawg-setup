@@ -2,6 +2,10 @@
 
 Deploy Next.js outside of Vercel with confidence.
 
+> **Boundary:** this file covers framework-level self-hosting only. House VPS deploy
+> mechanics (nginx, certbot, subdomains, Cloudflare A records) are owned by `/deploy-landing`
+> and `/oneshot-webapp`; server-side secret rules for pitch demos live in `/oneshot-webapp`.
+
 ## Quick Start: Standalone Output
 
 For Docker or any containerized deployment, use standalone output:
@@ -71,8 +75,7 @@ CMD ["node", "server.js"]
 ### Docker Compose
 
 ```yaml
-version: '3.8'
-
+# No `version:` key — obsolete under the Compose Spec (ignored with a warning)
 services:
   web:
     build: .
@@ -86,7 +89,16 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s    # grace window at container start
+      start_interval: 5s   # fast probes INSIDE the grace window
 ```
+
+> **Healthcheck trap (verified 10-min prod outage, 2026-06-16):** if ANY service gates on
+> this one via `depends_on: condition: service_healthy`, a long `interval` WITHOUT
+> `start_period` + `start_interval` delays the FIRST probe by up to one full interval —
+> the gated service sits in `Created` and the stack hangs on the next restart. ALWAYS pair
+> a long interval with both start knobs. Recovery playbook:
+> [house-gotchas.md](./house-gotchas.md) (memory: `reference_healthcheck_interval_breaks_startup_gate`).
 
 ## PM2 Deployment
 
@@ -298,10 +310,13 @@ For truly dynamic config, don't use `NEXT_PUBLIC_*`. Instead:
 
 ```tsx
 // app/api/config/route.ts
+// NEVER return raw process.env (or spread it) from a public route —
+// whitelist specific NON-SECRET fields only. One careless extension of
+// this pattern leaks DATABASE_URL / API keys to the world.
 export async function GET() {
   return Response.json({
-    apiUrl: process.env.API_URL,
-    features: process.env.FEATURES?.split(','),
+    apiUrl: process.env.API_URL,             // non-secret, whitelisted
+    features: process.env.FEATURES?.split(','), // non-secret, whitelisted
   });
 }
 ```

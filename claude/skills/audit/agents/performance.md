@@ -100,3 +100,7 @@ Required schema from SKILL.md. Always include an **impact estimate** framed as "
 - **confirmed** — you can see the hot path and it's clearly inefficient.
 - **probable** — pattern exists but whether it's in a hot path is unclear.
 - **theoretical** — pattern match only.
+
+## Verified safe (required output addition)
+
+Alongside findings, return `verified_safe`: up to 8 performance properties you explicitly checked and found sound, each one line with a `file:line` citation (e.g. `- dashboard list query is batched + paginated — api/orders.ts:88`). Only what you actually traced — an empty list is honest. This feeds the report's per-dimension "Verified safe:" line.

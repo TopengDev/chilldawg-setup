@@ -125,3 +125,7 @@ Required schema. Be rigorous about `impact` — name the specific wrong outcome.
 - **confirmed** — you traced the code path and the bug is reproducible in principle.
 - **probable** — gap is present but context may mitigate (upstream validation, framework default).
 - **theoretical** — pattern match only.
+
+## Verified safe (required output addition)
+
+Alongside findings, return `verified_safe`: up to 8 business-logic invariants you explicitly checked and found sound, each one line with a `file:line` citation (e.g. `- escrow fulfill XOR refund invariant holds — contracts/Escrow.sol:141`). Only what you actually traced — an empty list is honest. This feeds the report's per-dimension "Verified safe:" line.

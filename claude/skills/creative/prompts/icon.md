@@ -1,9 +1,14 @@
 # Icons / UI Elements — Prompt Template
 
+> Model reality (2026-07-03): Recraft is the ONLY native-SVG lane but it is **UNVERIFIED / not
+> installed** — run the availability pre-flight + a 1-image smoke test first (`references/models.md`
+> §1, §7c, §7d). If Recraft is unavailable, Gemini is the raster fallback (warn: needs manual
+> vectorization for production).
+
 ## Recommended Models
 
-1. **Recraft V4 Vector** (primary) — native SVG, consistent sets via Brand Kit, stroke uniformity
-2. **Gemini** (fallback) — decent concepts but raster-only
+1. **Recraft V4 Vector** (primary IF pre-flight + smoke pass) — native SVG, consistent sets via Brand Kit, stroke uniformity
+2. **Gemini** (verified fallback) — decent concepts but raster-only
 
 **Critical:** Icons need to be vectors (SVG) for production use. If Recraft is unavailable, warn the user that raster icons will need manual vectorization.
 

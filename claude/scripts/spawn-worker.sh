@@ -124,7 +124,7 @@ fi
 # debugging) that must be requested explicitly. Resolution precedence:
 #   1. CHILLDAWG_WORKER_MODEL env   (explicit per-spawn override)
 #   2. .model field in the worker's triage.json
-#   3. default: sonnet
+#   3. default: claude-sonnet-5  (Sonnet floor; upgraded from Sonnet 4.6 per Toper 2026-07-03)
 # Anything that is NOT an 'opus' token clamps to the sonnet FLOOR (never lower,
 # e.g. never Haiku) — "hard floor" per Toper 2026-06-15.
 _resolve_triage_file() {
@@ -151,7 +151,7 @@ if [[ -z "$_raw_model" ]]; then
 fi
 case "$(printf '%s' "$_raw_model" | tr '[:upper:]' '[:lower:]')" in
   opus*) WORKER_MODEL="opus" ;;
-  *)     WORKER_MODEL="sonnet" ;;
+  *)     WORKER_MODEL="claude-sonnet-5" ;;
 esac
 echo "OK: worker model = '${WORKER_MODEL}' (sonnet floor; opus = explicit carve-out)."
 # -----------------------------------------------------------------------------

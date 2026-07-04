@@ -11,7 +11,7 @@ app/
 │   ├── (.)photos/             # Intercepts /photos/*
 │   │   └── [id]/
 │   │       └── page.tsx       # Modal content
-│   └── [...]catchall/         # Optional: catch unmatched
+│   └── [...catchall]/         # Optional: catch unmatched
 │       └── page.tsx
 ├── photos/
 │   └── [id]/

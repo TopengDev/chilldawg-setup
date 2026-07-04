@@ -66,8 +66,18 @@ export async function getCachedData() {
 }
 ```
 
-Requires `cacheComponents: true` in `next.config.ts`.
+**Enablement is VERSION-GATED — check the installed Next version first (SKILL.md step 0):**
 
-For detailed usage including cache profiles, `cacheLife()`, `cacheTag()`, and `updateTag()`, see the `next-cache-components` skill.
+| Installed Next | Enable via | Notes |
+|---|---|---|
+| 15.x | `experimental: { useCache: true }` | `experimental.dynamicIO` for full Cache Components semantics |
+| 16.x | `cacheComponents: true` (TOP-LEVEL) | `experimental.useCache` / `experimental.dynamicIO` are REMOVED in 16 — they error as unrecognized |
 
-Reference: https://nextjs.org/docs/app/api-reference/directives/use-cache
+**16.x conflict trap:** enabling `cacheComponents` errors at build on ANY route segment that
+still exports `dynamic`, `revalidate`, or `fetchCache`. Remove those segment exports and
+migrate them to `'use cache'` + cache profiles BEFORE flipping the flag.
+
+Cache profiles (all from `next/cache`): `cacheLife('hours')` sets the entry's revalidation
+lifetime; `cacheTag('posts')` labels it for invalidation via `revalidateTag()` / `updateTag()`.
+Full API: https://nextjs.org/docs/app/api-reference/directives/use-cache
+(Verified against version-16 upgrade guide via context7, 2026-07-03.)

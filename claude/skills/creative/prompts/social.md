@@ -78,7 +78,7 @@ GPT Image excels at:
 
 Use quality "medium" for iterations, "high" for final output.
 
-### Recraft V4 Approach
+### Recraft Approach (UNVERIFIED lane — smoke-test first)
 
 Best for:
 - Flat graphic design style (posters, social cards)
@@ -86,7 +86,10 @@ Best for:
 - Brand-consistent output (accepts color arrays)
 - Vector output for further editing
 
-Use `digital_illustration` style for social graphics, NOT `realistic_image`.
+**Style param: do NOT hard-code a style here.** `references/models.md` §7c is the single source of
+truth for Recraft model/style IDs, and the exact style behavior is smoke-test-resolved this session
+(the old "use `digital_illustration`, not `realistic_image`" claim was never verified and is not
+authoritative). Verified default for social remains **Gemini** — Recraft is optional and gated.
 
 ## Example Prompts (GOOD)
 

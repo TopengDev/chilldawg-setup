@@ -6,8 +6,11 @@
 
 ## Recommended Models
 
-1. **Recraft V4 Vector** (primary) — ONLY model with native SVG output. Use `recraftv4_vector` model.
-2. **Gemini** (fallback if Recraft unavailable) — decent concepts but raster-only, warn user.
+> Recraft is the ONLY native-SVG lane but is **UNVERIFIED / not installed** as of 2026-07-03 — run
+> the availability pre-flight + a 1-image smoke test first (`references/models.md` §1, §7c, §7d).
+
+1. **Recraft V4 Vector** (primary IF pre-flight + smoke pass) — ONLY model with native SVG output. Use `recraftv4_vector` model.
+2. **Gemini** (verified fallback if Recraft unavailable) — decent concepts but raster-only, warn user.
 
 **DO NOT USE** for logos:
 - FLUX (photorealism focus, no vector, text unreliable)

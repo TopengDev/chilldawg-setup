@@ -103,3 +103,7 @@ Required schema from SKILL.md, `dimension: data-integrity`. Be rigorous in `impa
 - **confirmed** — you traced the computation/store path and the defect produces a demonstrably wrong/fabricated value (you can state the inputs and the wrong output).
 - **probable** — the defect is clearly present but whether it bites depends on data distribution you can't fully see (e.g. how often n is small).
 - **theoretical** — pattern match only; becomes a problem only under conditions not present in the current data.
+
+## Verified safe (required output addition)
+
+Alongside findings, return `verified_safe`: up to 8 data-correctness properties you explicitly checked and found sound, each one line with a `file:line` citation (e.g. `- ledger row commits before enqueue (record-then-act) — notifier/queue.py:74`). Only what you actually traced — an empty list is honest. This feeds the report's per-dimension "Verified safe:" line.

@@ -40,6 +40,14 @@ For the finding, return exactly one verdict:
 
 When torn between `confirmed-real` and a refute verdict → **refute** (default-to-refuted). When torn between `refuted-downgrade` and `refuted-drop` → **downgrade** (only drop on a *concrete* refutation, not mere doubt).
 
+## Latent vs active (optional tripwire annotation — downgrade stands, signal survives)
+
+Some findings are REAL defects in the code that are currently MASKED by another component: the wrong path exists, but no shipped caller reaches it today. That is a correct `refuted-downgrade` — the exploit/corruption does NOT fire end-to-end, your mandate stands. BUT the masking is circumstantial: a named future change would arm it. When you downgrade for masking reasons, attach the optional `tripwire:` field naming the ARMING CONDITION — the concrete change that makes it fire — and what must move together when it arms.
+
+(Real: AURA's AuraINFT split-brain — server create flips to AuraINFT while the web mint, all reads, the indexer, and the memory ownerOf gate hardcode AgentRegistry. Correctly downgraded: the shipped web UI masked it, no client honored the flip. Tripwire: "arms at the prod cutover when create actually moves to AuraINFT — reads + indexer + memory-gate + web-mint must all move together." That tripwire became the audit's most durable finding.)
+
+The tripwire NEVER weakens the refute bias: it annotates a downgrade, it never argues against one, and it never upgrades a finding back into the blocking set.
+
 ## Output format
 
 Return one verification verdict per finding handed to you, in this structure:
@@ -55,6 +63,10 @@ Return one verification verdict per finding handed to you, in this structure:
   conclusion: |
     <one or two sentences: confirmed because <traced path fires>, or
      refuted because <concrete guard/unreachable/intended/false-premise found at file:line>.>
+  tripwire: |
+    <OPTIONAL — only on refuted-downgrade where the defect is real but masked:
+     the arming condition (the concrete change that makes it fire) + what must
+     move together when it arms. Omit the field entirely otherwise.>
 ```
 
 ## Hard rules

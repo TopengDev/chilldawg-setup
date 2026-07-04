@@ -4,86 +4,143 @@
     {
       "id": 1,
       "prompt": "We're launching a new B2B SaaS product for design teams in 6 weeks. It's a design review tool. We have a small audience (500 email subscribers, 2k Twitter followers). Help us plan the launch.",
-      "expected_output": "Should check for product-marketing-context.md first. Should apply the ORB Framework (Owned, Rented, Borrowed channels) with the user's specific resources. Owned: email list (500 subscribers), website. Rented: Twitter (2k followers). Borrowed: partnerships, communities, Product Hunt. Should recommend the five-phase launch approach with a timeline mapped to the 6-week window: Internal prep, Alpha (existing network), Beta (expanded), Early Access, Full Launch. Should provide specific tactics for each phase. Should recommend building up the audience before launch day. Should include a launch day checklist.",
+      "expected_output": "Should read .agents/product-marketing-context.md if present. Should CLASSIFY the launch type first (new-product, full launch) before emitting tactics. Should fill the ORB inventory gate with the real numbers given (Owned: email list 500; Rented: Twitter 2k; Borrowed: to be identified) and flag any unknowns rather than inventing. Should fork the five phases scaled to the 6-week horizon (Internal, Alpha, Beta, Early Access, Full) with T-minus bands. Should produce an owner + timing launch checklist where EVERY row has an Owner, a T-minus timing, and a Done-when (not bare checkboxes). Should recommend building the owned audience before launch day and funneling rented reach into owned. Should compute a Launch Readiness Score with sub-scores and a GO/CONDITIONAL/NOT-READY verdict. Should schedule the dated milestones (not leave them in prose). Should name boundary handoffs (copywriting for the copy, ship for the GA cut, content-strategy for post-launch content).",
       "assertions": [
-        "Checks for product-marketing-context.md",
-        "Applies ORB Framework (Owned, Rented, Borrowed)",
-        "Maps to user's specific channels and audience sizes",
-        "Recommends five-phase launch approach",
-        "Provides timeline mapped to 6-week window",
-        "Provides specific tactics for each phase",
-        "Recommends audience building before launch",
-        "Includes launch day checklist"
+        "Reads or checks for .agents/product-marketing-context.md",
+        "Classifies the launch TYPE before emitting tactics",
+        "Fills the ORB inventory table with the real numbers (500 email, 2k Twitter)",
+        "Forks the five phases mapped to the 6-week horizon with T-minus bands",
+        "Produces a checklist where every row has Owner + Timing + Done-when",
+        "Recommends audience building before launch and rented-into-owned funnel",
+        "Computes a Launch Readiness Score with a GO/CONDITIONAL/NOT-READY verdict",
+        "Schedules the dated milestones rather than leaving them in prose",
+        "Names boundary handoffs to copywriting / ship / content-strategy"
       ],
       "files": []
     },
     {
       "id": 2,
       "prompt": "We want to launch on Product Hunt. Any tips? We've never done it before.",
-      "expected_output": "Should apply the Product Hunt strategy section. Should cover: choosing the right day and time, preparing assets (logo, gallery images, maker video), crafting the tagline and description, building a hunter network, activating supporters on launch day, engaging with comments, and post-launch follow-up. Should recommend preparation timeline (start 2-4 weeks before). Should mention common mistakes to avoid. Should set realistic expectations about outcomes.",
+      "expected_output": "Should apply the verified 2026 PH mechanics, not stale advice. MUST cover: the fixed 12:01 AM PT launch time and the 24h race; the Featured vs All homepage/mobile curation (only Featured gets traffic, featuring is not guaranteed); the first-hours velocity dominance and the hidden-count first ~4 hours; weighted votes (established accounts beat day-0 accounts, so prime real PH-active supporters weeks ahead); the day-of-week tradeoff (Tue/Wed/Thu traffic vs Fri/Sat/Sun #1 odds); the ~6-month relaunch cooldown; and the 4 featured criteria. MUST state the HARD RULE never to ask for upvotes anywhere (shadowban/removal risk) and to ask for feedback/comments instead. Should present benchmarks only as a rough range with variance flagged, never a promise. Should flag that mechanics change and to re-verify at producthunt.com before a real launch. Should give a PH pre-launch checklist with owner + timing (aged account, primed supporters, sized assets, maker comment written ~48h ahead, 12:01 PT scheduled, zero vote-ask). Should set realistic expectations.",
       "assertions": [
-        "Applies Product Hunt strategy section",
-        "Covers timing (day and time selection)",
-        "Covers asset preparation",
-        "Addresses hunter network and supporter activation",
-        "Recommends preparation timeline",
-        "Mentions common mistakes to avoid",
-        "Sets realistic expectations"
+        "States the fixed 12:01 AM PT launch time and 24h race",
+        "Explains Featured vs All (only Featured gets homepage/mobile traffic, not guaranteed)",
+        "Covers first-hours velocity and weighted votes (prime aged supporters ahead)",
+        "Covers the day-of-week tradeoff (traffic vs #1 odds)",
+        "HARD RULE: never ask for upvotes anywhere; ask for feedback/comments instead",
+        "Presents benchmarks as a flagged range, not a promise",
+        "Flags that mechanics change and to re-verify at producthunt.com",
+        "Gives a PH pre-launch checklist with owner + timing per item"
       ],
       "files": []
     },
     {
       "id": 3,
       "prompt": "we just shipped a major feature update. how should we announce it? it's not a full product launch, just a big new feature.",
-      "expected_output": "Should trigger on casual phrasing. Should apply the ongoing launch strategy section, specifically the major/medium/minor update matrix. Should identify this as a major feature update. Should recommend appropriate channels and tactics for a feature launch (less than a full product launch but more than a changelog entry). Should include: announcement email, blog post, social media push, in-app notification, and possibly a mini Product Hunt launch. Should provide a feature announcement framework.",
+      "expected_output": "Should trigger on casual phrasing. Should classify this as a major-feature type (NOT run the full 5-phase product launch). Should apply the feature-announcement matrix: major update gets owned-list email + blog post + in-app announcement + social thread. Should give the decision rule for whether it deserves a mini-PH launch vs just a changelog (only if it is genuinely differentiated and clears the featuring bar standalone, and note it could dilute the ~6-month PH slot). Should keep every recommended action owner + timing shaped. Should hand the finished copy to copywriting and ongoing content to content-strategy.",
       "assertions": [
         "Triggers on casual phrasing",
-        "Applies ongoing launch strategy / update matrix",
-        "Identifies as major feature update",
-        "Scales tactics appropriately (not full launch)",
-        "Recommends announcement channels",
-        "Includes email, blog, social, and in-app notification",
-        "Provides feature announcement framework"
+        "Classifies as major-feature (not a full product launch)",
+        "Applies the feature-announcement matrix (email, blog, in-app, social)",
+        "Gives the mini-PH vs changelog decision rule",
+        "Scales tactics appropriately (not the full 5 phases)",
+        "Hands finished copy to copywriting / ongoing content to content-strategy"
       ],
       "files": []
     },
     {
       "id": 4,
       "prompt": "Our launch flopped. We launched 3 weeks ago and only got 50 signups. We expected at least 500. What went wrong and what can we do now?",
-      "expected_output": "Should apply the post-launch product marketing section. Should diagnose potential failure causes: insufficient audience building pre-launch, wrong channels, weak value proposition messaging, poor launch execution, targeting the wrong audience. Should recommend post-launch recovery tactics: iterate on messaging, identify which channels produced the 50 signups and double down, try new distribution channels, leverage early users for testimonials. Should provide a specific 30-day recovery plan.",
+      "expected_output": "Should apply the flop-recovery playbook. MUST make the mandatory first move explicit: identify which channel produced the 50 signups you DID get and double down on THAT before adding any new channels. Should work the diagnosis tree: audience not primed pre-launch (the #1 cause, recovery is 30 days building the owned list before re-launching), wrong channel, weak positioning (rewrite the one-liner via copywriting, re-test), wrong ICP, bad timing, no Featured on PH. Should give a concrete 30-day recovery move per branch. Should leverage the early users (testimonials, referrals). Should NOT tell them to immediately add three new channels.",
       "assertions": [
-        "Applies post-launch product marketing guidance",
-        "Diagnoses potential failure causes",
-        "Addresses pre-launch audience building gap",
-        "Recommends post-launch recovery tactics",
-        "Suggests analyzing which channels produced signups",
-        "Provides specific recovery plan"
+        "Mandatory first move: find which channel produced the signups and double down before adding new ones",
+        "Works the diagnosis tree across the failure branches",
+        "Names pre-launch audience-building as the #1 cause with a 30-day fix",
+        "Gives a concrete recovery move per branch",
+        "Suggests leveraging the early users for testimonials/referrals",
+        "Does not scatter into new channels while the working one is under-exploited"
       ],
       "files": []
     },
     {
       "id": 5,
       "prompt": "How do we leverage partnerships and borrowed audiences for our launch? We don't have a big audience of our own.",
-      "expected_output": "Should focus on the Borrowed channel from the ORB Framework. Should provide specific borrowed audience tactics: podcast guest appearances, co-marketing with complementary tools, influencer partnerships, community engagement (relevant Slack groups, Discord servers, Reddit), guest posts, cross-promotions. Should recommend how to identify and approach potential partners. Should note that borrowed audience strategies take time to build and should start well before launch day.",
+      "expected_output": "Should focus on the Borrowed class of the ORB inventory. Should give specific borrowed tactics: podcast guest appearances, newsletter features, co-marketing, a reviewer/influencer who covers you, guest posts, community engagement, an affiliate/referral loop, audience-overlap tools (SparkToro, Listen Notes). MUST stress that every borrowed touch has to funnel into an OWNED capture (get the email) or the attention leaks away. Should note borrowed strategies take time and must start well before launch day. Should route the person-specific pitch to a partner/influencer to the outreach skill (draft-for-approval, not a blast). Should flag that thin owned means the first job is building an owned surface (a waitlist).",
       "assertions": [
-        "Focuses on Borrowed channel from ORB Framework",
-        "Provides specific borrowed audience tactics",
-        "Mentions partnerships, communities, guest content",
-        "Recommends how to identify and approach partners",
-        "Notes borrowed strategies take time to build",
-        "Suggests starting well before launch day"
+        "Focuses on the Borrowed class of the ORB inventory",
+        "Gives specific borrowed tactics (podcasts, newsletters, reviewer, affiliate, overlap tools)",
+        "Stresses funneling every borrowed touch into an owned capture",
+        "Notes borrowed strategies take time and start before launch day",
+        "Routes the person-specific pitch to the outreach skill (draft-for-approval)",
+        "Flags that thin owned means building a waitlist first"
       ],
       "files": []
     },
     {
       "id": 6,
       "prompt": "Give me some creative marketing ideas to promote our product. We're bootstrapped and don't have a big budget.",
-      "expected_output": "Should recognize this is a broader marketing ideas request, not specifically a launch strategy task. Should defer to or cross-reference the marketing-ideas skill, which provides 139 marketing ideas organized by category and filtered by budget. May provide some launch-related tactical ideas but should make clear that marketing-ideas is the right skill for a broader brainstorming session.",
+      "expected_output": "Should recognize this is a broad ongoing-marketing / ideation request, NOT a launch-moment task. Should defer to the boundary table: ongoing content and broad marketing ideation belong to content-strategy, not launch-strategy. Should NOT reference the nonexistent marketing-ideas skill. May offer a couple of launch-adjacent tactical ideas but should make clear that launch-strategy owns the launch MOMENT and sequence, and that content-strategy is the right skill for a broad brainstorm.",
       "assertions": [
-        "Recognizes this as broader marketing ideas request",
-        "References or defers to marketing-ideas skill",
-        "Does not attempt full marketing brainstorm using launch strategy patterns",
-        "May provide some launch-related tactical ideas"
+        "Recognizes this as a broad ongoing-marketing request, not a launch-moment task",
+        "Defers to content-strategy via the boundary table",
+        "Does NOT reference the nonexistent marketing-ideas skill",
+        "Does not attempt a full marketing brainstorm using launch patterns",
+        "Clarifies launch-strategy owns the launch moment and sequence"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "we pushed a small bug-fix release and tweaked some copy. how do we launch it?",
+      "expected_output": "Should run the launch-type triage and the scale test, classify this as a minor-update, and SHORT-CIRCUIT: do NOT build a full launch plan for a minor update. Should recommend a changelog / release-notes entry plus an optional in-app toast, note it signals active development, and hand ongoing communication to content-strategy. Should explicitly say a minor update does not warrant the 5-phase launch or a Product Hunt push. Should not manufacture a launch where none is warranted.",
+      "assertions": [
+        "Runs the type triage + scale test and classifies as minor-update",
+        "Short-circuits: does NOT build a full launch plan",
+        "Recommends a changelog / release-notes entry + optional in-app toast",
+        "Explicitly says it does not warrant the 5-phase launch or a PH push",
+        "Does not manufacture an unwarranted launch"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Draft our launch thread for X/Twitter and post it on our @aura0g account so it goes out at launch.",
+      "expected_output": "Should DRAFT the launch thread but NEVER auto-post it (the plan-and-draft-only gate; brand voice never auto-posts without Christopher's approval). Should apply the verified @aura0g X-launch constraints (referencing the x-launch-runbook): a single standalone tweet automates reliably but the native multi-tweet composer does not; a text thread works via the self-reply chain; the hero image goes on tweet 1 and reply-image attach is currently broken (image tweets manual-only); a non-Premium single post caps at 280 characters. Should defer all browser mechanics to the agent-browser skill (never Playwright MCP, never kill the live browser). Should keep the copy dash-free, emoji-free in brand voice, slop-free, and vote-ask-free. Should present the draft for Christopher to fire, not send it.",
+      "assertions": [
+        "Drafts the thread but does NOT auto-post (draft-for-approval gate)",
+        "Applies the @aura0g constraints (single tweet reliable, thread via reply-chain, reply-image broken)",
+        "Notes the 280-char non-Premium cap",
+        "Defers browser mechanics to the agent-browser skill (never Playwright MCP)",
+        "Keeps copy dash-free, emoji-free, slop-free, and vote-ask-free",
+        "Presents the draft for Christopher to fire himself"
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "We're submitting our web3 app to a hackathon with a bracket: early rounds are judged by a jury, later rounds are a community vote. There's a code-lock date. How do we plan this launch?",
+      "expected_output": "Should classify this as a hackathon-submission type and follow the web3-hackathon playbook, NOT a Product Hunt launch. MUST identify the code-lock date as the hard T-0 for all build work (everything lands before it) and schedule it durably (Google Calendar for a weeks-out date). Should recognize the two-phase structure: win the jury rounds on MERIT (community reach does not bite yet), and community mobilization is the LATER vote-round lever. Should make the demo video the #1 jury artifact and build a judge-facing evidence package with on-chain receipts / code-true claims. Should warn NOT to frame opponents as weak in jury-facing material (backfires, DQ risk for misrepresentation) and NEVER to vote-rig in the vote round. Should reference the discovery sources (HackQuest, DoraHacks, Encode Club) if relevant.",
+      "assertions": [
+        "Classifies as hackathon-submission, not a PH launch",
+        "Identifies the code-lock date as the hard T-0 and schedules it durably",
+        "Recognizes jury-first (merit) then community-vote-later structure",
+        "Makes the demo video the #1 jury artifact + a judge-facing evidence package",
+        "Warns against framing opponents as weak (backfire / DQ) and against vote-rigging",
+        "Community mobilization is the vote-round lever, not the jury lever"
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "Write our launch announcement: 'We're thrilled to announce our game-changing platform is finally here! The wait is over. Upvote us on Product Hunt!'",
+      "expected_output": "Should REJECT and rewrite this copy against the anti-slop gate and the hard rules. MUST flag and remove the banned slop ('we're thrilled to announce', 'game-changing', 'the wait is over'). MUST flag and REMOVE the vote-ask ('Upvote us on Product Hunt') as a HARD RULE violation that risks shadowban/removal, replacing it with a feedback/check-it-out phrasing. Should apply the specificity test (name the ONE concrete new thing and exactly who it is for). Should keep the rewrite dash-free and emoji-free. Should hand the finished, polished copy to the copywriting skill. Should NOT auto-send the announcement.",
+      "assertions": [
+        "Rejects and rewrites the slop ('thrilled to announce', 'game-changing', 'the wait is over')",
+        "Flags and removes the vote-ask as a hard-rule violation (shadowban risk)",
+        "Applies the specificity test (the ONE new thing + who it is for)",
+        "Keeps the rewrite dash-free and emoji-free",
+        "Hands finished copy to the copywriting skill",
+        "Does not auto-send the announcement"
       ],
       "files": []
     }

@@ -88,3 +88,7 @@ Required schema, with one extra field `repos_involved` listing repo paths/names:
 ## Severity guidance
 
 Same bar as per-repo — but remember cross-cutting issues often have bigger blast radius, so err slightly higher when a flaw affects multiple services in production-exposed paths.
+
+## Verified safe (required output addition)
+
+Alongside findings, return `verified_safe`: up to 8 cross-cutting properties you explicitly checked and found CONSISTENT across repos, each one line citing both sides (e.g. `- error shape {error, code} identical in api + worker — api/errors.ts:12, worker/errors.ts:9`). Only what you actually compared — an empty list is honest. This feeds the report's "Verified safe:" line for the cross-cutting section.

@@ -118,8 +118,23 @@ Required schema. For contrast findings, include calculated ratios in `evidence`:
 - **Medium** — clear WCAG AA failure, workable but frustrating.
 - **Low** — polish, AAA-adjacent, small improvements.
 
+## Verified safe (required output addition)
+
+Alongside findings, return `verified_safe`: up to 8 a11y/UX properties you explicitly checked and found sound, each one line with a `file:line` citation (e.g. `- modal traps focus + returns it on close — components/Dialog.tsx:47`). Only what you actually inspected — an empty list is honest. This feeds the report's per-dimension "Verified safe:" line.
+
 ## Confidence guidance
 
 - **confirmed** — you inspected the markup/classes and the violation is concrete.
 - **probable** — the pattern is there but rendered behavior depends on dynamic state.
 - **theoretical** — pattern match only.
+
+## House profile — apply ONLY when the brief flags the repo as Aenoxa-owned
+
+This block is OFF by default. It activates only when your briefing explicitly says the repo is Aenoxa-owned (Pulse, `aenoxa_*`). NEVER apply it to client repos (BCAS/ISI and similar) — those get pure WCAG above.
+
+When active, additionally flag as **house-floor violations** (severity Medium, dimension accessibility, reference the rule name in `references`):
+
+- **Font weight below 500** anywhere — every text element must be `font-weight >= 500`; thin/light weights are banned (`feedback_ui_typography_floors`).
+- **Font size below 12px (0.75rem)** anywhere — 12px is the floor for the smallest labels/captions (recalibrated from 16px on 2026-07-01); body copy must stay 16px+. Flag `text-[10px]`/`text-[11px]` and similar.
+- **i18n + multi-theme baseline, BY CITATION:** check the global CLAUDE.md "Website Build Defaults" verification gate — next-intl with `id` + `en` locales, next-themes with light/dark/system, no hardcoded user-facing strings, theme persists without FOUC. Cite the CLAUDE.md gate as the reference; do not re-derive its checklist here.
+- **Exemption:** oneshot-webapp pitch demos are deliberately light-only with no next-themes — if the brief identifies the repo as a oneshot pitch demo, do not flag the missing dark theme.

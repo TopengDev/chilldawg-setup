@@ -37,3 +37,7 @@ export const runtime = 'edge'
 3. Are all dependencies Edge-compatible?
 
 If unsure, use Node.js runtime.
+
+**Next 16 note:** `proxy.ts` runs ONLY on the Node.js runtime — setting the `runtime`
+config in a proxy file throws. If you need edge middleware on 16, stay on `middleware.ts`
+(deprecated but still present). See [file-conventions.md](./file-conventions.md).

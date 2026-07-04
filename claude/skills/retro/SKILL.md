@@ -1,72 +1,119 @@
 ---
 name: retro
-description: Run Christopher's weekly Sunday retrospective — a 30-min evidence-based review of the week's shipped/stalled work that names ONE bottleneck and commits to ONE behavioral change, writes ~/claude/notes/retros/retro_<YYYY-W##>.md, checks whether last week's change stuck, and DMs Toper a <20-line digest. Use when the user says /retro, "run the retro", "weekly retro", or it's Sunday and the retro is due.
+description: Run Christopher's weekly Sunday retrospective, a 30-min evidence-based review of the week's shipped/stalled work that names ONE bottleneck and commits to ONE behavioral change, writes ~/claude/notes/retros/retro_<YYYY-W##>.md, checks whether last week's change stuck, and DMs Toper a sub-20-line digest. Use when the user says /retro, "run the retro", "weekly retro", or it's Sunday and the retro is due.
 argument-hint: [week YYYY-W## | --dry-run]
-allowed-tools: Read, Glob, Grep, Bash, mcp__plugin_whatsapp_whatsapp__check_number, mcp__plugin_whatsapp_whatsapp__list_chats, mcp__plugin_whatsapp_whatsapp__send_message
+allowed-tools: Read, Write, Glob, Grep, Bash, mcp__plugin_whatsapp_whatsapp__check_number, mcp__plugin_whatsapp_whatsapp__list_chats, mcp__plugin_whatsapp_whatsapp__send_message, mcp__plugin_whatsapp_whatsapp__connection_status, mcp__claude_ai_Google_Calendar__create_event, mcp__claude_ai_Google_Calendar__list_events
 ---
 
-# /retro — weekly Sunday retrospective (one bottleneck, one change)
+# /retro - weekly Sunday retrospective (one bottleneck, one change)
 
-Formalizes the weekly-retro ritual (`feedback_weekly_retro` + `~/claude/templates/retro-template.md`). Reads the week's REAL evidence (git, work-queue, journal, decisions.log, notes, memory diffs), produces a structured retro file, and sends Toper a short digest. The whole point is **cumulative**: name one friction point, commit to one specific change, and **check next week whether it stuck** — so last week's bottleneck doesn't silently become this week's.
+Formalizes the weekly-retro ritual (`feedback_weekly_retro` + `~/claude/templates/retro-template.md`). Reads the week's REAL evidence, produces a structured retro file, sends Toper a short digest, and arms next week's run. The whole point is **cumulative**: name ONE friction point, commit to ONE specific change, and **check next week whether it stuck**, so last week's bottleneck does not silently become this week's.
 
-**Output file:** `~/claude/notes/retros/retro_<YYYY-W##>.md` (ISO week, e.g. `retro_2026-W24.md`).
-**Digest recipient:** `62817712289@s.whatsapp.net` (Toper SUPERUSER).
-**Timezone:** `Asia/Jakarta` (WIB). **Cadence:** Sunday, ~30 min.
-
----
-
-## The two non-negotiable disciplines (HARD RULES — the skill exists to enforce these)
-
-1. **ONE bottleneck per week. Not two. Not a list.** Section 3 names exactly one friction point, with a *quantified* cost (hours wasted / threads stalled / decisions missed / context lost). If you're tempted to list three, you haven't found the real one — pick the highest-cost one and cut the rest. A vague bottleneck ("too much context-switching") is a failure; a specific one ("Toper decision latency on signal-trader patches — 2 threads paused 3+ days each") passes.
-
-2. **ONE behavioral change per week. Specific, triggered, measurable.** Section 4 commits to exactly one change. It MUST have a concrete **trigger** ("when a thread is paused >48h"), a concrete **action** ("send a one-line WA nudge with explicit default + 24h timer"), and a **hypothesis** ("paused-thread age drops below 48h median"). Banned: "communicate better", "be more proactive", "improve X" — these are not changes, they're wishes. If the change can't be evaluated next Sunday with a yes/no "did it stick?", rewrite it.
-
-Both disciplines are scored at the end (see "Self-check gate"). If either fails the gate, fix before sending.
+**Output file:** `~/claude/notes/retros/retro_<YYYY-W##>.md` (ISO week, e.g. `retro_2026-W27.md`).
+**Digest recipient:** `$TOPER_WA_JID` (Toper SUPERUSER, phone-format). See the JID reconciliation note in Step 5 before "fixing" this.
+**Timezone:** `Asia/Jakarta` (WIB). Do ALL time math in WIB.
+**Cadence:** Sunday ~20:00 WIB, ~30 min. **Recurrence owner:** this skill owns a dedicated `retro.timer` (Step 6), NOT /remindme.
 
 ---
 
-## Step 0 — parse + pick the week
+## Boundary / routing (which ritual owns what)
+
+Four rituals read overlapping truth-files but answer different questions. Do not collapse them.
+
+| Ritual | Cadence | Audience | Answers |
+|---|---|---|---|
+| **/retro** (this skill) | weekly (Sun) | internal (Toper) | evidence-based self-improvement: ONE bottleneck + ONE change, cumulative |
+| **/standup** + **/daily-brief** | daily | internal (Toper) | state snapshot (what's on my plate / what got done), NOT analysis |
+| **/status-report** | weekly | **client-facing** | external progress for a paying project, not the internal week |
+| **/journal** | continuous | internal | the append-only capture that **FEEDS** the retro (Section 1/3 spine) |
+| **/remindme** | ad-hoc | internal | one-off reminders. **Does NOT schedule the retro** (its HARD RULE 7: retro owns its own timer) |
+
+**Bright line:** standup/daily-brief report *state*; the retro *analyzes* it to change behavior. If asked to "schedule the retro," that is Step 6 here (a dedicated systemd timer), never a /remindme row.
+
+---
+
+## The two non-negotiable disciplines (the skill exists to enforce these)
+
+1. **ONE bottleneck per week. Not two. Not a list.** Section 3 names exactly one friction point, with a *quantified* cost (hours wasted / threads stalled / decisions missed / context lost). If you are tempted to list three, you have not found the real one: pick the highest-cost one and cut the rest. A vague bottleneck ("too much context-switching") is a FAIL; a specific one ("Toper decision latency on fitest-batches-6-7, paused 5 days awaiting a one-word Go, blocking ~6h queued authoring") passes.
+
+2. **ONE behavioral change per week. Specific, triggered, measurable.** Section 4 commits to exactly one change with a concrete **trigger** ("when a thread is paused >48h"), a concrete **action** ("send a one-line WA nudge with explicit default + 24h timer"), and a **hypothesis** ("paused-thread age drops below 48h median"). Banned as non-changes: "communicate better", "be more proactive", "improve X". If it cannot be evaluated next Sunday with a yes/no "did it stick?", rewrite it.
+
+Both are scored PASS/FAIL at the Step 4 gate. If either fails, fix before sending.
+
+---
+
+## HARD RULES (NEVER / ALWAYS)
+
+1. **NEVER** arm the weekly recurrence with `CronCreate(durable)`. It is a **verified no-op** (session-only, dies on restart, per `feedback_time_promise_scheduling` + /remindme MECHANISM TRUTH). The recurrence MUST be the dedicated **systemd `retro.timer`** (Step 6); the only in-skill durable fallback is a **Google Calendar event**. `ScheduleWakeup` is removed from the harness, never reference it.
+2. **NEVER** route the retro through **/remindme** (its HARD RULE 7 forbids it). The retro owns its own ritual/timer.
+3. **NEVER** change the digest JID from `$TOPER_WA_JID` (phone-format) to the `@lid`. It deliberately matches /standup (both on-demand MCP rituals); the `@lid` is a different surface for the same Toper, not a bug to "fix" (Step 5 note).
+4. **NEVER** gather evidence with a hardcoded `"7 days ago"` / `-mtime -7`. **ALWAYS** window `git log` and `find` to the computed `WINDOW_START`..`WINDOW_END` (Step 0). A back-fill with a NOW-anchored window pulls the WRONG week's evidence.
+5. **NEVER** fabricate a bottleneck or invent friction on a genuinely quiet week. **ALWAYS** allow `No single friction met the cost bar this week (quiet week)` with evidence (`feedback_no_yesman_sugarcoat`: say it true, do not manufacture drama to look productive).
+6. **ALWAYS** treat every Section 1/2 row AND the Section 3 bottleneck as evidence-bound: a specific artifact (commit hash / paused-since date / decisions.log row / result.json path) or it FAILS the gate.
+7. **ALWAYS** check `work-queue.md` freshness (mtime vs `WINDOW_START`); if stale, flag it UNRELIABLE and fall back to the fresh spine (result.json `blocked`/`partial` + windowed git + journal).
+8. **ALWAYS** pre-flight the digest JID, verify the send return, and on failure run the send-failure playbook (`connection_status` -> preserve the retro to file + flag main). **NEVER** silently drop the retro.
+9. **ALWAYS** keep exactly ONE bottleneck and exactly ONE evaluable change; both scored PASS/FAIL at the gate before any send.
+10. **NEVER** clobber a finished retro file. Read-first, refresh-a-stub-only.
+
+---
+
+## Step 0 - parse, pick the week, compute the window
 
 `$ARGUMENTS`:
-- empty → retro for the **current ISO week** (the one being closed today).
-- `week YYYY-W##` → retro for that explicit week (back-fill a missed Sunday).
-- `--dry-run` → run everything except the WhatsApp send + the next-week reminder; print the digest under a banner.
+- empty -> the **ISO week being closed** (see the anchor rule below).
+- `week YYYY-W##` -> that explicit week (back-fill a missed Sunday).
+- `--dry-run` -> run everything EXCEPT the WhatsApp send + the Step-6 recurrence arm; print the digest under a banner.
 
-Anchor the clock, derive the ISO week, and compute the 7-day window:
-
-```bash
-date '+now: %Y-%m-%d %H:%M %Z (dow %u)'              # dow 7 = Sunday
-TZ=Asia/Jakarta date +"%G-W%V"                        # ISO year-week, e.g. 2026-W24
-TZ=Asia/Jakarta date -d "7 days ago" +"%Y-%m-%d"     # window start
-TZ=Asia/Jakarta date +"%Y-%m-%d"                      # window end (today)
-```
-
-**Cadence guard:** if today is NOT Sunday and no explicit week was given, note the slip but proceed — `feedback_weekly_retro`: "If Sunday is missed, do Monday, but log the slip" (record it in Section 6). Never silently skip a week.
-
-**Idempotency:** if `~/claude/notes/retros/retro_<week>.md` already exists, do NOT overwrite blind — read it, and either (a) report "retro for <week> already exists" and exit if it's complete, or (b) append/refresh if it was a stub. Never clobber a finished retro.
-
-## Step 1 — gather the week's evidence (sources are mandatory, not optional)
-
-Per `feedback_weekly_retro`, pull from ALL of these. Evidence-free retro sections are not acceptable.
+Anchor to the real clock (never hand-calculate dates):
 
 ```bash
-# 1. Shipped-work signal across active repos (run per repo under ~/claude/Git/repositories/)
-for r in ~/claude/Git/repositories/*/; do
-  [ -d "$r/.git" ] && printf '\n=== %s ===\n' "$r" && git -C "$r" log --since="7 days ago" --pretty=format:'%ad %h %s' --date=short 2>/dev/null
-done
+date '+now: %Y-%m-%d %H:%M %Z (dow %u)'    # dow 7 = Sunday, 1 = Monday
 ```
 
-- **Shipped (Section 1):** the git log above + work-queue `## Recently shipped` rows + `result.json` files with `status:done` in `~/claude/notes/*/` modified this week. Build the per-day table: Day | Task | Outcome | Evidence(commit/path).
-- **Stalled/dropped (Section 2):** `~/claude/state/work-queue.md` → `## Paused — awaiting Toper decision` + `## Paused — awaiting external …` (paused-since dates), plus any `result.json` with `status:blocked`/`partial`. Compute `days paused` from the paused-since date. **Flag anything paused >5 days** for a kill-vs-resume call.
-- **Decisions audit (feeds Section 3/6):** `~/claude/state/decisions.log` rows within the window — especially `overridden: y` rows (a defaulted decision Toper later reversed is a strong bottleneck signal) and clusters of defaults on the same slug (decision latency).
-- **Journal (feeds everything):** `~/.claude/memory/journal.md` entries within the window — `decision`/`feedback`/`project` tags are the week's narrative. This is the richest single source for "what actually happened". (Capture half of the journal→audit loop; see `/journal`.)
-- **Notes (Section 1/2 detail):** skim `~/claude/notes/*/report.md` modified this week for major outcomes.
-- **Memory diffs (Section 5):** files added/modified in `~/.claude/memory/` this week:
-  ```bash
-  find ~/.claude/memory -name '*.md' -mtime -7 -printf '%TY-%Tm-%Td  %p\n' | sort
-  ```
+**Pick TARGET_WEEK.** For empty args, anchor so a Sunday run reviews the closing week and a Monday slip reviews the week that just ended:
 
-## Step 2 — read LAST week's retro (HARD RULE — closes the loop)
+```bash
+if [ -n "$EXPLICIT_WEEK" ]; then
+  TARGET_WEEK="$EXPLICIT_WEEK"                        # e.g. 2026-W24
+else
+  DOW=$(date +%u)
+  if [ "$DOW" -eq 1 ]; then ANCHOR=$(date -d "yesterday" +%Y-%m-%d); else ANCHOR=$(date +%Y-%m-%d); fi
+  TARGET_WEEK=$(TZ=Asia/Jakarta date -d "$ANCHOR" +%G-W%V)
+fi
+```
+
+**Compute the window** (ISO-week -> Monday..next-Monday, verified across year boundaries):
+
+```bash
+YEAR=${TARGET_WEEK%%-W*}; WK=$((10#${TARGET_WEEK##*-W}))
+JAN4="$YEAR-01-04"; J4DOW=$(date -d "$JAN4" +%u)
+W1MON=$(date -d "$JAN4 -$((J4DOW-1)) days" +%Y-%m-%d)          # Monday of ISO week 1
+export WINDOW_START=$(date -d "$W1MON +$(( (WK-1)*7 )) days" +%Y-%m-%d)   # Mon of target week (inclusive)
+export WINDOW_END=$(date -d "$WINDOW_START +7 days" +%Y-%m-%d)            # next Mon (exclusive)
+# sanity: this MUST print TARGET_WEEK, else abort
+[ "$(date -d "$WINDOW_START" +%G-W%V)" = "$TARGET_WEEK" ] && echo "window $WINDOW_START..$WINDOW_END OK" || echo "WINDOW MISMATCH, abort"
+```
+
+Every Step-1 source is windowed to `$WINDOW_START`/`$WINDOW_END` (recipes in `references/evidence-sources.md`). This is the fix for the back-fill bug (HARD RULE 4).
+
+**Cadence guard:** if today is not Sunday and no explicit week was given, note the slip but proceed (`feedback_weekly_retro`: "If Sunday is missed, do Monday, but log the slip", recorded in Section 6). Never silently skip a week; for a 2+ week gap see the multi-week playbook.
+
+**Idempotency (HARD RULE 10):** if `~/claude/notes/retros/retro_<TARGET_WEEK>.md` already exists, do NOT overwrite blind. Read it: if complete (all six `## ` sections, non-stub) report "retro for <week> already exists" and exit; if a stub, refresh the empty sections in place. See failure playbook 6.
+
+## Step 1 - gather the week's evidence (freshness-aware spine)
+
+Pull from ALL sources; evidence-free retro sections are not acceptable. **Priority is freshness-ranked** (full windowed recipes + the repo prefilter live in `references/evidence-sources.md`):
+
+- **PRIMARY (always fresh):** `result.json` (status filter) + windowed `git log` + `journal.md`.
+  - `result.json` (`~/claude/notes/*/result.json`, schema `{status(done|blocked|partial), summary, blockers[], ...}`, 201 files / 120 in 14d): `status:done` -> Section 1 shipped; `status:blocked`/`partial` -> Section 2 stalled (with `blockers[]`).
+  - windowed git (95 repos, ~2-4 active/week): **prefilter on HEAD mtime** before `git log --since="$WINDOW_START" --until="$WINDOW_END 23:59:59"` so you scan ~4 repos, not 95.
+  - journal (`~/.claude/memory/journal.md`, grammar `- [ISO+07:00] (tag) summary`): `(decision)`/`(feedback)`/`(project)` in-window entries are the week's narrative and the richest single source.
+- **CORROBORATION only:** `decisions.log` (in-window rows; `overridden: y` and same-slug default clusters are decision-latency signals feeding Section 3), and `work-queue.md` **only if fresh**.
+- **FRESHNESS GUARD (HARD RULE 7):** `work-queue.md` was 52 days stale on 2026-07-03. Before using it, compare its mtime to `WINDOW_START`; if older, print `WARN work-queue stale -> UNRELIABLE` and build Section 2 from the fresh spine instead (playbook 4). Never quote a stale paused-since date as current.
+
+Build the Section 1 per-day table (Day | Task | Outcome | Evidence) and the Section 2 stalled table (Task | Why | days paused | Resolution). **Flag anything paused >5 days** for a kill-vs-resume call. Memory diffs for Section 5: `find ~/.claude/memory -name '*.md' -newermt "$WINDOW_START" ! -newermt "$WINDOW_END"`.
+
+## Step 2 - read LAST week's retro (closes the loop)
 
 This is what makes the ritual cumulative. Find the most recent prior retro:
 
@@ -74,101 +121,134 @@ This is what makes the ritual cumulative. Find the most recent prior retro:
 ls -1 ~/claude/notes/retros/retro_*.md 2>/dev/null | sort | tail -3
 ```
 
-Read the latest prior `retro_<week-1>.md` and extract its **Section 4 "Change to try"** (trigger + action + hypothesis). Then **evaluate, from this week's evidence, whether that change actually happened and whether it helped.** This becomes a required subsection in Section 4 of the new retro:
+Read the latest prior `retro_<week-1>.md`, extract its **Section 4 "Change to try"** (trigger + action + hypothesis), then **evaluate from THIS week's evidence whether it actually happened and helped.** Required subsection in Section 4 of the new retro:
 
 ```
 ### Did last week's change stick?
 - Last week's change: <verbatim>
-- Evidence it fired: <journal/decisions.log/work-queue proof, or "no evidence it fired">
+- Evidence it fired: <journal/decisions.log/result.json proof, or "no evidence it fired">
 - Verdict: STUCK / PARTIAL / DROPPED
 - Carry-over: <keep it / evolve it / abandon + why>
 ```
 
-If the SAME bottleneck shows up 2+ weeks running, that's **structural, not tactical** — escalate it explicitly in Section 3 (`feedback_weekly_retro`: cross-reference past retros; recurring = escalate). If there is no prior retro (first ever), say so and skip the "did it stick" subsection.
+If the SAME bottleneck appears 2+ weeks running, that is **structural, not tactical**: escalate it explicitly in Section 3 (cross-ref past retros). If there is no prior retro (first ever, the retros dir is empty as of 2026-07-03), say so and skip this subsection.
 
-## Step 3 — write the retro file
+## Step 3 - write the retro file
 
-Write `~/claude/notes/retros/retro_<week>.md` using `~/claude/templates/retro-template.md` verbatim (read it for the exact section layout). The six sections:
+Author `~/claude/notes/retros/retro_<TARGET_WEEK>.md`. Use `~/claude/templates/retro-template.md` for the **section 1-6 LAYOUT ONLY**; the skill's own steps **supersede** that template's stale "How to run the retro" appendix (which still repeats the broken reminder assumption). If the template is missing, use the embedded layout below (playbook 5). Read the template for exact table shapes:
 
-1. **Shipped this week** — the per-day table + total count.
-2. **Stalled / dropped this week** — table with `days paused` + resolution; >5-day items flagged for kill-vs-resume.
-3. **Bottleneck identified** — exactly ONE, with quantified cost + new-or-recurring pattern (cross-ref past retros).
-4. **Change to try next week** — exactly ONE (trigger + action + hypothesis) + the "Did last week's change stick?" subsection from Step 2.
-5. **Memory / playbook diffs** — files added/modified in `~/.claude/memory/`; if a feedback rule was learned but not yet saved, note it (and prefer `/journal` to queue it for the audit).
-6. **Notes for compaction-safe context** — active threads (link work-queue), decisions made + rationale, open external deps, people-state. Log any cadence slip here.
+1. **Shipped this week** - per-day table + total count.
+2. **Stalled / dropped** - table with `days paused` + resolution; >5-day items flagged for kill-vs-resume.
+3. **Bottleneck identified** - exactly ONE, quantified cost, new-or-recurring pattern (cross-ref past retros). On a quiet week, `No single friction met the cost bar this week (quiet week)` with thin-evidence citation is valid (HARD RULE 5), never a fabricated one.
+4. **Change to try next week** - exactly ONE (trigger + action + hypothesis) + the "Did last week's change stick?" subsection from Step 2.
+5. **Memory / playbook diffs** - files added/modified in `~/.claude/memory/`; if a rule was learned but not saved, note it and prefer `/journal` to queue it (do not hand-write a memory file from here).
+6. **Notes for compaction-safe context** - active threads, decisions + rationale, open external deps, people-state. Log any cadence slip here.
 
-**Tone (HARD RULE, `feedback_no_yesman_sugarcoat`):** name uncomfortable patterns honestly. If a thread stalled because main waited too long to nudge Toper, write that. If a worker shipped low-quality work, write that. The retro is worthless if it flatters. Ask of every line: "am I writing this because it's true, or to make the week look better?" — if the latter, rewrite it truer.
+**Tone (HARD RULE, `feedback_no_yesman_sugarcoat`):** name uncomfortable patterns honestly. If a thread stalled because main waited too long to nudge Toper, write that. If a worker shipped low-quality work, write that. Ask of every line: "am I writing this because it is true, or to make the week look better?" If the latter, rewrite it truer. The inverse also holds: do not invent friction to make a quiet week look eventful.
 
-## Step 4 — self-check gate (run BEFORE sending; fix failures in-place)
+## Step 4 - self-check gate (run BEFORE sending; fix failures in place)
 
-Score the retro against the two disciplines. ALL must pass or the retro is not done:
+Score the retro. Render as a PASS/FAIL table; ALL must PASS or the retro is not done:
 
-- [ ] **Section 3 names exactly ONE bottleneck** (not 0, not 2+) and it has a *quantified* cost (a number: hours / threads / days / decisions). Vague-cost = FAIL.
-- [ ] **Section 4 commits to exactly ONE change** with an explicit trigger + action + hypothesis, and it is evaluable next Sunday with a yes/no. "Be better"-class = FAIL.
-- [ ] **Last week's change was evaluated** (STUCK/PARTIAL/DROPPED with evidence) — unless this is the first-ever retro.
-- [ ] **Every Section 1/2 row cites evidence** (a commit hash, a file path, a paused-since date) — no evidence-free claims.
-- [ ] **Recurring bottleneck escalated** if it appears 2+ weeks running.
-- [ ] **Tone is honest** — at least one uncomfortable truth is named if the week had friction (a frictionless week is rare; be suspicious of an all-green retro).
+| # | Check | PASS condition |
+|---|---|---|
+| 1 | ONE bottleneck | Section 3 names exactly one (not 0, not 2+), with a *quantified* cost (a number). Vague-cost = FAIL |
+| 2 | ONE change | Section 4 has exactly one with trigger + action + hypothesis, evaluable next Sunday yes/no. "Be better"-class = FAIL |
+| 3 | Last week evaluated | STUCK/PARTIAL/DROPPED with evidence (unless first-ever retro) |
+| 4 | Evidence-citation | every Section 1/2 row AND the bottleneck cite a concrete artifact (hash / path / paused-since / log row) |
+| 5 | Window-correctness | for a back-fill, evidence dates fall inside `WINDOW_START`..`WINDOW_END` (spot-check 2 rows) |
+| 6 | Freshness | work-queue mtime verified fresh, or flagged UNRELIABLE and the fresh spine used |
+| 7 | Recurring escalated | a bottleneck seen 2+ weeks running is flagged structural in Section 3 |
+| 8 | Honest tone | at least one uncomfortable truth named IF the week had friction; AND no fabricated bottleneck on a quiet week |
 
-If any box fails, revise the file, then re-check. Do not send a failing retro.
+If any box FAILS, revise the file, then re-check. Do not send a failing retro.
 
-## Step 5 — send the digest
+## Step 5 - send the digest
 
-Per `feedback_weekly_retro`: a **5-section digest, <20 lines**, NOT the whole retro. Pre-flight the JID (`feedback_whatsapp_no_random_messaging`) via `check_number`/`list_chats` before sending. No em/en dashes (`feedback_no_long_hyphens`). Structural label emojis only.
+A **5-section digest, sub-20 lines**, NOT the whole retro (`feedback_weekly_retro`). Pre-flight the JID (`feedback_whatsapp_no_random_messaging`) via `check_number` (param `phone`) or `list_chats` before sending. No em/en dashes (`feedback_no_long_hyphens`). Structural label emojis only (the six below are the retro's greenlit label set, like /standup's, not conversational emoji).
 
 ```
 🗓️ retro {YYYY-W##}
 
 ✅ shipped: {N} tasks
 ⏸️ stalled: {M} ({worst one, days paused})
-🎯 bottleneck: {one line — the single friction + its cost}
-🔧 change minggu depan: {one line — trigger + action}
-↩️ last week's change: {STUCK | PARTIAL | DROPPED}
+🎯 bottleneck: {one line, the single friction + its cost}
+🔧 change minggu depan: {one line, trigger + action}
+↩️ last week's change: {STUCK | PARTIAL | DROPPED | n/a (first retro)}
 
 full: ~/claude/notes/retros/retro_{YYYY-W##}.md
 ```
 
-- **If dry-run:** print the digest under `=== DRY RUN (retro digest, not sent) ===`; do NOT call WhatsApp and do NOT set the reminder.
-- **If not dry-run:** `mcp__plugin_whatsapp_whatsapp__send_message` to `62817712289@s.whatsapp.net`. Verify the return (`feedback_verify_after_write`); retry once on error, then surface failure. (Param names vary — inspect schema at call-time.)
+- **First-ever retro** (retros dir empty, the current state on 2026-07-03): the `↩️` line reads `n/a (first retro)` and Section 4's "did it stick?" subsection is skipped (Step 2). **Quiet week:** render `⏸️ stalled: 0 (none)` and put the verbatim quiet-week line on `🎯` (playbook 1).
+- **If dry-run:** print under `=== DRY RUN (retro digest, not sent) ===`; do NOT call WhatsApp, do NOT arm the recurrence (Step 6).
+- **If not dry-run:** `mcp__plugin_whatsapp_whatsapp__send_message(to="$TOPER_WA_JID", message=<body>)`. **Verify the return** (`feedback_verify_after_write`). On error, run the **send-failure playbook** (playbook 2): `connection_status` -> retry once if connected -> if still failing, preserve the digest into the retro file under a `## DIGEST (unsent ...)` block + flag main. NEVER silently drop the retro.
 
-## Step 6 — arm the next-week evaluation (closes the loop forward)
+> **JID reconciliation (do NOT silently change):** the digest goes to `$TOPER_WA_JID` (phone-format) via the WhatsApp MCP, matching /standup's on-demand MCP-ritual choice (`feedback_whatsapp_lid_vs_phone_jid`). `$TOPER_WA_LID` reaches the same Toper but is a different surface (standup + daily-brief each document their own JID/transport choice; do NOT reconcile them from here). The per-ritual differences are deliberate, never a bug to "silently fix" (standup reconciliation note). remindme HARD RULE 5's "the LID is the MCP-ritual JID" is an over-simplification; do NOT switch retro to the LID on the strength of it.
 
-So the "did it stick?" check actually happens, schedule a reminder to run the retro next Sunday. Use the `/remindme` mechanism (CronCreate, recurring, durable). If a recurring `weekly-retro` reminder already exists (`CronList` → filter `[REMINDME id=weekly-retro`), do NOT create a duplicate — just confirm it's armed. Otherwise create:
+## Step 6 - arm the next-week evaluation (durable recurrence, NO CronCreate)
 
+So the "did it stick?" check actually happens, the retro must be scheduled by a mechanism that **survives a session restart**. `CronCreate(durable)` does NOT (HARD RULE 1). Full architecture + exact unit content in `references/scheduling.md`.
+
+**Detect the dedicated timer:**
+```bash
+systemctl --user list-timers --all 2>/dev/null | grep -i retro
 ```
-CronCreate(cron="58 9 * * 0", recurring=true, durable=true,
-  prompt="[REMINDME id=weekly-retro] Send WA to 62817712289@s.whatsapp.net: ⏰ REMINDER / Topic: run /retro (weekly Sunday retro, evaluate last week's change) / Scheduled: every Sunday ~10am … <AUTO_RENEW_CLAUSE>")
-```
+- **Timer PRESENT** -> report `recurrence armed (retro.timer, next Sun 20:00 WIB)`. Done. Do NOT also arm the calendar (that would double-nudge).
+- **Timer ABSENT** -> (a) surface the one-time **human-gated install** (the `retro.timer` + `retro.service` unit content lives in `references/scheduling.md`; installing writes to `~/.config/systemd/user/`, outside this skill dir), AND (b) arm ONE durable **Google Calendar** event for next Sunday as the bridge:
+  1. **Duplicate guard first:** `list_events` for next Sunday with `fullText="weekly-retro"`; if any exists, skip (already armed).
+  2. Else `create_event(summary="weekly-retro: run /retro", startTime="<next-Sun>T20:00:00+07:00", endTime="<next-Sun>T20:30:00+07:00", timeZone="Asia/Jakarta", overrideReminders=[{"method":"popup","minutes":0}])`. Compute `<next-Sun>` off the clock: `dow=$(date +%u); add=$(( (7-dow)%7 )); [ "$add" -eq 0 ] && add=7; date -d "+$add days" +%Y-%m-%d`.
 
-(Sunday = dow `0`; ~10am via early-nudge minute `58` hour `9`, per `/remindme` conventions.) In dry-run, skip this step. Note in the session output whether the reminder was already armed or freshly created.
+In dry-run, skip this step entirely. Note in the session output whether the timer was armed/confirmed or the calendar bridge was set.
 
-## Worked example
+## Failure playbooks (condensed, full commands in `references/failure-playbooks.md`)
 
-`/retro`, now Sun 2026-06-14 ~20:00 WIB, ISO week `2026-W24`, prior retro `retro_2026-W23.md` exists.
+| Trigger | Recovery (one line) |
+|---|---|
+| **Quiet / no-data week** | Produce the retro honestly; Section 3 = "no friction met the cost bar (quiet week)" + thin-evidence cite; still commit ONE experiment or carry last week's. NEVER fabricate a bottleneck. |
+| **Digest send fails** | `connection_status`; retry once if connected; else write the digest into the retro file (`## DIGEST (unsent)`) + flag main. Never drop. Never restart wa-sender. |
+| **Multi-week gap** | Back-fill each missed week oldest-first as its own windowed file (`/retro week YYYY-W##`), or one catch-up retro that logs the slip in Section 6. |
+| **Stale / missing work-queue** | Freshness guard; if stale, mark UNRELIABLE and build Section 2 from result.json (`blocked`/`partial`) + windowed git + journal. |
+| **Missing retro-template** | Use the embedded Step-3 layout; note the template was missing in Section 6. Never edit the read-only template. |
+| **Idempotent re-run** | Read-first; complete file -> report + exit; stub -> refresh empty sections in place. Never blind-overwrite. |
 
-- **Evidence:** git log shows 9 commits across aenoxa_pos_web (3) + chilldawg-setup (4) + bms fitest notes (2). work-queue: `fitest-batches-6-7` paused 5 days (awaiting Toper "Go"); `pulse-billing-tenant-id-bug` paused 8 days (backlog). decisions.log: one `overridden: n` default on `bms-remaining-author`. journal: 14 entries, dominant theme = ISI fitest closeout.
-- **Section 3 bottleneck:** "Toper decision latency on `fitest-batches-6-7` — paused 5 days awaiting a one-word 'Go', blocking ~6h of queued authoring." (cost quantified: 5 days + 6h).
-- **Section 4 change:** Trigger = "any thread paused >48h awaiting a Toper yes/no". Action = "morning standup surfaces it with an explicit 1h-default + auto-proceed". Hypothesis = "paused-decision median age drops under 48h; measured from work-queue paused-since dates next retro."
-- **Did last week's change stick?** Last week (W23) committed "send WA nudge for >48h paused threads". Evidence: 2 nudges in journal (`feedback`-tagged), 1 thread resumed within 24h of nudge. Verdict: PARTIAL (nudges fired but one thread still aged out). Carry-over: evolve into the standup-default mechanism above.
-- **Self-check:** 1 bottleneck ✓ quantified ✓ / 1 change ✓ trigger+action+hypothesis ✓ evaluable ✓ / last week evaluated ✓ / rows cite commits+paused-since ✓ / recurring? decision-latency appeared W23+W24 → flagged structural ✓ / honest? named that main let `pulse-billing` age 8 days without a kill-call ✓. Gate PASS.
-- **Digest** sent to Toper (7 lines). **Reminder** `weekly-retro` already armed → confirmed, not duplicated.
+## Worked examples
+
+**A - normal week.** `/retro`, Sun 2026-06-14 ~20:00 WIB, `TARGET_WEEK=2026-W24`, window `2026-06-08..2026-06-15`, prior `retro_2026-W23.md` exists.
+- **Evidence:** prefilter -> 3 active repos; windowed git 9 commits (aenoxa_pos_web 3, chilldawg-setup 4, bms fitest notes 2); result.json 2 `done`, 1 `partial`; work-queue mtime fresh -> `fitest-batches-6-7` paused 5 days; decisions.log 1 `overridden: n`; journal 14 entries, theme = ISI fitest closeout.
+- **Section 3:** "Toper decision latency on `fitest-batches-6-7`, paused 5 days awaiting a one-word Go, blocking ~6h queued authoring." (cost: 5 days + 6h). Recurring W23+W24 -> flagged structural.
+- **Section 4:** Trigger = "any thread paused >48h awaiting a Toper yes/no". Action = "morning standup surfaces it with an explicit 1h-default + auto-proceed". Hypothesis = "paused-decision median age drops under 48h, measured next retro."
+- **Did last week's change stick?** W23 committed "send WA nudge for >48h paused threads". Evidence: 2 nudges in journal (`feedback`-tagged), 1 thread resumed within 24h. Verdict: PARTIAL. Carry-over: evolve into the standup-default above.
+- **Gate:** all 8 boxes PASS. Digest sent (7 lines). Step 6: timer PRESENT -> confirmed, no calendar.
+
+**B - quiet week (anti-fabrication).** `/retro`, Sun, `TARGET_WEEK=2026-W27`, window `2026-06-29..2026-07-06`.
+- **Evidence:** prefilter -> 2 active repos, 6 commits (both chilldawg-setup skill work); result.json all `done`, zero `blocked`/`partial`; work-queue STALE (mtime 52d < window) -> flagged UNRELIABLE, spine = git+journal+result.json; journal quiet.
+- **Section 3:** `No single friction met the cost bar this week (quiet week).` Cite: 6 commits, zero blocked threads, no overridden decisions. (NOT a manufactured bottleneck.)
+- **Section 4:** carry W26's change forward one more week (state why), OR one small forward experiment.
+- **Gate:** box 8 (anti-fabrication) PASSES because no invented bottleneck. Digest sent.
+
+**C - back-fill a missed week.** `/retro week 2026-W24`, run on 2026-07-03 (a Friday, W27).
+- Step 0 computes `WINDOW_START=2026-06-08`, `WINDOW_END=2026-06-15` (the target week, NOT the current one). All Step-1 commands window to those dates: `git log --since="2026-06-08" --until="2026-06-15 23:59:59"`, `find ... -newermt "2026-06-08" ! -newermt "2026-06-15"`.
+- Gate box 5 (window-correctness) spot-checks that cited commit/result.json dates fall in `2026-06-08..2026-06-15`, not this week. Section 6 logs "back-filled, ran W27".
 
 ## Never-do list
 
 - Never list more than one bottleneck or more than one change-to-try. The discipline IS the value.
-- Never write a vague bottleneck or a non-evaluable change — they fail the gate.
+- Never write a vague bottleneck or a non-evaluable change (they fail the gate); and never FABRICATE one on a quiet week.
 - Never skip the "did last week's change stick?" evaluation (unless first-ever retro).
 - Never clobber an existing finished retro file.
-- Never paste the whole retro into WhatsApp — digest only, <20 lines.
-- Never flatter the week (`feedback_no_yesman_sugarcoat`). An all-green retro with no friction named is a red flag, re-examine.
+- Never paste the whole retro into WhatsApp; digest only, sub-20 lines.
+- Never flatter the week (`feedback_no_yesman_sugarcoat`). An all-green retro with no friction named is a red flag; re-examine.
 - Never use em/en dashes or non-label emoji in the digest.
-- Never silently skip a missed week — back-fill or log the slip.
-- Never duplicate the `weekly-retro` reminder if one already exists.
+- Never gather evidence with a NOW-anchored window on a back-fill (HARD RULE 4).
+- Never arm the recurrence with `CronCreate`, and never route the retro through /remindme (HARD RULES 1, 2).
+- Never silently skip a missed week; back-fill or log the slip.
+- Never switch the digest JID to the LID (Step 5 note).
+- Never modify the read-only sources (work-queue, decisions.log, journal, template) or edit them from here.
 
 ## Done
 
-After writing the file + sending the digest (+ arming/confirming the reminder), print:
+After writing the file + sending the digest (+ arming/confirming the recurrence), print:
 ```
-DONE — retro {YYYY-W##} written (~/claude/notes/retros/retro_{YYYY-W##}.md), digest sent, next-week reminder {armed|confirmed}
+DONE - retro {TARGET_WEEK} written (~/claude/notes/retros/retro_{TARGET_WEEK}.md), digest {sent|UNSENT-preserved}, recurrence {timer-confirmed|calendar-bridge-armed}
 ```
-(or the dry-run equivalent without send/reminder).
+(or the dry-run equivalent: `DONE - retro {TARGET_WEEK} dry-run printed, no send, no recurrence arm`).

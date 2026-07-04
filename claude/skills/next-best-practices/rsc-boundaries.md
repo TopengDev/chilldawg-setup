@@ -43,20 +43,34 @@ const Dashboard = async () => {
 // Good: Fetch in server component, pass data down
 ```
 
-### 2. Non-Serializable Props to Client Components
+### 2. Non-Serializable Props to Client Components (React 19 rules)
 
-Props passed from Server → Client must be JSON-serializable.
+React 19 serializes Server → Client props with React's own wire format — **NOT plain JSON**.
+The allowed list is much wider than JSON (source: react.dev `'use client'` reference,
+verified against React 19 docs 2026-07-03).
 
-**Detect:** Server component passes these to a client component:
-- Functions (except Server Actions with `'use server'`)
-- `Date` objects
-- `Map`, `Set`, `WeakMap`, `WeakSet`
-- Class instances
-- `Symbol` (unless globally registered)
-- Circular references
+**Serializable — NEVER flag these as bugs:**
+- Primitives: `string`, `number`, `bigint`, `boolean`, `undefined`, `null`, Symbols registered via `Symbol.for`
+- `Array`, `Map`, `Set`, `TypedArray`, `ArrayBuffer`
+- `Date`
+- Plain objects (object-literal shaped, serializable values)
+- JSX elements
+- `Promise`s (unwrap client-side with `use()` — streaming recipe below)
+- Server Functions (`'use server'` — see Rule 3)
+- `FormData` instances
+
+**NOT serializable — flag ONLY these:**
+- Functions that are NOT Server Functions (event handlers/callbacks defined server-side)
+- Classes and class instances (methods stripped / render error)
+- Objects with a null prototype (`Object.create(null)`)
+- Symbols not registered via `Symbol.for`
+
+> Pre-React-19 lore said Date/Map/Set were unserializable and demanded `.toISOString()` /
+> `Object.fromEntries()` conversion churn. That is OBSOLETE on the house estate (all repos
+> run Next 15/16 = React 19 era). Do not generate those refactors.
 
 ```tsx
-// Bad: Function prop
+// Bad: Function prop (not a Server Function)
 // page.tsx (server)
 export default function Page() {
   const handleClick = () => console.log('clicked')
@@ -73,35 +87,6 @@ export function ClientButton() {
 ```
 
 ```tsx
-// Bad: Date object (silently becomes string, then crashes)
-// page.tsx (server)
-export default async function Page() {
-  const post = await getPost()
-  return <PostCard createdAt={post.createdAt} /> // Date object
-}
-
-// PostCard.tsx (client) - will crash on .getFullYear()
-'use client'
-export function PostCard({ createdAt }: { createdAt: Date }) {
-  return <span>{createdAt.getFullYear()}</span> // Runtime error!
-}
-
-// Good: Serialize to string on server
-// page.tsx (server)
-export default async function Page() {
-  const post = await getPost()
-  return <PostCard createdAt={post.createdAt.toISOString()} />
-}
-
-// PostCard.tsx (client)
-'use client'
-export function PostCard({ createdAt }: { createdAt: string }) {
-  const date = new Date(createdAt)
-  return <span>{date.getFullYear()}</span>
-}
-```
-
-```tsx
 // Bad: Class instance
 const user = new UserModel(data)
 <ClientProfile user={user} /> // Methods will be stripped
@@ -112,12 +97,34 @@ const user = await getUser()
 ```
 
 ```tsx
-// Bad: Map/Set
-<ClientComponent items={new Map([['a', 1]])} />
+// Fine in React 19 — no conversion needed:
+<PostCard createdAt={post.createdAt} />          // Date passes through as a Date
+<ClientComponent items={new Map([['a', 1]])} />  // Map passes through as a Map
+```
 
-// Good: Convert to array/object
-<ClientComponent items={Object.fromEntries(map)} />
-<ClientComponent items={Array.from(set)} />
+**Streaming recipe — pass a Promise, unwrap with `use()`:**
+
+```tsx
+// page.tsx (server) — do NOT await; hand the promise down
+import { Suspense } from 'react'
+
+export default function Page() {
+  const postsPromise = getPosts() // no await — render is not blocked
+  return (
+    <Suspense fallback={<PostsSkeleton />}>
+      <Posts postsPromise={postsPromise} />
+    </Suspense>
+  )
+}
+
+// Posts.tsx (client)
+'use client'
+import { use } from 'react'
+
+export function Posts({ postsPromise }: { postsPromise: Promise<Post[]> }) {
+  const posts = use(postsPromise) // suspends until resolved, streams in
+  return <ul>{posts.map(p => <li key={p.id}>{p.title}</li>)}</ul>
+}
 ```
 
 ### 3. Server Actions Are the Exception
@@ -150,10 +157,13 @@ export function ClientForm({ onSubmit }: { onSubmit: (data: FormData) => Promise
 | Pattern | Valid? | Fix |
 |---------|--------|-----|
 | `'use client'` + `async function` | No | Fetch in server parent, pass data |
-| Pass `() => {}` to client | No | Define in client or use server action |
-| Pass `new Date()` to client | No | Use `.toISOString()` |
-| Pass `new Map()` to client | No | Convert to object/array |
+| Pass `() => {}` (non-Server-Function) to client | No | Define in client or use a Server Action |
 | Pass class instance to client | No | Pass plain object |
-| Pass server action to client | Yes | - |
+| Pass null-prototype object to client | No | Rebuild as a plain object |
+| Pass unregistered `Symbol()` to client | No | Use `Symbol.for('name')` |
+| Pass `new Date()` to client | Yes (React 19) | - |
+| Pass `new Map()` / `new Set()` / TypedArray | Yes (React 19) | - |
+| Pass a `Promise` to client | Yes | Unwrap with `use()` inside `<Suspense>` |
+| Pass Server Action (`'use server'`) to client | Yes | - |
 | Pass `string/number/boolean` | Yes | - |
-| Pass plain object/array | Yes | - |
+| Pass plain object/array/JSX | Yes | - |

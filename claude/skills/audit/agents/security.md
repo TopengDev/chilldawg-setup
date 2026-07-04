@@ -83,6 +83,8 @@ Every Critical and High finding MUST include:
 
 Probable/theoretical findings may omit exploit payload but must still cite the sink location.
 
+**Secret-redaction HARD RULE (overrides the exact-snippet/payload requirement — SKILL.md HR-2):** when the finding IS a secret (hardcoded key/token/password/private key), NEVER copy the secret value into evidence, description, or anywhere else in your output. Cite `file:line`, the pattern TYPE ("OpenAI-style API key", "AWS access key", "PEM private key", "JWT signing secret"), and a redacted form showing at most the first/last 2 characters (`sk-…Q2`). The proof for a secret finding is the location + pattern type — never the value. A report that duplicates a live credential is itself an exfiltration vector for the exact finding class you flag as Critical.
+
 ## Output format
 
 Use the required schema from SKILL.md:
@@ -105,6 +107,10 @@ Use the required schema from SKILL.md:
   effort: S | M | L
   references: [CWE-xx, OWASP-Axx, CVE-xxxx-xxxx if applicable]
 ```
+
+## Verified safe (required output addition)
+
+Alongside findings, return `verified_safe`: up to 8 security properties you explicitly checked and found sound, each one line with a `file:line` citation (e.g. `- SIWE nonce is single-use — server/auth/nonce.ts:41`, `- JWT verification fail-closed in prod — server/plugins/auth.ts:23`). Only what you actually traced — an empty list is honest. This feeds the report's per-dimension "Verified safe:" line and is what lets a strength-asserting verdict rest on evidence instead of the absence of findings.
 
 ## Severity guidance
 

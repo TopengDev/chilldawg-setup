@@ -33,7 +33,11 @@ Inline scripts require an `id` attribute for Next.js to track them.
 </Script>
 ```
 
-## Don't Put Script in Head
+## Don't Put Script in Head (Pages Router ONLY)
+
+> `next/head` does not exist in the App Router — metadata is handled by the Metadata API
+> (see [metadata.md](./metadata.md)). NEVER import `next/head` into an App Router project.
+> This section applies only to legacy Pages Router code.
 
 `next/script` should not be placed inside `next/head`. It handles its own positioning.
 

@@ -1,6 +1,6 @@
 ---
 name: copywriting
-description: "Turns a brief into copy that survives a hard quality gate. Every sentence faces 3 rules (can I visualize it / falsify it / can nobody else say it), the 2-second test, and a per-line audit table that must PASS before anything ships. 3 modes: full (5-phase studio), quick (audit+rewrite pasted copy), panel (parallel multi-angle writers then judge). Bilingual ID+EN (transcreated, not translated), anti-slop EN+ID ban list, stateful per-brand voice bank, emits a copy spec for /artifex. Shorthand: /copy. Use when Toper says /copywriting or /copy, asks to write or sharpen a headline / hero / landing / ad / email / push / tweet / billboard / CTA, or says copy reads generic / like AI / weak / off-brand."
+description: "Turns a brief into copy that survives a hard quality gate. Every sentence faces 3 rules (can I visualize it / falsify it / can nobody else say it), the 2-second test, and a per-line audit table that must PASS before anything ships. 3 modes: full (5-phase studio), quick (audit+rewrite pasted copy), panel (parallel multi-angle writers then judge). Bilingual ID+EN (transcreated, not translated), anti-slop EN+ID ban list, stateful per-brand voice bank, register-aware for Toper's own first-person voice (outreach / Threads / personal-brand), pulls real product facts from an /atlas dossier, emits a copy spec for /artifex. Shorthand: /copy. Use when Toper says /copywriting or /copy, asks to write or sharpen a headline / hero / landing / ad / email / push / tweet / billboard / CTA, a personal-brand or launch line in his own voice, or says copy reads generic / like AI / weak / off-brand."
 argument-hint: "[full|quick|panel] [what to write], e.g. /copywriting full hero headline for Pulse POS landing (ID+EN)"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Skill, Agent
 ---
@@ -31,6 +31,10 @@ These are HARD rules. Violating one is failed copy, not a stylistic choice. If a
 | **N8** | **No em-dash or en-dash, ever, in any copy or any output of this skill.** Use a comma, a colon, parentheses, or a line break. (Toper's hard style rule. A copy skill that emits the AI-default em-dash is self-refuting.) | §8 hard-ban; scan every line before shipping. |
 | **N9** | **ID copy is transcreated, not translated.** The 3 rules must hold independently in Indonesian. A falsifiable, visual ID line is NOT a literal translation of the EN one. | §9 bilingual rules. |
 | **N10** | **Copy and design are one.** When copy lives on a page / deck / ad, emit a copy spec (hierarchy, char counts, emphasis) and hand off to `/artifex`. Never ship copy blind to its layout. | §10 handoff. |
+| **N11** | **Detect the voice REGISTER before drafting (conditional Toper first-person voice).** If the asset is Toper's OWN first person on an outreach / recruiter-DM channel: NO emoji, ONLY the symbols `@ & + ( ) / * " ' : ; ! ?`, and NEVER a period, comma, hyphen, dash, or bullet in prose (line breaks for clauses, `:` for labels, `&`/`+` to join, `!`/`?` for emphasis); keep tech names + URLs intact. If it is a PUBLIC Threads / X post in his voice: natural viral-post voice, normal punctuation + contractions, occasional emoji allowed, story/insight-first, NEVER an ad. **NEVER apply the strict symbol-only set to BRAND copy** (Pulse / Aenoxa / client) or to a formal corporate email, both use normal clean punctuation. Distinct from N8 (N8 = every output; N11 = Toper first-person only). | §2b decision table. Authority: `feedback_toper_writing_style` + `feedback_no_long_hyphens`. |
+| **N12** | **Atlas-consumer freshness gate.** When the brief concerns a real Aenoxa product that has an `/atlas` dossier, recall it and run `atlas-freshness.sh` FIRST. NEVER cite a STALE dossier's `data_observed` numbers as current proof without a staleness disclaimer (prefer a refresh). NEVER invent a product number or feature fact when the dossier's `data_observed` can supply the real one, that IS Rule 2 falsifiability. | §4b + `reference.md` §G. Authority: atlas QUERY-GUIDE R0/R8. |
+| **N13** | **VoC provenance: `mined` vs `inferred`.** Every voice-bank VoC phrase carries a provenance flag. NEVER cite an `inferred` phrase as falsifiable proof; ALWAYS name any shipping line that rests on inferred VoC as an assumption in the rationale; NEVER promote an inferred phrase into "Proven lines" without a real source. | §11 provenance gate. |
+| **N14** | **Copywriting WRITES the words, it does not SEND.** For a 1:1 reach-out to a specific recruiter / client, defer the send AND the draft-for-approval gate to `/outreach` (NEVER auto-send, it is reputation-bearing + irreversible). `/content-strategy` decides WHAT to write; `/artifex` + `/frontend-design` DESIGN the page. Copywriting owns only the copy. | §15 boundary. Authority: `/outreach` rule 1. |
 
 ### The failure this skill exists to prevent
 
@@ -80,6 +84,27 @@ A sentence that is true or false puts your head on the chopping block, and that 
 
 ---
 
+## 2b. VOICE REGISTER: detect BEFORE you draft (N11)
+
+> **Copy lives in a register, and the register sets the punctuation regime, the emoji policy, and the symbol set BEFORE a single line is written.** The most expensive register error runs BOTH ways: emoji + commas + dashes leaking into Toper's outreach voice (he rejected exactly that twice, 2026-05-30), OR the strict symbol-only set stripping the periods out of Pulse brand copy (a regression). Pick the register first, deterministically. Authority: `feedback_toper_writing_style` (the register split) and `feedback_no_long_hyphens` (the universal dash ban, which is N8 and applies to EVERY row).
+
+| Register | Punctuation regime | Emoji | Symbol set | Governed by | Defer to |
+|---|---|---|---|---|---|
+| **Brand / product copy** (Pulse, Aenoxa, a client) | normal clean punctuation (periods + commas OK; NO em/en dash, N8) | brand-appropriate, usually none | full normal set minus em/en dash | §8 anti-slop + the voice bank (§11) | stays here; hand the page to `/artifex` |
+| **Toper outreach / recruiter DM** (1:1, his first person) | strict symbol-only: NO period, comma, hyphen, dash, or bullet in prose; line breaks for clauses, `:` for labels, `&`/`+` to join, `!`/`?` for emphasis | NONE | ONLY `@ & + ( ) / * " ' : ; ! ?` | `feedback_toper_writing_style` (outreach register) | the SEND + approval to `/outreach` (N14) |
+| **Toper public Threads / X** (his first person, public) | natural viral-post voice: normal punctuation + contractions (It's, can't); NO em/en dash (N8) | occasional, allowed (the ☕-class) | normal set minus em/en dash | `feedback_toper_writing_style` (RESOLVED 2026-06-29 public split) | live posting via `/outreach` or manual, never auto |
+| **Formal corporate email** (Toper first person, formal) | normal clean punctuation; short, direct, substance-first, never groveling; NO em/en dash | none | full normal set minus em/en dash | `feedback_toper_writing_style` (formal) + `/outreach` rule 4 | the SEND to `/outreach` (N14) |
+
+**How to pick (deterministic, top to bottom):** (1) Is the copy in Toper's OWN first person? **No then it is BRAND copy, row 1, normal punctuation, done.** (2) Yes, and the channel is a 1:1 outreach / recruiter DM then **row 2 (strict symbol-only).** (3) A PUBLIC Threads / X post then **row 3 (natural viral voice).** (4) A formal email then **row 4.** When torn between rows 2 and 3, ask once, the registers are opposite (symbol-only vs natural), so guessing wrong is a rejected draft.
+
+**The two traps (do / dont):**
+- DO strip a Toper recruiter DM to the symbol-only set. DONT strip Pulse hero copy of its periods, the `voice-banks/pulse.md` proven line `Tutup toko, angkanya udah ada.` HAS a period and is correct.
+- DO keep tech names + URLs intact in every register (`Next.js`, `topengdev.com`, `gRPC`). DONT mangle a proper noun to fit the symbol set.
+
+Full transcription of both Toper registers + 3 worked before/after contrasts (incl a brand-copy counter-example): `reference.md` §F.
+
+---
+
 ## 3. USAGE: the 3 modes
 
 ```
@@ -115,6 +140,29 @@ Ask only for what changes the copy, and never more than the mode allows (quick =
 | **Existing copy** (if rewriting/auditing) | Routes to quick mode. | If present and the ask is "improve," go straight to audit+rewrite. |
 
 > **Robustness:** missing inputs degrade gracefully. The skill still produces audited copy from whatever is given, and **names every assumption it had to make** in the output rationale. It never stalls waiting for a perfect brief. A bare `/copy make this punchier <paste>` skips straight to quick.
+
+---
+
+## 4b. ATLAS-CONSUMER: pull REAL product facts before writing (N12)
+
+Rule 2 (falsify) and C3 (facts as the foundation) demand real numbers, and for a real Aenoxa product those numbers already exist, captured in its `/atlas` dossier. **Read them, never invent them.** `/atlas` CAPTURES neutral facts; `/copywriting` is a named consumer of them (atlas `SKILL.md` §10.3 + QUERY-GUIDE R8). Inventing a stat here is the exact self-contradiction Rule 2 exists to prevent.
+
+**Step 0, freshness FIRST (before trusting a single number, read-only):**
+```bash
+bash ~/.claude/skills/atlas/scripts/atlas-freshness.sh ~/.claude/skills/atlas/dossiers/<slug>
+# prints a verdict: FRESH / AGING / STALE  + per-bucket counts (writes nothing, touches no browser)
+```
+**STALE** then attach a staleness disclaimer to any number you cite, and prefer a targeted refresh (QUERY-GUIDE R10) over shipping a rotten stat. Live example: the Pulse dossier was captured 2026-06-22 with `ttl_days` 14, so it goes **STALE on 2026-07-06**, check the verdict, do not assume.
+
+**Field to rule mapping (what to pull, where it lands):**
+| Dossier field | Feeds | Use it as |
+|---|---|---|
+| `data_observed` (real counts / prices / timings) | Rule 2 falsifiable numbers + C4 precision | the real stat in the line ("14 products across its real categories", not "manage hundreds of products") |
+| `locale_observed` (id/en leaks, mixed date formats) | the §9 ID-string worklist | which strings actually need transcreation or fixing (Pulse: en headings like "Stock Levels" over id form labels) |
+| `what_it_does` | Phase 2 "the one thing" | what the product ACTUALLY does, phrased in the reader's terms |
+| `signals` (`wow_potential`, `visual_richness`, `demo_ability`) | which feature is worth writing about | lead with the feature that actually lands, not the one you assume |
+
+Read-only. Do NOT re-derive atlas's schema or re-run its crawl, CITE the QUERY-GUIDE. The exact verified `jq` recipes + the STALE-disclaimer text live in `reference.md` §G. If the brand's voice bank names an `atlas dossier slug` (§11), that is the dossier to read.
 
 ---
 
@@ -180,7 +228,9 @@ For flagship lines or batches, spawn parallel writer agents, each from a DISTINC
 
 Each lens returns its best 2 to 3 candidates with a self-audit. A **judge pass** scores every candidate against the Audit Gate (§7) and synthesizes the winner, grafting the strongest line from each (exactly Harry's "use THAT sentence, put it in THAT one"). 
 
-> **Robustness:** if parallel agents are unavailable in the current context, panel degrades to **sequential multi-lens drafting** in one pass (write all four lenses yourself, then judge), never a silent drop to a single draft. Log that it ran sequentially.
+> **What "spawn" means here:** panel uses **ephemeral IN-CONTEXT sub-agents** (the `Agent` tool, exactly as `/pitch-deck` does), NOT the `spawn-worker.sh` tmux worker pipeline. So NONE of the 3-tier orchestration ceremony applies, no `triage.json`, no attn peer, no `STATE.md`. It is a fan-out of in-context writers, then a synthesis, all inside this one run.
+>
+> **Robustness:** if in-context sub-agents are unavailable, panel degrades to **sequential multi-lens drafting** in one pass (write all four lenses yourself, then judge), never a silent drop to a single draft. Log that it ran sequentially.
 
 ---
 
@@ -233,6 +283,25 @@ VERDICT: ship the rewrite, kill the draft.
 ## 8. ANTI-SLOP: the hard bans (EN + ID), instant fail on any hit
 
 > Not scored, binary. ANY hit auto-FAILS the audit regardless of the table. Scan FIRST. The full lists live in `reference.md` §C; the load-bearing tells are here.
+
+### The mechanical scan (run FIRST, before the §7 table)
+
+The hard-ban is **mechanical, not a vibe check.** Drop every candidate line (EN + ID) into a scratch file and scan it. Any hit is an auto-FAIL, rewrite the offending line and re-scan. Human judgment enters ONLY to justify a rare deliberate keeper (a banned word inside a real quote, a product name). This mirrors `/artifex` §15's runnable-scan discipline, a flagship anti-slop skill must MECHANICALLY catch the obvious hits, not hope the model eyeballs them.
+
+```bash
+DRAFT=/tmp/claude-copy-draft.txt   # paste ALL candidate lines here, EN + ID
+
+# 1. em-dash / en-dash (N8, universal, every register); the PCRE class needs -P not -E
+grep -nP '[\x{2013}\x{2014}]' "$DRAFT"                       # must output NOTHING
+
+# 2. EN + ID banned words (extend this alternation from the FULL reference.md §C lists)
+grep -niE 'seamless|world-class|cutting-edge|state-of-the-art|robust|elevate|unlock|revolutioniz|game-chang|next-level|best-in-class|supercharge|effortless|leverage|synergy|holistic|turnkey|empower|streamline|solusi terbaik|terpercaya|berkualitas tinggi|harga terjangkau|nomor satu|terdepan|terlengkap|profesional dan amanah' "$DRAFT"   # must output NOTHING
+
+# 3. hollow openers (EN + ID)
+grep -niE "in today's fast-paced|imagine a world|we are (excited|thrilled)|say goodbye to|di era digital seperti|seperti yang kita ketahui bersama|tidak bisa dipungkiri" "$DRAFT"   # must output NOTHING
+```
+
+**Zero output on all three = the binary layer passes; proceed to the scored §7 table.** Any hit = REWRITE + re-run. `reference.md` §C is the source of truth for the lists, keep the alternations in sync with it (it is deeper than the inline echoes below).
 
 ### EN hard-bans
 - **Unfalsifiable adjectives / empty intensifiers:** seamless, world-class, cutting-edge, robust, powerful, elevate, unlock, revolutionize, game-changing, next-level, best-in-class, supercharge, effortless, "delightful" (as a claim), innovative, leverage, synergy, holistic, turnkey, "solutions."
@@ -317,15 +386,25 @@ This skill is **stateful** (the stateful-domain-skill pattern): it owns a per-br
 **Voice bank schema** (full template in `voice-bank-template.md`):
 ```
 ---
-brand: <slug>   primary-language: id|en|both   updated: <date>
+brand: <slug>   primary-language: id|en|both   updated: <date>   atlas-dossier: <slug|none>
 ---
 ## Voice           (3 to 5 adjectives + 1 line of "sounds like / never sounds like")
 ## Banned words    (brand-specific, on top of the §8 global list)
-## VoC library     (real customer phrases, mined, quoted verbatim, with source)
+## VoC library     (customer phrases, PROVENANCE-flagged mined|inferred, quoted verbatim, with source)
 ## The enemy       (the status quo / belief / competitor this brand argues against)
 ## Proven lines    (copy that passed the gate + shipped, reusable as motif anchors)
 ## Awareness note  (where this brand's typical reader sits on Schwartz's scale)
 ```
+
+### VoC provenance (mined vs inferred), the anti-self-contradiction gate (N13)
+
+The voice bank's whole premise (Wiebe: the best copy is FOUND, mine the customer's EXACT words) collapses the instant an invented phrase masquerades as a mined one. So **every VoC entry carries a provenance flag:**
+- **`mined`** = a real customer phrase, quoted verbatim, with a real source (review / ticket / call / DM). This is falsifiable proof, usable in a shipping line.
+- **`inferred`** = a plausible phrase the skill guessed. It is NOT proof. A line resting on an inferred phrase MUST be named as an assumption in the rationale (§10), and can NEVER be cited as if it passed Rule 2.
+
+**Promotion gate:** an `inferred` phrase becomes `mined` (and eligible for "Proven lines") ONLY when a real source is attached, never on gut feel. When real VoC is thin, the fastest route to REAL falsifiable material is the atlas `data_observed` numbers (§4b), a real stat beats an invented quote every time.
+
+> The seed phrases in `voice-banks/pulse.md` are all flagged `inferred (verify)` on purpose, they are Toper's to reconcile against real customer words. Treat them as assumptions until mined, never as proof. (That file is READ-ONLY persistent data, do not rewrite its phrases, only mine real ones alongside.)
 
 ---
 
@@ -369,16 +448,32 @@ The frameworks are interchangeable scaffolds chosen by audience-awareness. The 3
 
 ---
 
+## 13b. FAILURE-MODE PLAYBOOK (symptom → cause → fix → verify)
+
+When a run degrades, this table is the deterministic recovery path: match the symptom, apply the fix, run the verify. The §7/§8 gate NEVER relaxes, robustness reduces inputs, not the bar. Deeper worked recoveries live in `reference.md` §H.
+
+| Symptom | Cause | Fix | Verify |
+|---|---|---|---|
+| Brief too thin to write from | no audience / offer / VoC given | infer the most likely reader + offer from context + the voice bank; NAME every assumption in the rationale (§13) | output ships audited lines + an explicit assumptions list |
+| Only `inferred` VoC available | no real customer words mined yet | flag every line resting on it as an assumption (N13); pull `data_observed` from atlas (§4b) for REAL numbers instead | no `inferred` phrase is cited as proof; rationale lists the dependency |
+| Atlas dossier is STALE | `ttl_days` exceeded (freshness verdict STALE) | attach the staleness disclaimer to any cited number; prefer a targeted refresh (QUERY-GUIDE R10) over shipping a rotten stat | freshness re-run reads FRESH/AGING, OR the disclaimer travels with the number |
+| Panel with no sub-agents | `Agent` tool unavailable in context | run the 4 lenses sequentially yourself in one pass, then judge (§6.P); never silently drop to one draft | output shows 4 lens candidates + a judged winner, logged as sequential |
+| ID reads like a literal EN translation | translated, not transcreated (N9) | re-draft the ID from the ID reader's OWN image (a warung owner at 2pm rush), audit it in its OWN §7 table | the ID line passes visualize / falsify / nobody-else independently of the EN |
+| A line will not pass after ~15 rewrites | the claim is bigger than the truth (N5) | SHRINK the claim to what is sincerely true ("1% to 2%", not "10x"); if it STILL fails, CUT the asset | the shrunk line passes the §7 table honestly, or the asset is dropped |
+| Wrong register (emoji in outreach / periods stripped from brand copy) | skipped the §2b pick | re-run the §2b decision table from the top; re-apply the correct punctuation regime | the copy matches its register row exactly (N11) |
+
+---
+
 ## 14. EXECUTION FLOW
 
-1. **Detect mode + brand.** Parse `full|quick|panel` (default full; auto-quick on a paste-and-improve). Read the brand voice bank (§11 recall-on-invoke).
-2. **Frame.** Confirm asset + channel, audience + awareness stage, the one desired action, language (§4, §9). Ask only what changes the copy, within the mode's question budget.
-3. **(full) Phases 1 to 3.** Interrogate the reader, find the one thing, choose the frame (§6). Mine VoC if available.
+1. **Detect mode + brand + REGISTER.** Parse `full|quick|panel` (default full; auto-quick on a paste-and-improve). Read the brand voice bank (§11 recall-on-invoke). **Run the §2b register pick (N11)** so the punctuation regime is locked before any line is drafted (Toper first-person vs brand copy).
+2. **Frame + pull real facts.** Confirm asset + channel, audience + awareness stage, the one desired action, language (§4, §9). Ask only what changes the copy, within the mode's question budget. **If the brief is a real Aenoxa product with an `/atlas` dossier, recall it + run the freshness gate FIRST (§4b, N12)** and pull `data_observed` / `locale_observed` / `what_it_does` / `signals`.
+3. **(full) Phases 1 to 3.** Interrogate the reader, find the one thing, choose the frame (§6). Mine VoC if available (flag each phrase `mined` vs `inferred`, N13).
 4. **Draft then rewrite (Phase 4 / §6.P for panel).** 3+ variants per line, applying named toolbox moves (§5). Generate many headlines, cut.
 5. **★ Run the Audit Gate (§7).** Anti-slop scan first (§8), then the per-line table, then read-aloud + burrito + sincerity. REWRITE failures, do not push through. Run it once per language (§9).
 6. **Emit the output block (§10).** Winner + runner-ups + the filled audit table(s) + rationale + assumptions. Add the copy spec for on-page assets.
 7. **Update the voice bank (§11 update-on-exit).** Append new VoC, proven lines, voice corrections.
-8. **Hand off (N10).** For on-page / on-deck / on-ad copy, point Toper to `/artifex` with the copy spec.
+8. **Hand off (N10 + N14).** For on-page / on-deck / on-ad copy, point Toper to `/artifex` with the copy spec. For a 1:1 reach-out in Toper's voice, hand the drafted lines to `/outreach` for the send + approval gate, `/copywriting` never sends (N14).
 
 > Do not hold back on the rewrites, the depth is in pass 15, not pass 1. But the discipline is that the quality is GATED, not asserted. Copy that passes the audit beats copy you only claim is good.
 
@@ -388,12 +483,14 @@ The frameworks are interchangeable scaffolds chosen by audience-awareness. The 3
 
 | Skill | How /copywriting plugs in |
 |---|---|
+| **/atlas** | **Upstream fact source (INPUT, before writing).** For a real Aenoxa product, `/copywriting` reads the dossier's `data_observed` / `locale_observed` / `what_it_does` / `signals` for REAL falsifiable material (§4b), AFTER the freshness gate (N12). CITE the QUERY-GUIDE R8, never invent a number the dossier can supply. |
 | **/artifex** | The design counterpart. `/copywriting` emits the **copy spec** (§10); `/artifex` builds the page to it (and stops shipping lorem). Loose handoff now, tight call-through later. The copy's motif (N6) feeds artifex's motif rule (its N6). |
 | **/frontend-design** | Same handoff as artifex for SAFE/production pages. The copy spec drops into the page's content slots. |
 | **/pitch-deck** | Deck narrative lines (hook, problem, CTA) run through this gate before the deck is built, so no slop line survives to the slide. |
 | **/oneshot-webapp** | The webapp's hero + section copy is written here first (gated, bilingual where Aenoxa), then the spec feeds the build. |
-| **/content-strategy** | Strategy decides WHAT to write; `/copywriting` writes the individual piece and gates it. |
-| **/outreach** | Outreach drafts the message; for a high-stakes line, run it through the gate. (Respects outreach's draft-for-approval, never auto-sends.) |
+| **/content-strategy** | Strategy decides WHAT to write (pillars, clusters, calendar); `/copywriting` WRITES the individual piece and gates it. Sharp boundary (N14): they decide, this one writes. |
+| **/launch-strategy** | Launch-strategy decides the launch beats + channels; `/copywriting` writes and gates each launch line (announcement, Product Hunt tagline, waitlist CTA, the single X post). For a non-Premium single `@aura0g` X post, respect the **<=280-char cap** (a URL counts as 23; `reference_aura_x_account`), split into a <=280 self-reply thread if longer. |
+| **/outreach** | **Boundary (N14): `/copywriting` WRITES the words in Toper's voice (§2b register), `/outreach` owns the SEND + the draft-for-approval gate and NEVER auto-sends.** For a 1:1 recruiter / client reach-out, hand the gated lines to `/outreach`; do not send from here. (Shared authority for his voice: `feedback_toper_writing_style`.) |
 
 ---
 

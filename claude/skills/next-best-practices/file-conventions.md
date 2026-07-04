@@ -111,7 +111,10 @@ export const config = {
 
 ### Next.js 16+: `proxy.ts`
 
-Renamed for clarity - same capabilities, different names:
+Renamed for clarity — same capabilities; only the FILE and FUNCTION names change.
+**The config export is still `config`** (verified against canary proxy.mdx, 2026-07-03).
+`export const proxyConfig` is NOT a recognized export — writing it silently drops your
+matcher and the proxy runs on every route.
 
 ```ts
 // proxy.ts (root of project)
@@ -123,7 +126,7 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const proxyConfig = {
+export const config = {
   matcher: ['/dashboard/:path*', '/api/:path*'],
 };
 ```
@@ -131,7 +134,15 @@ export const proxyConfig = {
 | Version | File | Export | Config |
 |---------|------|--------|--------|
 | v14-15 | `middleware.ts` | `middleware()` | `config` |
-| v16+ | `proxy.ts` | `proxy()` | `proxyConfig` |
+| v16+ | `proxy.ts` | `proxy()` | `config` (unchanged) |
+
+**v16 facts that gate the rename decision:**
+- `proxy` runs ONLY on the **nodejs runtime** — edge is NOT supported, and setting the
+  `runtime` segment config in a proxy file throws. If you need edge, KEEP `middleware.ts`.
+- `middleware.ts` is **deprecated, not removed** in 16 — a working middleware.ts keeps working.
+- Flag renames follow suit: `skipMiddlewareUrlNormalize` → `skipProxyUrlNormalize`.
+- House builds run next-intl middleware for `[locale]` routing (CLAUDE.md Website Build
+  Defaults) — check next-intl's own v16 guidance before renaming its middleware file.
 
 **Migration**: Run `npx @next/codemod@latest upgrade` to auto-rename.
 

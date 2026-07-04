@@ -1,0 +1,431 @@
+#!/usr/bin/env python3
+"""
+remindctl - flock-guarded CRUD for the durable reminder store (~/reminders/reminders.jsonl).
+
+This is the ONLY sanctioned way for /remindme to add/list/cancel/pause/resume durable
+reminders. It mirrors the reminder-check.py engine's concurrency contract EXACTLY:
+  * fcntl.flock(LOCK_EX) around the whole read-modify-write, on the store file itself
+    (the same inode the engine locks) - so a mutation can never interleave with the
+    engine's every-minute atomic rewrite.
+  * atomic temp-file + os.replace() rewrite in the store's own directory.
+  * NEVER touches the wa-sender queue or the log - store only.
+
+Safety improvements over a naive `jq` rewrite:
+  * unparseable / unknown lines are PRESERVED verbatim on rewrite (never silently dropped),
+    so remindctl can't destroy data it doesn't understand.
+  * unique-slug enforcement: refuses to add an id that collides with an existing
+    pending / active / paused row (a completed `done` id may be reused).
+  * strict input validation (ISO fire_at, 5-field cron) before anything is written.
+
+Store schema (one JSON object per line):
+  once:  {"id","kind":"once","fire_at":"YYYY-MM-DDTHH:MM:00+07:00","content",
+          "schedule_human","target_jid","status":"pending"}   -> engine sets status=done + fired_at
+  cron:  {"id","kind":"cron","cron":"M H DOM MON DOW","content",
+          "schedule_human","target_jid","status":"active"}     -> engine sets last_fired_minute
+
+Exit codes: 0 ok · 2 validation error · 3 not found · 4 store IO error · 5 usage error.
+"""
+import argparse
+import fcntl
+import json
+import os
+import sys
+import tempfile
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+HOME = os.path.expanduser("~")
+STORE = os.environ.get("REMINDER_STORE", os.path.join(HOME, "reminders", "reminders.jsonl"))
+DEFAULT_JID = os.environ.get("REMINDER_JID", "")
+TZ = ZoneInfo(os.environ.get("REMINDER_TZ", "Asia/Jakarta"))
+
+LIVE_STATUSES = {"pending", "active", "paused"}
+RAW = "__raw__"  # sentinel wrapper for lines we could not JSON-parse
+
+
+# ---------------------------------------------------------------------------
+# cron matcher - ported VERBATIM from reminder-check.py so next-fire computation
+# is identical to what the engine will actually fire.
+# ---------------------------------------------------------------------------
+def cron_field_matches(field, value):
+    for part in field.split(","):
+        step = 1
+        if "/" in part:
+            rng, step_s = part.split("/", 1)
+            step = int(step_s)
+        else:
+            rng = part
+        if rng == "*":
+            lo, hi = None, None
+        elif "-" in rng:
+            lo_s, hi_s = rng.split("-", 1)
+            lo, hi = int(lo_s), int(hi_s)
+        else:
+            lo = hi = int(rng)
+        if lo is None:
+            if value % step == 0:
+                return True
+        else:
+            if lo <= value <= hi and (value - lo) % step == 0:
+                return True
+    return False
+
+
+def cron_matches(expr, dt):
+    try:
+        minute, hour, dom, mon, dow = expr.split()
+    except ValueError:
+        return False
+    py_dow = dt.isoweekday() % 7  # Mon=1..Sun=7 -> cron Sun=0..Sat=6
+    return (
+        cron_field_matches(minute, dt.minute)
+        and cron_field_matches(hour, dt.hour)
+        and cron_field_matches(dom, dt.day)
+        and cron_field_matches(mon, dt.month)
+        and (cron_field_matches(dow, py_dow) or cron_field_matches(dow, 7 if py_dow == 0 else py_dow))
+    )
+
+
+def validate_cron(expr):
+    """Structural check: 5 whitespace fields, each field-parseable. Returns error str or None."""
+    fields = expr.split()
+    if len(fields) != 5:
+        return f"cron must have exactly 5 fields (got {len(fields)}): {expr!r}"
+    # exercise the matcher once against a real dt; a malformed field raises ValueError
+    try:
+        cron_matches(expr, datetime.now(TZ))
+    except ValueError as e:
+        return f"unparseable cron field in {expr!r}: {e}"
+    return None
+
+
+def next_fire(row):
+    """Concrete next fire datetime (ISO, WIB) or None. Mirrors engine firing rules."""
+    now = datetime.now(TZ)
+    if row.get("kind") == "once":
+        if row.get("status") != "pending":
+            return None
+        try:
+            fa = datetime.fromisoformat(row["fire_at"])
+        except (KeyError, ValueError):
+            return None
+        if fa.tzinfo is None:
+            fa = fa.replace(tzinfo=TZ)
+        return fa.isoformat()
+    if row.get("kind") == "cron":
+        if row.get("status", "active") != "active":
+            return None
+        expr = row.get("cron", "")
+        if validate_cron(expr):
+            return None
+        # walk forward minute-by-minute (engine fires on minute boundaries), cap 367d
+        probe = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
+        for _ in range(367 * 24 * 60):
+            if cron_matches(expr, probe):
+                return probe.isoformat()
+            probe += timedelta(minutes=1)
+        return None
+    return None
+
+
+# ---------------------------------------------------------------------------
+# store access - flock-guarded, non-destructive, atomic rewrite (mirrors engine)
+# ---------------------------------------------------------------------------
+def _parse_lines(f):
+    rows = []
+    for ln in f:
+        ln = ln.rstrip("\n")
+        if not ln.strip():
+            continue
+        try:
+            rows.append(json.loads(ln))
+        except json.JSONDecodeError:
+            rows.append({RAW: ln})  # preserve verbatim - never drop unknown data
+    return rows
+
+
+def _serialize(rows):
+    out = []
+    for r in rows:
+        if RAW in r:
+            out.append(r[RAW])
+        else:
+            out.append(json.dumps(r, ensure_ascii=False))
+    return "\n".join(out) + ("\n" if out else "")
+
+
+@contextmanager
+def locked_store(create=False):
+    """Yield (fd, rows, commit_callable). commit(new_rows) does the atomic rewrite.
+
+    Concurrency contract (STRICTER than the engine, which is a singleton and never
+    races itself): we hold fcntl.flock(LOCK_EX) on the store, AND after acquiring the
+    lock we re-check that our fd's inode still IS the live store. The engine (and any
+    other writer) commits via temp-file + os.replace(), which swaps the store's inode;
+    a waiter that opened the OLD inode before that swap would otherwise acquire the lock
+    on an orphaned inode and read/rewrite stale data (a lost update). The inode re-check
+    detects that, drops the orphaned fd, and retries on the fresh inode. This makes
+    concurrent remindctl invocations (and remindctl-vs-engine in the common case) safe.
+    """
+    d = os.path.dirname(STORE)
+    if create:
+        os.makedirs(d, exist_ok=True)
+    for attempt in range(50):
+        if not os.path.exists(STORE):
+            if not create:
+                yield None, [], (lambda _rows: None)
+                return
+            try:  # O_EXCL: create empty WITHOUT ever truncating an existing store
+                fd = os.open(STORE, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                os.close(fd)
+            except FileExistsError:
+                pass
+        try:
+            f = open(STORE, "r+", encoding="utf-8")
+        except FileNotFoundError:
+            continue  # replaced/removed between exists-check and open; retry
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            cur_ino = os.stat(STORE).st_ino
+        except FileNotFoundError:
+            cur_ino = None
+        if cur_ino == os.fstat(f.fileno()).st_ino:
+            break  # we hold the live inode
+        fcntl.flock(f, fcntl.LOCK_UN)  # orphaned inode - release and retry on fresh
+        f.close()
+    else:
+        raise OSError("reminders store kept being replaced under lock; gave up after 50 attempts")
+    try:
+        f.seek(0)
+        rows = _parse_lines(f)
+
+        def commit(new_rows):
+            fd, tmp = tempfile.mkstemp(dir=d, prefix=".reminders.", suffix=".tmp")
+            os.fchmod(fd, 0o600)  # match the live store's restrictive perms
+            with os.fdopen(fd, "w", encoding="utf-8") as tf:
+                tf.write(_serialize(new_rows))
+            os.replace(tmp, STORE)
+
+        yield f, rows, commit
+    finally:
+        try:
+            fcntl.flock(f, fcntl.LOCK_UN)
+        finally:
+            f.close()
+
+
+def dict_rows(rows):
+    return [r for r in rows if RAW not in r]
+
+
+def find_live(rows, slug):
+    return [r for r in dict_rows(rows) if r.get("id") == slug and r.get("status") in LIVE_STATUSES]
+
+
+# ---------------------------------------------------------------------------
+# commands
+# ---------------------------------------------------------------------------
+def cmd_add_once(a):
+    # validate fire_at
+    try:
+        fa = datetime.fromisoformat(a.fire_at)
+    except ValueError:
+        print(f"ERROR: --fire-at is not ISO-8601: {a.fire_at!r}", file=sys.stderr)
+        return 2
+    if fa.tzinfo is None:
+        print(
+            "ERROR: --fire-at has no timezone offset. Emit an explicit +07:00 "
+            f"(WIB), e.g. {fa.strftime('%Y-%m-%dT%H:%M:00')}+07:00",
+            file=sys.stderr,
+        )
+        return 2
+    with locked_store(create=True) as (f, rows, commit):
+        if find_live(rows, a.id):
+            print(f"ERROR: slug {a.id!r} already has a live reminder. Pick another "
+                  f"(e.g. {a.id}-2) or cancel the existing one first.", file=sys.stderr)
+            return 2
+        row = {
+            "id": a.id, "kind": "once", "fire_at": fa.isoformat(),
+            "content": a.content, "schedule_human": a.schedule_human,
+            "target_jid": a.jid, "status": "pending",
+        }
+        commit(rows + [row])
+    print(json.dumps(row, ensure_ascii=False))
+    return 0
+
+
+def cmd_add_cron(a):
+    err = validate_cron(a.cron)
+    if err:
+        print(f"ERROR: {err}", file=sys.stderr)
+        return 2
+    with locked_store(create=True) as (f, rows, commit):
+        if find_live(rows, a.id):
+            print(f"ERROR: slug {a.id!r} already has a live reminder. Pick another "
+                  f"(e.g. {a.id}-2) or cancel the existing one first.", file=sys.stderr)
+            return 2
+        row = {
+            "id": a.id, "kind": "cron", "cron": a.cron,
+            "content": a.content, "schedule_human": a.schedule_human,
+            "target_jid": a.jid, "status": "active",
+        }
+        commit(rows + [row])
+    print(json.dumps(row, ensure_ascii=False))
+    return 0
+
+
+def _render_row(r):
+    nf = next_fire(r) or "-"
+    sched = r.get("schedule_human", "")
+    when = r.get("fire_at") if r.get("kind") == "once" else r.get("cron", "")
+    return f"{r.get('id',''):<24} {r.get('kind',''):<5} {r.get('status',''):<8} next={nf:<25} [{when}] {sched}"
+
+
+def cmd_list(a):
+    with locked_store() as (f, rows, _c):
+        ds = dict_rows(rows)
+    if not a.all:
+        ds = [r for r in ds if r.get("status") in LIVE_STATUSES]
+    if a.json:
+        enriched = [{**r, "next_fire": next_fire(r)} for r in ds]
+        print(json.dumps(enriched, ensure_ascii=False, indent=2))
+        return 0
+    if not ds:
+        print("No durable reminders in the store.")
+        return 0
+    for r in ds:
+        print(_render_row(r))
+    return 0
+
+
+def cmd_get(a):
+    with locked_store() as (f, rows, _c):
+        matches = [r for r in dict_rows(rows) if r.get("id") == a.id]
+    if not matches:
+        print(f"NOT FOUND: no reminder with id {a.id!r}", file=sys.stderr)
+        return 3
+    if a.json:
+        print(json.dumps([{**r, "next_fire": next_fire(r)} for r in matches],
+                         ensure_ascii=False, indent=2))
+    else:
+        for r in matches:
+            print(_render_row(r))
+    return 0
+
+
+def _set_status(slug, new_status, only_kind=None):
+    with locked_store() as (f, rows, commit):
+        hit = 0
+        for r in dict_rows(rows):
+            if r.get("id") == slug and r.get("status") in LIVE_STATUSES:
+                if only_kind and r.get("kind") != only_kind:
+                    continue
+                r["status"] = new_status
+                hit += 1
+        if hit:
+            commit(rows)
+        return hit
+
+
+def cmd_cancel(a):
+    with locked_store() as (f, rows, commit):
+        before = len(dict_rows(rows))
+        kept = [r for r in rows if RAW in r or r.get("id") != a.id]
+        removed = before - len(dict_rows(kept))
+        if removed:
+            commit(kept)
+    if not removed:
+        print(f"NOT FOUND: no reminder with id {a.id!r} to cancel", file=sys.stderr)
+        return 3
+    print(f"cancelled {removed} row(s) with id {a.id!r}")
+    return 0
+
+
+def cmd_pause(a):
+    n = _set_status(a.id, "paused")
+    if not n:
+        print(f"NOT FOUND: no live reminder with id {a.id!r} to pause", file=sys.stderr)
+        return 3
+    print(f"paused {n} row(s) with id {a.id!r}")
+    return 0
+
+
+def cmd_resume(a):
+    # resume a paused row: cron -> active, once -> pending
+    with locked_store() as (f, rows, commit):
+        hit = 0
+        for r in dict_rows(rows):
+            if r.get("id") == a.id and r.get("status") == "paused":
+                r["status"] = "pending" if r.get("kind") == "once" else "active"
+                hit += 1
+        if hit:
+            commit(rows)
+    if not hit:
+        print(f"NOT FOUND: no paused reminder with id {a.id!r} to resume", file=sys.stderr)
+        return 3
+    print(f"resumed {hit} row(s) with id {a.id!r}")
+    return 0
+
+
+def build_parser():
+    p = argparse.ArgumentParser(prog="remindctl", description="flock-guarded durable reminder store CRUD")
+    p.add_argument("--store", help="override store path (default $REMINDER_STORE or ~/reminders/reminders.jsonl)")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    a1 = sub.add_parser("add-once", help="append a one-shot reminder")
+    a1.add_argument("--id", required=True)
+    a1.add_argument("--fire-at", required=True, dest="fire_at", help="ISO-8601 WITH offset, e.g. 2026-07-03T14:30:00+07:00")
+    a1.add_argument("--content", required=True)
+    a1.add_argument("--schedule-human", required=True, dest="schedule_human")
+    a1.add_argument("--jid", default=DEFAULT_JID)
+    a1.set_defaults(fn=cmd_add_once)
+
+    a2 = sub.add_parser("add-cron", help="append a recurring reminder")
+    a2.add_argument("--id", required=True)
+    a2.add_argument("--cron", required=True, help='5-field WIB cron "M H DOM MON DOW" (dow 0/7=Sun)')
+    a2.add_argument("--content", required=True)
+    a2.add_argument("--schedule-human", required=True, dest="schedule_human")
+    a2.add_argument("--jid", default=DEFAULT_JID)
+    a2.set_defaults(fn=cmd_add_cron)
+
+    a3 = sub.add_parser("list", help="list reminders (default: pending/active/paused)")
+    a3.add_argument("--json", action="store_true")
+    a3.add_argument("--all", action="store_true", help="include done rows too")
+    a3.set_defaults(fn=cmd_list)
+
+    a4 = sub.add_parser("get", help="show one reminder by id (for verify-after-write)")
+    a4.add_argument("--id", required=True)
+    a4.add_argument("--json", action="store_true")
+    a4.set_defaults(fn=cmd_get)
+
+    a5 = sub.add_parser("cancel", help="remove all rows with id")
+    a5.add_argument("--id", required=True)
+    a5.set_defaults(fn=cmd_cancel)
+
+    a6 = sub.add_parser("pause", help="set status=paused (disable without deleting)")
+    a6.add_argument("--id", required=True)
+    a6.set_defaults(fn=cmd_pause)
+
+    a7 = sub.add_parser("resume", help="re-enable a paused reminder")
+    a7.add_argument("--id", required=True)
+    a7.set_defaults(fn=cmd_resume)
+
+    return p
+
+
+def main(argv=None):
+    p = build_parser()
+    a = p.parse_args(argv)
+    global STORE
+    if a.store:
+        STORE = a.store
+    try:
+        return a.fn(a)
+    except OSError as e:
+        print(f"STORE IO ERROR: {e}", file=sys.stderr)
+        return 4
+
+
+if __name__ == "__main__":
+    sys.exit(main())

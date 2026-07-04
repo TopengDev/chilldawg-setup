@@ -15,27 +15,54 @@ ReferenceError: localStorage is not defined
 Module not found: Can't resolve 'fs'
 ```
 
-### Solution 1: Mark as Client-Only
+### Solution 1: Client Wrapper Hosting the Dynamic Import
 
-If the package is only needed on client:
+If the package is only needed on the client, host the `dynamic()` call inside a `'use client'` file.
+
+**NEVER call `next/dynamic` with `ssr: false` inside a Server Component** — the App Router
+throws `ssr: false is not allowed with next/dynamic in Server Components`.
 
 ```tsx
-// Bad: Fails - package uses window
-import SomeChart from 'some-chart-library'
-
+// Bad: dynamic(..., { ssr: false }) directly in a Server Component page — build error
+import dynamic from 'next/dynamic'
+const SomeChart = dynamic(() => import('some-chart-library'), { ssr: false })
 export default function Page() {
   return <SomeChart />
 }
+```
 
-// Good: Use dynamic import with ssr: false
+```tsx
+// Good: host the dynamic import inside a 'use client' wrapper
+// components/ChartWrapper.tsx
+'use client'
 import dynamic from 'next/dynamic'
 
 const SomeChart = dynamic(() => import('some-chart-library'), {
-  ssr: false,
+  ssr: false, // allowed here — this file is a Client Component
 })
 
+export function ChartWrapper(props) {
+  return <SomeChart {...props} />
+}
+
+// app/page.tsx (server component)
+import { ChartWrapper } from '@/components/ChartWrapper'
+
 export default function Page() {
-  return <SomeChart />
+  return <ChartWrapper data={data} />
+}
+```
+
+Lighter variant: if the package imports cleanly and only breaks when RENDERED on the server,
+a plain `'use client'` wrapper with a static import (no `dynamic()`) is enough:
+
+```tsx
+// components/ChartWrapper.tsx
+'use client'
+import { Chart } from 'chart-library'
+
+export function ChartWrapper(props) {
+  return <Chart {...props} />
 }
 ```
 
@@ -54,28 +81,6 @@ Use this for:
 - Packages with native bindings (sharp, bcrypt)
 - Packages that don't bundle well (some ORMs)
 - Packages with circular dependencies
-
-### Solution 3: Client Component Wrapper
-
-Wrap the entire usage in a client component:
-
-```tsx
-// components/ChartWrapper.tsx
-'use client'
-
-import { Chart } from 'chart-library'
-
-export function ChartWrapper(props) {
-  return <Chart {...props} />
-}
-
-// app/page.tsx (server component)
-import { ChartWrapper } from '@/components/ChartWrapper'
-
-export default function Page() {
-  return <ChartWrapper data={data} />
-}
-```
 
 ## CSS Imports
 
@@ -139,7 +144,8 @@ module.exports = {
 
 ## Bundle Analysis
 
-Analyze bundle size with the built-in analyzer (Next.js 16.1+):
+Analyze bundle size with the built-in analyzer (Next.js 16.1+, Turbopack builds;
+`next experimental-analyze [--output]` verified current 2026-07-03):
 
 ```bash
 next experimental-analyze
@@ -159,9 +165,18 @@ next experimental-analyze --output
 
 Reference: https://nextjs.org/docs/app/guides/package-bundling
 
-## Migrating from Webpack to Turbopack
+## Turbopack vs Webpack (VERSION-GATED)
 
-Turbopack is the default bundler in Next.js 15+. If you have custom webpack config, migrate to Turbopack-compatible alternatives:
+| Installed Next | Bundler reality |
+|---|---|
+| 15.x | **Webpack is the default.** Turbopack is OPT-IN via `next dev --turbopack` / `next build --turbopack` |
+| 16.x | **Turbopack is stable and default** for BOTH `next dev` and `next build`; custom Turbopack config moves `experimental.turbopack` → top-level `turbopack` |
+
+(Verified against the version-16 upgrade guide via context7, 2026-07-03.)
+
+**NEVER treat a 15.x repo's `webpack:` config as dead code** — it is live unless the
+package.json scripts pass `--turbopack`. On 16.x, migrate custom webpack config to
+Turbopack-compatible alternatives:
 
 ```js
 // next.config.js
@@ -170,7 +185,7 @@ module.exports = {
   serverExternalPackages: ['package'],
   transpilePackages: ['package'],
 
-  // Bad: Webpack-only - migrate away from this
+  // Bad: Webpack-only - ignored by Turbopack, migrate away from this
   webpack: (config) => {
     // custom webpack config
   },

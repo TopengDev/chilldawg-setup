@@ -1,14 +1,18 @@
 # Banner / Text-Heavy Graphics — Prompt Template
 
+> Model reality (2026-07-03): **Gemini Pro is the verified default** for banners — it renders type
+> hierarchy well AND keeps exact supplied copy verbatim. The GPT lane is an **UNVERIFIED optional
+> lane** (smoke-test first, `references/models.md` §7). Ideogram is NOT integrated anywhere — do not
+> route to it.
+
 ## Recommended Models
 
-1. **GPT Image 1.5** (primary) — best text rendering accuracy, understands layout instructions
-2. **Gemini NB2/Pro** (strong alternative) — 87-96% text accuracy, conversational editing
-3. **Ideogram V3** (if integrated) — 90-95% text accuracy, purpose-built for typography
+1. **Gemini Pro** (primary, verified) — strong type hierarchy, keeps exact supplied copy, conversational editing
+2. **GPT Image (`gpt-image-1`)** (UNVERIFIED alternative) — best text-rendering accuracy, understands layout instructions
 
 **Avoid for text-heavy work:**
 - FLUX (text treated as visual texture, multi-word phrases fail)
-- Midjourney (71% text accuracy — unusable for banners)
+- Midjourney (low text accuracy — unusable for banners; no API anyway)
 
 ## Common Dimensions
 
@@ -50,7 +54,7 @@ These rules are CRITICAL — text errors in banners are immediately visible:
 7. **Verify every letter** after generation — regenerate if ANY character is wrong
 8. **Don't try to fix text via editing** — regenerate from scratch if text is wrong
 
-## GPT Image 1.5 Pattern
+## GPT Image (`gpt-image-1`) Pattern — UNVERIFIED lane, smoke-test first
 
 ```bash
 curl -s -X POST "https://api.openai.com/v1/images/generations" \

@@ -115,3 +115,7 @@ Required schema from SKILL.md, `dimension: reliability`. In `impact`, name the *
 - **confirmed** — you traced the failure path and it reaches an unhandled crash / leak / dropped tick under a concrete, reachable trigger.
 - **probable** — the gap is present but whether it bites depends on operational conditions you can't fully see (how often the dep fails, how long the process runs).
 - **theoretical** — pattern match only; the failure requires conditions not expected in this deployment.
+
+## Verified safe (required output addition)
+
+Alongside findings, return `verified_safe`: up to 8 resilience properties you explicitly checked and found sound, each one line with a `file:line` citation (e.g. `- SQLite writers use WAL + busy_timeout=30s — db/conn.py:19`). Only what you actually traced — an empty list is honest (the WAL/busy-timeout positive-baseline note above is exactly this pattern). This feeds the report's per-dimension "Verified safe:" line.

@@ -61,7 +61,7 @@ DECISIONS_LOG="$HOME/claude/state/decisions.log"
 TASKS_DIR="$HOME/.claude/tasks"
 NOTES_DIR="$HOME/claude/notes"
 QUEUE="$HOME/claude/Git/repositories/signal-trader/wa-sender/queue/events.jsonl"
-TOPER_JID="62817712289@s.whatsapp.net"   # = Toper (same person as 107838240207070@lid)
+TOPER_JID="${TOPER_WA_JID:?TOPER_WA_JID not set (define in ~/.claude/secrets.env)}"   # Toper WhatsApp JID (from secrets.env)
 STATE_DIR="$HOME/.claude/state"
 LAST_RUN_FILE="$STATE_DIR/loop-digest.lastrun"
 LOG_FILE="$STATE_DIR/loop-digest.log"

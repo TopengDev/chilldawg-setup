@@ -2,6 +2,20 @@
 
 Choose the right data fetching pattern for each use case.
 
+## Caching Defaults (Next 15+) — Uncached by Default
+
+Since Next 15 the framework defaults inverted to **uncached**. Do not reason with pre-15 defaults:
+
+| Surface | Pre-15 default | 15.x / 16.x default | Opt-in knob |
+|---|---|---|---|
+| `fetch()` in Server Components | cached (`force-cache`) | **UNCACHED** (`no-store` semantics) | `fetch(url, { cache: 'force-cache' })` or `next: { revalidate: N }` |
+| GET route handlers | cacheable | **UNCACHED**/dynamic | `export const dynamic = 'force-static'`, `export const revalidate` |
+| `'use cache'` directive | n/a | opt-in, version-gated flags | see [directives.md](./directives.md) |
+
+Per-render-pass deduplication of identical `fetch()` calls still happens, and `React.cache()`
+still memoizes non-fetch functions — **deduplication ≠ caching across requests**.
+Perf-tuning verdicts (waterfalls, cache strategy) belong to `/vercel-react-best-practices`.
+
 ## Decision Tree
 
 ```
@@ -107,7 +121,8 @@ Use Route Handlers when you need a REST API.
 // app/api/posts/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-// GET is cacheable
+// GET is UNCACHED/dynamic by default since Next 15
+// (opt in: export const dynamic = 'force-static' — see route-handlers.md)
 export async function GET(request: NextRequest) {
   const posts = await db.post.findMany();
   return NextResponse.json(posts);
@@ -289,9 +304,9 @@ function ClientComponent() {
 
 ## Quick Reference
 
-| Pattern | Use Case | HTTP Method | Caching |
-|---------|----------|-------------|---------|
-| Server Component fetch | Internal reads | Any | Full Next.js caching |
+| Pattern | Use Case | HTTP Method | Caching (15+) |
+|---------|----------|-------------|---------------|
+| Server Component fetch | Internal reads | Any | Uncached by default; opt in via `force-cache` / `revalidate` / `'use cache'` |
 | Server Action | Mutations, form submissions | POST only | No |
-| Route Handler | External APIs, webhooks | Any | GET can be cached |
+| Route Handler | External APIs, webhooks | Any | GET uncached by default; opt in via `force-static` / `revalidate` |
 | Client fetch to API | Client-side reads | Any | HTTP cache headers |

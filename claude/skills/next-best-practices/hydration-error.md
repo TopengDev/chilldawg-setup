@@ -72,6 +72,32 @@ function Input() {
 <div><p>Content</p></div>
 ```
 
+### next-themes / Theme Class on `<html>`
+
+next-themes mutates the `<html>` class/style BEFORE hydration (its inline script applies the
+stored theme), so the server-rendered `<html>` attributes never match. This is EXPECTED —
+silence it with `suppressHydrationWarning` on the `<html>` element only. House website builds
+ship next-themes from commit 0 (CLAUDE.md Website Build Defaults), so this applies to
+every Aenoxa-ecosystem Next.js layout:
+
+```tsx
+// app/layout.tsx
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="id" suppressHydrationWarning>
+      <body>
+        <ThemeProvider attribute="class">{children}</ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+- `suppressHydrationWarning` is one-level-deep — it suppresses only that element's own
+  attribute mismatch, nothing inside it.
+- NEVER scatter it on arbitrary elements to hide real hydration bugs — the themed `<html>`
+  is the sanctioned use.
+
 ### Third-party Scripts
 
 Scripts that modify DOM during hydration.

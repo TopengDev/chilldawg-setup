@@ -1,0 +1,549 @@
+<!--
+  ============================================================================
+  /invoice RENDER TEMPLATE  (read at render time by SKILL.md §RENDER)
+  ============================================================================
+  This is the ONE canonical invoice layout. It is a Stripe/Linear-grade
+  commercial-invoice design on A4. Do NOT rewrite the design; substitute the
+  {{PLACEHOLDERS}} with values produced by the §MONEY COMPUTE CONTRACT and the
+  config, then drop the rows that do not apply (see CUSTOMIZATION below).
+
+  This document is a COMMERCIAL INVOICE, not a Faktur Pajak. (A Faktur Pajak is
+  issued only by a PKP via Coretax e-Faktur - see references/id-tax.md.)
+
+  ----------------------------------------------------------------------------
+  PLACEHOLDER LEGEND  (every token the renderer must fill or delete)
+  ----------------------------------------------------------------------------
+  Company (from config.company):    {{COMPANY_NAME}} {{COMPANY_ADDRESS}}
+                                     {{COMPANY_PHONE}} {{COMPANY_EMAIL}}
+                                     {{COMPANY_WEBSITE}} {{COMPANY_NPWP}}
+  Invoice meta:                      {{INVOICE_NUMBER}} {{INVOICE_DATE}}
+                                     {{DUE_DATE}} {{PAYMENT_TERMS}} {{PO_NUMBER}}
+  Client (from input):              {{CLIENT_NAME}} {{CLIENT_ADDRESS}}
+                                     {{CLIENT_CONTACT}} {{CLIENT_EMAIL}} {{CLIENT_NPWP}}
+  Project:                           {{PROJECT_NAME}}
+  Line items (repeat the <tr>):      {{ITEM_NUMBER}} {{ITEM_DESCRIPTION}}
+                                     {{ITEM_DETAIL}} {{ITEM_QTY}}
+                                     {{ITEM_UNIT_PRICE}} {{ITEM_AMOUNT}}
+  Totals (ALL from compute *_fmt):   {{SUBTOTAL}} {{DISCOUNT_LABEL}} {{DISCOUNT_AMOUNT}}
+                                     {{TAX_NAME}} {{TAX_RATE}} {{TAX_AMOUNT}}
+                                     {{GRAND_TOTAL}}
+  PPh 23 memo (only if withheld):    {{PPH23_RATE}} {{PPH23_AMOUNT}} {{NET_PAYABLE}}
+  Bank (from config.bank):           {{BANK_NAME}} {{ACCOUNT_HOLDER}}
+                                     {{ACCOUNT_NUMBER}} {{SWIFT_CODE}}
+  Terms:                             {{LATE_FEE}} {{CUSTOM_NOTES}}
+
+  ----------------------------------------------------------------------------
+  PRINT-DOCUMENT TYPOGRAPHY CARVE-OUT (why this file uses <12px / weight-400)
+  ----------------------------------------------------------------------------
+  The house UI typography floor (>=12px, weight >=500, no Inter/Roboto) is a
+  SCREEN-UI rule. This is a dense PRINT A4 document and follows print
+  convention instead. The carve-out minimums, enforced here:
+    - No print text below 9px anywhere.
+    - Primary content (client name, amounts, grand total, invoice number) >=12px.
+    - The grand total is the single largest element on the page.
+    - Section eyebrows/labels may sit at 10-11px in caps (print label convention).
+    - The neutral system font stack (with Inter/Roboto as fallbacks) is the
+      deliberate exception: an invoice must render identically on any machine.
+  Keep this carve-out; do NOT "fix" the sizes up to the screen floor.
+
+  ----------------------------------------------------------------------------
+  CUSTOMIZATION PER INVOICE (drop empty rows, never render a placeholder)
+  ----------------------------------------------------------------------------
+  - No PO number       -> delete the PO Number meta-detail row.
+  - No discount        -> delete the .totals-row.discount block.
+  - PPN not applied     -> delete the .totals-row tax block (non-PKP default).
+  - PPh 23 not withheld -> delete BOTH the .pph23-memo and .net-payable rows.
+  - Client NPWP absent  -> delete the CLIENT_NPWP line in Bill To.
+  - Company NPWP placeholder/empty -> delete the "NPWP:" line (never print a fake ID).
+  - No custom notes    -> delete the {{CUSTOM_NOTES}} paragraph.
+  - Always keep the bilingual EN/ID labels in Payment + Terms (Indonesia market).
+  - Many line items (>8): the totals/payment/notes blocks already carry
+    page-break-inside:avoid so they never orphan across the A4 page break. A
+    long invoice legitimately spans 2 pages; that is fine.
+
+  DESIGN RULES (do not violate when substituting):
+  - Keep the page white and clean; no full-page background colors.
+  - Keep the slate/gray palette; no bright/saturated colors, no gradients,
+    no decorative borders/shadows beyond what is defined here.
+  - Invoice number + grand total are the most prominent elements.
+  - VERTICAL SPACING IS TUNED so a typical 1-6 item invoice fits ONE A4 page
+    with the footer bottom-aligned. Do NOT inflate the section margins/paddings
+    back up (header 28/20, meta-grid 26, totals 24, payment 20/22, notes 20,
+    page padding 32): a short invoice would then spill a near-blank 2nd page
+    (the latent overflow this tuning fixed). Verified 1-page at render time.
+  - Self-contained: all CSS inline; NO external fonts/scripts/images.
+  ============================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice {{INVOICE_NUMBER}}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif;
+    color: #1a1a2e;
+    background: #fff;
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .invoice-page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 32px 48px;
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---- Header ---- */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #1a1a2e;
+  }
+  .company-info h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 8px;
+  }
+  .company-info p {
+    font-size: 11.5px;
+    color: #64748b;
+    line-height: 1.6;
+  }
+  .invoice-title {
+    text-align: right;
+  }
+  .invoice-title h2 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: #1a1a2e;
+    text-transform: uppercase;
+  }
+  .invoice-title .invoice-number {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .invoice-title .doc-kind {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  /* ---- Meta Grid ---- */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 26px;
+  }
+  .meta-section h3 {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #94a3b8;
+    margin-bottom: 10px;
+  }
+  .meta-section p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #334155;
+  }
+  .meta-section p strong {
+    color: #1a1a2e;
+    font-weight: 600;
+  }
+  .meta-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 12.5px;
+  }
+  .meta-detail .label {
+    color: #94a3b8;
+    font-weight: 500;
+  }
+  .meta-detail .value {
+    color: #1a1a2e;
+    font-weight: 600;
+  }
+
+  /* ---- Line Items Table ---- */
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 18px;
+  }
+  .items-table thead th {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #94a3b8;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .items-table thead th:last-child,
+  .items-table thead th:nth-child(3),
+  .items-table thead th:nth-child(4) {
+    text-align: right;
+  }
+  .items-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+    vertical-align: top;
+  }
+  .items-table tbody td:first-child {
+    color: #64748b;
+    width: 40px;
+    text-align: center;
+  }
+  .items-table tbody td:nth-child(3),
+  .items-table tbody td:nth-child(4),
+  .items-table tbody td:last-child {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .items-table tbody td:nth-child(2) {
+    color: #1a1a2e;
+    font-weight: 500;
+  }
+  .item-desc {
+    font-size: 11.5px;
+    color: #94a3b8;
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  /* ---- Totals ---- */
+  .totals-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 24px;
+    page-break-inside: avoid;
+  }
+  .totals-table {
+    width: 320px;
+  }
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 13px;
+    color: #64748b;
+  }
+  .totals-row .amount {
+    font-weight: 600;
+    color: #334155;
+  }
+  .totals-row.discount .amount {
+    color: #dc2626;
+  }
+  .totals-row.grand-total {
+    border-top: 2px solid #1a1a2e;
+    margin-top: 8px;
+    padding-top: 12px;
+    font-size: 18px;
+    font-weight: 800;
+    color: #1a1a2e;
+  }
+  .totals-row.grand-total .amount {
+    color: #1a1a2e;
+    font-weight: 800;
+  }
+  /* PPh 23 is withheld BY THE CLIENT. It is an informational memo, NOT part
+     of the invoice arithmetic and NOT a vendor deduction to remit. */
+  .totals-row.pph23-memo {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #cbd5e1;
+    font-size: 11.5px;
+    color: #94a3b8;
+  }
+  .totals-row.pph23-memo .amount {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  .totals-row.net-payable {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+    padding-top: 4px;
+  }
+  .totals-row.net-payable .amount {
+    color: #1a1a2e;
+    font-weight: 700;
+  }
+
+  /* ---- Payment Info ---- */
+  .payment-section {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 22px;
+    border: 1px solid #e2e8f0;
+    page-break-inside: avoid;
+  }
+  .payment-section h3 {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #94a3b8;
+    margin-bottom: 14px;
+  }
+  .payment-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .payment-item {
+    font-size: 12.5px;
+  }
+  .payment-item .label {
+    color: #94a3b8;
+    font-weight: 500;
+    font-size: 11px;
+  }
+  .payment-item .value {
+    color: #1a1a2e;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  /* ---- Notes ---- */
+  .notes-section {
+    margin-bottom: 20px;
+    page-break-inside: avoid;
+  }
+  .notes-section h3 {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #94a3b8;
+    margin-bottom: 10px;
+  }
+  .notes-section p {
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.7;
+  }
+
+  /* ---- Footer ---- */
+  .footer {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.8;
+  }
+  .footer strong {
+    color: #64748b;
+  }
+</style>
+</head>
+<body>
+<div class="invoice-page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="company-info">
+      <h1>{{COMPANY_NAME}}</h1>
+      <p>
+        {{COMPANY_ADDRESS}}<br>
+        {{COMPANY_PHONE}} &middot; {{COMPANY_EMAIL}}<br>
+        {{COMPANY_WEBSITE}}<br>
+        NPWP: {{COMPANY_NPWP}}
+        <!-- Delete the NPWP line above if NPWP is placeholder/empty. -->
+      </p>
+    </div>
+    <div class="invoice-title">
+      <h2>Invoice</h2>
+      <div class="invoice-number">{{INVOICE_NUMBER}}</div>
+      <div class="doc-kind">Commercial Invoice</div>
+    </div>
+  </div>
+
+  <!-- META: Bill To + Invoice Details -->
+  <div class="meta-grid">
+    <div class="meta-section">
+      <h3>Bill To</h3>
+      <p>
+        <strong>{{CLIENT_NAME}}</strong><br>
+        {{CLIENT_ADDRESS}}<br>
+        {{CLIENT_CONTACT}}<br>
+        {{CLIENT_EMAIL}}
+        <!-- If client NPWP: <br>NPWP: {{CLIENT_NPWP}} -->
+      </p>
+    </div>
+    <div class="meta-section">
+      <h3>Invoice Details</h3>
+      <div class="meta-detail">
+        <span class="label">Invoice Number</span>
+        <span class="value">{{INVOICE_NUMBER}}</span>
+      </div>
+      <div class="meta-detail">
+        <span class="label">Invoice Date</span>
+        <span class="value">{{INVOICE_DATE}}</span>
+      </div>
+      <div class="meta-detail">
+        <span class="label">Due Date</span>
+        <span class="value">{{DUE_DATE}}</span>
+      </div>
+      <div class="meta-detail">
+        <span class="label">Payment Terms</span>
+        <span class="value">Net {{PAYMENT_TERMS}} days</span>
+      </div>
+      <!-- If PO number exists:
+      <div class="meta-detail">
+        <span class="label">PO Number</span>
+        <span class="value">{{PO_NUMBER}}</span>
+      </div>
+      -->
+    </div>
+  </div>
+
+  <!-- PROJECT REFERENCE -->
+  <div class="meta-section" style="margin-bottom: 18px;">
+    <h3>Project</h3>
+    <p><strong>{{PROJECT_NAME}}</strong></p>
+  </div>
+
+  <!-- LINE ITEMS -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th>No.</th>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Repeat this <tr> for each line item. Qty shows 2 decimals for
+           worklog hours (e.g. 2.50) or an integer for unit/milestone rows. -->
+      <tr>
+        <td>{{ITEM_NUMBER}}</td>
+        <td>
+          {{ITEM_DESCRIPTION}}
+          <div class="item-desc">{{ITEM_DETAIL}}</div>
+        </td>
+        <td>{{ITEM_QTY}}</td>
+        <td>{{ITEM_UNIT_PRICE}}</td>
+        <td>{{ITEM_AMOUNT}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- TOTALS (every amount is a compute *_fmt output; never hand-typed) -->
+  <div class="totals-section">
+    <div class="totals-table">
+      <div class="totals-row">
+        <span>Subtotal</span>
+        <span class="amount">{{SUBTOTAL}}</span>
+      </div>
+      <!-- If discount:
+      <div class="totals-row discount">
+        <span>Discount ({{DISCOUNT_LABEL}})</span>
+        <span class="amount">- {{DISCOUNT_AMOUNT}}</span>
+      </div>
+      -->
+      <!-- If PPN applied (is_pkp only):
+      <div class="totals-row">
+        <span>{{TAX_NAME}} ({{TAX_RATE}}%)</span>
+        <span class="amount">{{TAX_AMOUNT}}</span>
+      </div>
+      -->
+      <div class="totals-row grand-total">
+        <span>Total</span>
+        <span class="amount">{{GRAND_TOTAL}}</span>
+      </div>
+      <!-- If PPh 23 withheld by client (informational memo, NOT arithmetic):
+      <div class="totals-row pph23-memo">
+        <span>Less: PPh 23 ({{PPH23_RATE}}%) withheld by client</span>
+        <span class="amount">- {{PPH23_AMOUNT}}</span>
+      </div>
+      <div class="totals-row net-payable">
+        <span>Net payable to us / Diterima bersih</span>
+        <span class="amount">{{NET_PAYABLE}}</span>
+      </div>
+      -->
+    </div>
+  </div>
+
+  <!-- PAYMENT INFORMATION -->
+  <div class="payment-section">
+    <h3>Payment Information / Informasi Pembayaran</h3>
+    <div class="payment-grid">
+      <div class="payment-item">
+        <div class="label">Bank</div>
+        <div class="value">{{BANK_NAME}}</div>
+      </div>
+      <div class="payment-item">
+        <div class="label">Account Holder / Atas Nama</div>
+        <div class="value">{{ACCOUNT_HOLDER}}</div>
+      </div>
+      <div class="payment-item">
+        <div class="label">Account Number / Nomor Rekening</div>
+        <div class="value">{{ACCOUNT_NUMBER}}</div>
+      </div>
+      <div class="payment-item">
+        <div class="label">SWIFT Code</div>
+        <div class="value">{{SWIFT_CODE}}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTES & TERMS -->
+  <div class="notes-section">
+    <h3>Terms &amp; Notes / Syarat &amp; Ketentuan</h3>
+    <p>
+      Payment is due within {{PAYMENT_TERMS}} days of invoice date.<br>
+      Pembayaran jatuh tempo dalam {{PAYMENT_TERMS}} hari dari tanggal faktur.<br><br>
+      Late payments are subject to a {{LATE_FEE}}% monthly fee on the outstanding balance.<br>
+      Keterlambatan pembayaran dikenakan biaya {{LATE_FEE}}% per bulan dari saldo terutang.
+      <!-- If custom notes: <br><br>{{CUSTOM_NOTES}} -->
+    </p>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <strong>Thank you for your business / Terima kasih atas kepercayaan Anda</strong><br>
+    {{COMPANY_NAME}} &middot; {{COMPANY_EMAIL}} &middot; {{COMPANY_WEBSITE}}
+  </div>
+
+</div>
+</body>
+</html>

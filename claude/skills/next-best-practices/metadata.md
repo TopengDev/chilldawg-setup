@@ -213,20 +213,21 @@ import { ImageResponse } from 'next/og'
 import { join } from 'path'
 import { readFile } from 'fs/promises'
 
+// Font file is a placeholder — SELECTION is owned by /frontend-design (Inter/Roboto banned)
 export default async function Image() {
-  const fontPath = join(process.cwd(), 'assets/fonts/Inter-Bold.ttf')
+  const fontPath = join(process.cwd(), 'assets/fonts/Sora-Bold.ttf')
   const fontData = await readFile(fontPath)
 
   return new ImageResponse(
     (
-      <div style={{ fontFamily: 'Inter', fontSize: 64 }}>
+      <div style={{ fontFamily: 'Sora', fontSize: 64 }}>
         Custom Font Text
       </div>
     ),
     {
       width: 1200,
       height: 630,
-      fonts: [{ name: 'Inter', data: fontData, style: 'normal' }],
+      fonts: [{ name: 'Sora', data: fontData, style: 'normal' }],
     }
   )
 }

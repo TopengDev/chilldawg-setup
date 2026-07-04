@@ -143,6 +143,21 @@ permanentRedirect('/new-url')
 
 ## Auth Errors
 
+> **FLAG-GATED (still experimental in both 15.x and 16.x — verified 2026-07-03):**
+> `forbidden()` / `unauthorized()` require `experimental.authInterrupts` in next.config.
+> Without the flag, code written from this recipe fails on default-config repos.
+
+```ts
+// next.config.ts
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  experimental: { authInterrupts: true },
+}
+
+export default nextConfig
+```
+
 Trigger auth-related error pages:
 
 ```tsx

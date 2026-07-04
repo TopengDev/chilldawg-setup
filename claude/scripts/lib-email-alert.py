@@ -42,7 +42,7 @@ CONFIG_PATH = Path.home() / ".config" / "email-mcp" / "config.json"
 
 # Default recipient: Toper's personal inbox (he reads this even when AFK from the
 # terminal / phone WA). Override with --to.
-DEFAULT_TO = "topengdev@gmail.com"
+DEFAULT_TO = "$TOPER_EMAIL"
 
 # Try business (Hostinger, 465 implicit-TLS) before personal (Outlook, 587
 # STARTTLS): Hostinger has been the more reliable transactional path.

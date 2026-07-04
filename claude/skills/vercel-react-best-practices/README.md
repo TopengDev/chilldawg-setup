@@ -1,3 +1,8 @@
+> **UPSTREAM REPO README (vercel-labs/agent-skills).** The pnpm build tooling,
+> `rules/_template.md`, `rules/_sections.md`, `src/`, `metadata.json`, `test-cases.json`
+> described below are NOT present in this install - do not follow this workflow here.
+> Editing policy + provenance + sync protocol: see `SKILL.md`. Below is the original README.
+
 # React Best Practices
 
 A structured repository for creating and maintaining React Best Practices optimized for agents and LLMs.

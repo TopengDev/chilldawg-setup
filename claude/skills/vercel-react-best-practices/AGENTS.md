@@ -1,3 +1,13 @@
+> **ARCHIVAL COMPILED SNAPSHOT - DO NOT LOAD THIS FILE INTO CONTEXT (83KB).**
+> Imported 2026-04-07 from `vercel-labs/agent-skills` `skills/react-best-practices`.
+> Source of truth = the individual `rules/*.md` files; this compiled build is kept ONLY
+> for upstream diffing. Known compile corruption: section 3.4 is missing ALL code blocks;
+> 7.5 and 7.9 have displaced prose; 8.2's "Correct" example contradicts its title.
+> Errata + verdicts: `references/freshness-ledger.md`. Router + hard rules: `SKILL.md`.
+> Everything below this banner is byte-identical to the imported upstream snapshot.
+
+---
+
 # React Best Practices
 
 **Version 1.0.0**  

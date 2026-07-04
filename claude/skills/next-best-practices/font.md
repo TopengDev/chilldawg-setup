@@ -2,17 +2,23 @@
 
 Use `next/font` for automatic font optimization with zero layout shift.
 
+> **Ownership note:** this file owns font LOADING mechanics only. Font SELECTION is owned by
+> `/frontend-design` — Inter/Roboto are banned there as AI-slop defaults, and monospace is
+> allowed only when the archetype identity is mono (memory: `feedback_no_monospace_unless_archetype`).
+> `Sora` / `Fraunces` below are neutral placeholders, NOT choices. House typography floors also
+> apply to what you render: no text below weight 500 or size 12px (memory: `feedback_ui_typography_floors`).
+
 ## Google Fonts
 
 ```tsx
 // app/layout.tsx
-import { Inter } from 'next/font/google'
+import { Sora } from 'next/font/google'
 
-const inter = Inter({ subsets: ['latin'] })
+const sora = Sora({ subsets: ['latin'] })
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.className}>
+    <html lang="en" className={sora.className}>
       <body>{children}</body>
     </html>
   )
@@ -22,21 +28,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ## Multiple Fonts
 
 ```tsx
-import { Inter, Roboto_Mono } from 'next/font/google'
+import { Sora, Fraunces } from 'next/font/google'
 
-const inter = Inter({
+const sora = Sora({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-sora',
 })
 
-const robotoMono = Roboto_Mono({
+const fraunces = Fraunces({
   subsets: ['latin'],
-  variable: '--font-roboto-mono',
+  variable: '--font-fraunces',
 })
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${robotoMono.variable}`}>
+    <html lang="en" className={`${sora.variable} ${fraunces.variable}`}>
       <body>{children}</body>
     </html>
   )
@@ -46,37 +52,37 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 Use in CSS:
 ```css
 body {
-  font-family: var(--font-inter);
+  font-family: var(--font-sora);
 }
 
-code {
-  font-family: var(--font-roboto-mono);
+h1, h2 {
+  font-family: var(--font-fraunces);
 }
 ```
 
 ## Font Weights and Styles
 
 ```tsx
-// Single weight
-const inter = Inter({
+// Single weight (house floor: nothing rendered below 500)
+const sora = Sora({
   subsets: ['latin'],
-  weight: '400',
+  weight: '500',
 })
 
 // Multiple weights
-const inter = Inter({
+const sora = Sora({
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
+  weight: ['500', '600', '700'],
 })
 
 // Variable font (recommended) - includes all weights
-const inter = Inter({
+const sora = Sora({
   subsets: ['latin'],
   // No weight needed - variable fonts support all weights
 })
 
 // With italic
-const inter = Inter({
+const sora = Sora({
   subsets: ['latin'],
   style: ['normal', 'italic'],
 })
@@ -95,8 +101,8 @@ const myFont = localFont({
 const myFont = localFont({
   src: [
     {
-      path: './fonts/MyFont-Regular.woff2',
-      weight: '400',
+      path: './fonts/MyFont-Medium.woff2',
+      weight: '500',
       style: 'normal',
     },
     {
@@ -118,16 +124,16 @@ const myFont = localFont({
 
 ```tsx
 // app/layout.tsx
-import { Inter } from 'next/font/google'
+import { Sora } from 'next/font/google'
 
-const inter = Inter({
+const sora = Sora({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-sora',
 })
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={sora.variable}>
       <body>{children}</body>
     </html>
   )
@@ -140,7 +146,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-inter)'],
+        sans: ['var(--font-sora)'],
       },
     },
   },
@@ -153,10 +159,10 @@ Only load needed character subsets:
 
 ```tsx
 // Latin only (most common)
-const inter = Inter({ subsets: ['latin'] })
+const sora = Sora({ subsets: ['latin'] })
 
 // Multiple subsets
-const inter = Inter({ subsets: ['latin', 'latin-ext', 'cyrillic'] })
+const sora = Sora({ subsets: ['latin', 'latin-ext'] })
 ```
 
 ## Display Strategy
@@ -164,7 +170,7 @@ const inter = Inter({ subsets: ['latin', 'latin-ext', 'cyrillic'] })
 Control font loading behavior:
 
 ```tsx
-const inter = Inter({
+const sora = Sora({
   subsets: ['latin'],
   display: 'swap', // Default - shows fallback, swaps when loaded
 })
@@ -183,15 +189,15 @@ Always use `next/font` instead of `<link>` tags for Google Fonts.
 
 ```tsx
 // Bad: Manual link tag (blocks rendering, no optimization)
-<link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Sora" rel="stylesheet" />
 
 // Bad: Missing display and preconnect
-<link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Sora" rel="stylesheet" />
 
 // Good: Use next/font (self-hosted, zero layout shift)
-import { Inter } from 'next/font/google'
+import { Sora } from 'next/font/google'
 
-const inter = Inter({ subsets: ['latin'] })
+const sora = Sora({ subsets: ['latin'] })
 ```
 
 ## Common Mistakes
@@ -199,31 +205,31 @@ const inter = Inter({ subsets: ['latin'] })
 ```tsx
 // Bad: Importing font in every component
 // components/Button.tsx
-import { Inter } from 'next/font/google'
-const inter = Inter({ subsets: ['latin'] }) // Creates new instance each time!
+import { Sora } from 'next/font/google'
+const sora = Sora({ subsets: ['latin'] }) // Creates new instance each time!
 
 // Good: Import once in layout, use CSS variable
 // app/layout.tsx
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const sora = Sora({ subsets: ['latin'], variable: '--font-sora' })
 
 // Bad: Using @import in CSS (blocks rendering)
 /* globals.css */
-@import url('https://fonts.googleapis.com/css2?family=Inter');
+@import url('https://fonts.googleapis.com/css2?family=Sora');
 
 // Good: Use next/font (self-hosted, no network request)
-import { Inter } from 'next/font/google'
+import { Sora } from 'next/font/google'
 
 // Bad: Loading all weights when only using a few
-const inter = Inter({ subsets: ['latin'] }) // Loads all weights
+const sora = Sora({ subsets: ['latin'] }) // Loads all weights (non-variable case)
 
 // Good: Specify only needed weights (for non-variable fonts)
-const inter = Inter({ subsets: ['latin'], weight: ['400', '700'] })
+const sora = Sora({ subsets: ['latin'], weight: ['500', '700'] })
 
 // Bad: Missing subset - loads all characters
-const inter = Inter({})
+const sora = Sora({})
 
 // Good: Always specify subset
-const inter = Inter({ subsets: ['latin'] })
+const sora = Sora({ subsets: ['latin'] })
 ```
 
 ## Font in Specific Components
@@ -231,15 +237,15 @@ const inter = Inter({ subsets: ['latin'] })
 ```tsx
 // For component-specific fonts, export from a shared file
 // lib/fonts.ts
-import { Inter, Playfair_Display } from 'next/font/google'
+import { Sora, Fraunces } from 'next/font/google'
 
-export const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-export const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' })
+export const sora = Sora({ subsets: ['latin'], variable: '--font-sora' })
+export const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces' })
 
 // components/Heading.tsx
-import { playfair } from '@/lib/fonts'
+import { fraunces } from '@/lib/fonts'
 
 export function Heading({ children }) {
-  return <h1 className={playfair.className}>{children}</h1>
+  return <h1 className={fraunces.className}>{children}</h1>
 }
 ```
