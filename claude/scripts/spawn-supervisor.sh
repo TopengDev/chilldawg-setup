@@ -1,122 +1,152 @@
 #!/usr/bin/env bash
-# spawn-supervisor.sh — spawn an OPUS SUPERVISOR in a new tmux window.
+# spawn-supervisor.sh — spawn a PROJECT SUPERVISOR in its own tmux window.
 #
-# Usage: spawn-supervisor.sh <window_name> [<cwd>] [<task_dir>]
-#   <task_dir> (or $TASK_DIR env) — the INITIATIVE's task notes dir holding
-#   triage.json + STATE.md (the supervisor's orchestration ledger). If omitted,
-#   the triage gate resolves it by convention:
-#   ~/claude/notes/<window_name>-<YYYY-MM-DD>/triage.json (newest match).
+# Usage: spawn-supervisor.sh <project> [<window_name>]
+#   <project>       project slug. cwd is DERIVED: ~/claude/projects/<project>/manager/
+#   <window_name>   optional tmux window name (default: the project slug). This name
+#                   is ALSO the supervisor's attn local-peer name + Remote Control
+#                   name, and it is what spawn-worker.sh takes as <supervisor_window>.
 #
-# WHAT A SUPERVISOR IS (Wave-7, 2026-06-15):
-#   The orchestration model has THREE execution tiers:
-#     main (Opus, command center, the ONLY WhatsApp-enabled session)
-#       → supervisor (Opus, idle-cheap/event-driven, one per long-running initiative)
-#         → workers (Sonnet, execution)
-#   A supervisor DELEGATES to Sonnet workers (via spawn-worker.sh + brief-worker.sh),
-#   maintains its STATE.md as a resumable orchestration ledger, and reports UP to
-#   main via attn ONLY on meaningful checkpoints. It keeps main free to stay Toper's
-#   conversation partner. It NEVER DMs Toper and NEVER sets WHATSAPP=1 — main is the
-#   sole relay (supervisor → main → Toper).
+# ── AGENT-ORG MODEL (2026-07-09 refactor, piece 2) ───────────────────────────
+# A PROJECT SUPERVISOR OWNS one project end-to-end. Main INITIATES a project
+# (agrees it with Christopher, runs project-init, spawns this supervisor) and then
+# HANDS OFF COMPLETELY — after handoff main does nothing for that project.
 #
-# WHEN TO SPAWN ONE (not every task):
-#   Only for a FLEET (multiple workers) or a LONG-RUNNING initiative (any L3, or an
-#   L2 with a fleet / multi-hour horizon). A single-shot L1/L2 task → main spawns the
-#   worker directly; no supervisor.
+#   Christopher ──talks── main (Opus, the ONLY WhatsApp session; INITIATOR; hands off)
+#        │  (project-init -> spawn supervisor -> hand off)
+#        └──talks DIRECTLY (Remote Control) ── project supervisor (Opus MAX, THIS session)
+#                                                   │ delegates + polls its own fleet
+#                                                   ▼
+#                                              Sonnet workers (report to THIS supervisor)
+#
+# The supervisor is CHRISTOPHER-FACING, NOT main-facing: Christopher reaches it
+# directly over Claude Code Remote Control (terminal or phone). It does NOT report
+# to main. It NEVER has WhatsApp (main is the sole WhatsApp session). For an urgent
+# AFK escalation it asks main to relay a WhatsApp DM — main is only a pipe there.
+#
+# ── WHAT THIS SCRIPT GUARANTEES ──────────────────────────────────────────────
+#   * FAIL-CLOSED GATE: refuses unless ~/claude/projects/<project>/manager/CLAUDE.md
+#     exists (proves project-init ran; that file @-carries the orchestrator rules).
+#     This REPLACES the worker triage gate for the supervisor tier: the project's
+#     L3 sign-off + agreement happen UPSTREAM (main + project-init) before this file
+#     can exist, so its existence IS the setup gate. Mirrors the triage-gate
+#     fail-closed style (specific message + exit code, no side effects before it).
+#   * Launches `claude --model opus --effort max` (the manager tier is ALWAYS Opus
+#     MAX — not a carve-out, it is their tier).
+#   * cwd = the project's manager/  (so it loads [universal] + [orchestrator via the
+#     manager CLAUDE.md] + [project via up-walk]).
+#   * Its OWN new tmux window, named for the project; the supervisor is the LEFT
+#     pane (workers get split into the RIGHT column by spawn-worker.sh).
+#   * attn channel force-loaded + Remote Control ON.  NEVER sets WHATSAPP=1.
+#   * NO supervisor concurrency cap (unlimited; Christopher manages the box).
+#
+# After this returns 0, the CALLER (main) MUST verify the attn round-trip (peers
+# tool shows <window_name>) BEFORE briefing, then brief with the ORCHESTRATOR
+# preamble:  brief-worker.sh --supervisor <window_name> <brief_file>
 #
 # This is a DELIBERATE near-parallel of spawn-worker.sh rather than a flag on it:
-# keeping the supervisor spawner in its own file means a bug here can never brick
-# the load-bearing worker-spawn path. The shared gates (check-triage.sh,
-# worker-semaphore.sh) ARE reused.
-#
-# After this returns 0, MAIN SESSION MUST verify the attn round-trip (peers tool,
-# window name appears) BEFORE briefing — then brief with:
-#   brief-worker.sh --supervisor <window_name> <brief_file>
+# a bug here can never brick the load-bearing worker-spawn path.
 
 set -euo pipefail
 
-WINDOW_NAME="${1:?usage: spawn-supervisor.sh <window_name> [<cwd>] [<task_dir>]}"
-CWD="${2:-$HOME/claude}"
-TASK_DIR="${3:-${TASK_DIR:-}}"
+PROJECT="${1:?usage: spawn-supervisor.sh <project> [<window_name>]}"
+WINDOW_NAME="${2:-$PROJECT}"
 TMUX_SESSION="${TMUX_SESSION:-0}"
-SUP_MODEL="${CHILLDAWG_SUPERVISOR_MODEL:-opus}"   # supervisors are Opus by decision
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Manager tier = ALWAYS Opus at MAX effort. The env knobs are escape hatches only
+# (e.g. opus temporarily unavailable); the default is the policy.
+SUP_MODEL="${CHILLDAWG_SUPERVISOR_MODEL:-opus}"
+SUP_EFFORT="${CHILLDAWG_SUPERVISOR_EFFORT:-max}"
+case "$SUP_EFFORT" in
+  low|medium|high|xhigh|max) ;;
+  *) echo "WARNING: invalid effort '$SUP_EFFORT' — clamping to 'max'." >&2; SUP_EFFORT="max" ;;
+esac
 
-# TRIAGE GATE (reused, fail-closed) — a supervised initiative is still triaged.
-# L3 still requires signoff=true. Same gate the worker path uses.
-CHECK_TRIAGE="$SCRIPT_DIR/check-triage.sh"
-if [[ -x "$CHECK_TRIAGE" ]]; then
-  if ! "$CHECK_TRIAGE" "$WINDOW_NAME" "$TASK_DIR"; then
-    echo "" >&2
-    echo "REFUSING TO SPAWN SUPERVISOR '$WINDOW_NAME': triage gate failed (see above)." >&2
-    echo "A supervised initiative still needs a triage.json (and L3 sign-off)." >&2
-    echo "See ~/.claude/scripts/TRIAGE-SCHEMA.md" >&2
-    exit 4
-  fi
-else
-  echo "WARNING: triage gate script not found/executable at $CHECK_TRIAGE" >&2
-  echo "  Triage gate SKIPPED for supervisor '$WINDOW_NAME'. Repair before relying on it." >&2
+PROJECT_DIR="$HOME/claude/projects/$PROJECT"
+MANAGER_DIR="$PROJECT_DIR/manager"
+MANAGER_CLAUDE="$MANAGER_DIR/CLAUDE.md"
+CWD="$MANAGER_DIR"
+
+# ── FAIL-CLOSED GATE: manager/CLAUDE.md must exist ───────────────────────────
+# Runs BEFORE any tmux side effect so a blocked spawn leaves no window behind.
+if [[ ! -f "$MANAGER_CLAUDE" ]]; then
+  {
+    echo "REFUSING TO SPAWN SUPERVISOR for project '$PROJECT': manager gate failed."
+    echo "  Missing: $MANAGER_CLAUDE"
+    echo "  A project supervisor may only be spawned AFTER project-init has scaffolded"
+    echo "  the project (which creates manager/CLAUDE.md carrying the orchestrator rules)."
+    echo "  Run project-init for '$PROJECT' first, then retry."
+  } >&2
+  exit 4
 fi
 
-# Sanity: tmux session must exist
+# Sanity: tmux session must exist.
 if ! tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
   echo "ERROR: tmux session '$TMUX_SESSION' not found" >&2
   exit 1
 fi
 
-# Sanity: window name must not already exist
+# Sanity: window name (= supervisor attn name) must be unique in the session.
 if tmux list-windows -t "$TMUX_SESSION" -F "#{window_name}" 2>/dev/null | grep -qx "$WINDOW_NAME"; then
   echo "ERROR: window '$WINDOW_NAME' already exists in session '$TMUX_SESSION'" >&2
-  echo "  Choose a different name OR kill it first: tmux kill-window -t $TMUX_SESSION:$WINDOW_NAME" >&2
+  echo "  A supervisor for this project may already be running. Attach:" >&2
+  echo "    tmux select-window -t $TMUX_SESSION:$WINDOW_NAME" >&2
+  echo "  Or choose a different window name / kill the stale window first." >&2
   exit 2
 fi
 
-# SUPERVISOR CONCURRENCY GOVERNOR — separate cap from workers. Fail-open.
-SEMAPHORE="$SCRIPT_DIR/worker-semaphore.sh"
-if [[ -r "$SEMAPHORE" ]]; then
-  # shellcheck source=/dev/null
-  source "$SEMAPHORE"
-  if declare -F cs_supervisor_has_capacity >/dev/null 2>&1; then
-    if ! cs_supervisor_has_capacity; then
-      echo "" >&2
-      echo "REFUSING TO SPAWN SUPERVISOR '$WINDOW_NAME': supervisor cap reached (CHILLDAWG_MAX_SUPERVISORS=$(_cs_supervisor_max))." >&2
-      echo "  Live supervisors: $(cs_live_supervisor_count). Options:" >&2
-      echo "    - finish/kill a supervisor, then retry" >&2
-      echo "    - raise the cap: CHILLDAWG_MAX_SUPERVISORS=$(( $(_cs_supervisor_max) + 1 )) spawn-supervisor.sh ..." >&2
-      echo "    - inspect: fleetview.sh   |   worker-semaphore.sh status" >&2
-      exit 5
-    fi
-  fi
-else
-  echo "WARNING: worker-semaphore.sh not found/readable at $SEMAPHORE" >&2
-  echo "  Supervisor governor SKIPPED for '$WINDOW_NAME' (fail-open). Repair to re-enable." >&2
-fi
+# NO concurrency cap. The old CHILLDAWG_MAX_SUPERVISORS semaphore gate is REMOVED
+# (agent-org piece 2): supervisors are unlimited; Christopher manages the box.
 
-# Create the window at the next-highest index (never displace main/other windows).
+# Create the window at the next-highest index (never displace main = window 1).
 NEXT_INDEX=$(tmux list-windows -t "$TMUX_SESSION" -F '#{window_index}' | sort -n | tail -1)
 NEXT_INDEX=$((NEXT_INDEX + 1))
 tmux new-window -t "${TMUX_SESSION}:${NEXT_INDEX}" -n "$WINDOW_NAME" -c "$CWD"
 sleep 0.5
+TARGET="${TMUX_SESSION}:${NEXT_INDEX}"
+# Label the supervisor pane (human readability; also lets spawn-worker.sh identify
+# the left/main pane by geometry — it uses pane_left, this title is a bonus).
+tmux select-pane -t "$TARGET" -T "$WINDOW_NAME" 2>/dev/null || true
 
-# Register in the SUPERVISOR registry (best-effort; never fails the spawn).
-if declare -F cs_register_supervisor >/dev/null 2>&1; then
-  cs_register_supervisor "$WINDOW_NAME"
-fi
-
-# Launch claude as an Opus supervisor with attn force-loaded + Remote Control on.
-# Same launch contract as spawn-worker.sh (ATTN_SESSION unique = window name;
-# --remote-control named; --dangerously-skip-permissions), only the model differs.
-tmux send-keys -t "${TMUX_SESSION}:${NEXT_INDEX}" \
-  "ATTN_SESSION='${WINDOW_NAME}' claude --model '${SUP_MODEL}' --remote-control '${WINDOW_NAME}' --dangerously-skip-permissions" \
+# ── Launch: Opus MAX + attn force-loaded + Remote Control ON, NEVER WhatsApp ──
+# attn is a CHANNEL plugin: being in settings.json is NOT enough to start its
+# MCP/peer daemon — it needs explicit channel activation at launch, or the session
+# never registers a local peer and cannot be reached / cannot report. Use
+# --dangerously-load-development-channels (NOT --channels; the "approved" path
+# silently fails the allowlist inside spawned sessions on CC 2.1.179+). Load ONLY
+# attn — NEVER whatsapp (WHATSAPP=1 belongs to main alone; splitting it breaks the
+# command center). The dev-channels flag triggers a one-time blocking confirm that
+# --dangerously-skip-permissions does NOT auto-accept, so we auto-confirm below.
+# --remote-control named = Christopher reaches this supervisor directly.
+tmux send-keys -t "$TARGET" \
+  "ATTN_SESSION='${WINDOW_NAME}' claude --model '${SUP_MODEL}' --effort '${SUP_EFFORT}' --dangerously-load-development-channels plugin:attn@s0nderlabs --remote-control '${WINDOW_NAME}' --dangerously-skip-permissions" \
   Enter
+
+# Auto-confirm the --dangerously-load-development-channels prompt (bare Enter on the
+# pre-highlighted "I am using this for local development"). Poll for it, then confirm.
+DEVCH_MAX=20
+for ((dc = 0; dc < DEVCH_MAX; dc++)); do
+  sleep 1
+  PANE_DC=$(tmux capture-pane -t "$TARGET" -p -S -25 2>/dev/null || true)
+  if echo "$PANE_DC" | grep -qE -- 'using this for local development|Loading development channels'; then
+    tmux send-keys -t "$TARGET" Enter
+    echo "OK: auto-confirmed dev-channels prompt (after ~$((dc + 1))s)."
+    sleep 2
+    break
+  fi
+  if echo "$PANE_DC" | grep -qE -- '-- INSERT --|bypass permissions on'; then
+    break   # input already up — confirm not needed
+  fi
+done
 
 # Wait for claude to boot + MCP plugins to register (poll the pane, 30s ceiling).
 READY_MAX=30
 MCP_GRACE=3
 BOOT_READY=0
+waited=0
 for ((waited = 0; waited < READY_MAX; waited++)); do
   sleep 1
-  PANE_BOOT=$(tmux capture-pane -t "${TMUX_SESSION}:${NEXT_INDEX}" -p -S -15 2>/dev/null || true)
+  PANE_BOOT=$(tmux capture-pane -t "$TARGET" -p -S -15 2>/dev/null || true)
   if echo "$PANE_BOOT" | grep -qE -- '-- INSERT --|bypass permissions on|^[[:space:]]*[❯>][[:space:]]'; then
     BOOT_READY=1
     break
@@ -125,22 +155,26 @@ done
 
 if [[ "$BOOT_READY" == "1" ]]; then
   sleep "$MCP_GRACE"
-  echo "OK: supervisor claude prompt ready after ~$((waited + 1 + MCP_GRACE))s (polled)."
+  echo "OK: supervisor prompt ready after ~$((waited + 1 + MCP_GRACE))s (polled)."
 else
   echo "WARN: supervisor prompt not detected within ${READY_MAX}s — proceeding anyway." >&2
-  echo "      (Boot may be slow; the mandatory attn-peers check below is the real gate.)" >&2
+  echo "      (Boot may be slow; the attn-peers check below is the real gate.)" >&2
 fi
 
-echo "OK: supervisor window '$WINDOW_NAME' created, claude launched on '${SUP_MODEL}' with attn."
+echo "OK: supervisor window '$WINDOW_NAME' created for project '$PROJECT'."
+echo "    model=${SUP_MODEL} effort=${SUP_EFFORT}  cwd=${CWD}  WhatsApp=NEVER  RemoteControl=ON  cap=NONE"
 echo
-echo "NEXT (main session MUST do):"
-echo "  1. Call mcp__plugin_attn_attn__peers"
-echo "  2. Confirm '$WINDOW_NAME' is in local peers"
-echo "  3. If NOT visible after 15s: kill window + retry"
-echo "     tmux kill-window -t ${TMUX_SESSION}:${WINDOW_NAME}"
-echo "  4. Only after peer confirmed: brief with the SUPERVISOR preamble:"
-echo "     brief-worker.sh --supervisor ${WINDOW_NAME} <brief_file>"
+echo "NEXT (the spawning session MUST do):"
+echo "  1. Call the attn peers tool; confirm '$WINDOW_NAME' is in local peers."
+echo "  2. If NOT visible within 15s: kill window + retry"
+echo "       tmux kill-window -t ${TMUX_SESSION}:${WINDOW_NAME}"
+echo "  3. Only after the peer is confirmed, brief with the ORCHESTRATOR preamble:"
+echo "       brief-worker.sh --supervisor ${WINDOW_NAME} <brief_file>"
 echo
-echo "  5. The supervisor's FIRST attn report to main must be its DIRECTION/partition"
-echo "     plan (direction confirmation) BEFORE it spawns its fleet. If it doesn't"
-echo "     report within a few minutes, investigate."
+echo "  REPORTING (agent-org model): this supervisor is CHRISTOPHER-FACING via Remote"
+echo "  Control and does NOT report to main. It surfaces direction/milestones/blockers/"
+echo "  DONE straight to Christopher. Its workers report to IT (attn name '$WINDOW_NAME')."
+echo "  NOTE: the current brief-worker.sh --supervisor preamble still says 'report to"
+echo "  main' (pre-agent-org wording). Until that preamble is updated, the project brief"
+echo "  MUST state: 'You are Christopher-facing via Remote Control; do NOT report to main.'"
+echo "  For VPS actions, message the fixed VPS-manager peer 'vps-manager' via attn."

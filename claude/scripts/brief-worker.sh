@@ -1,7 +1,28 @@
 #!/usr/bin/env bash
 # brief-worker.sh — reliably deliver a brief to a spawned claude worker.
 #
-# Usage: brief-worker.sh [--quick|--l1 | --supervisor] <window_name> <brief_file>
+# Usage: brief-worker.sh [--quick|--l1 | --supervisor] <target> <brief_file>
+#
+#   <target>  EITHER a tmux WINDOW name (a supervisor / vps-manager / any session
+#             that is its OWN window, legacy behavior, unchanged) OR a worker
+#             PANE inside its supervisor's window. Two pane forms are accepted:
+#               * a pane id  "%NN"                (what spawn-worker.sh prints), or
+#               * a pane coordinate "session:window.paneIndex".
+#             Detection is purely syntactic: a leading '%' OR a "sess:win.N"
+#             coordinate => PANE target; anything else => WINDOW name. In WINDOW
+#             mode every behavior below is byte-identical to before.
+#             (Agent-org model: a worker is a PANE, not its own window; see
+#             spawn-worker.sh, which surfaces the pane id as "... spawned as pane
+#             %NN ..."; that %NN is exactly what you pass here.)
+#
+#   Pane-mode preamble name: export WORKER_NAME=<name> so the role-override
+#   preamble names the worker correctly, e.g.
+#       WORKER_NAME=w1 brief-worker.sh %42 tasks/w1/brief.md
+#   The tmux pane TITLE is NOT used to derive the name: Claude Code overwrites the
+#   pane title with its own status line (verified), so it is not a reliable source.
+#   Without WORKER_NAME the preamble falls back to the pane target string; the
+#   worker still learns its true attn name via the peers tool either way.
+#   WORKER_NAME is consulted ONLY in pane mode (window mode is left untouched).
 #
 #   --quick / --l1  L1 FAST-PATH for trivial work. Relaxes the STATE.md gate to
 #                   accept a stub STATE.md (no parent-initiative linkage required)
@@ -16,6 +37,8 @@
 #                   main only on meaningful checkpoints, and never DMs Toper. Uses
 #                   the FULL STATE.md gate (parent-initiative required). Mutually
 #                   exclusive with --quick. Pair with spawn-supervisor.sh.
+#                   (A supervisor is its OWN window, so this always uses WINDOW
+#                   mode, unaffected by the pane addressing above.)
 #
 # What this fixes (per memory feedback_tmux_send_keys.md):
 #  1. Trust-folder prompt — Claude Code may show "Is this a project you trust?"
@@ -39,7 +62,7 @@ while [[ "${1:-}" == --* ]]; do
     --quick|--l1) QUICK=1; shift ;;
     --supervisor) SUPERVISOR=1; shift ;;
     *) echo "ERROR: unknown flag '$1'" >&2
-       echo "usage: brief-worker.sh [--quick|--l1 | --supervisor] <window_name> <brief_file>" >&2
+       echo "usage: brief-worker.sh [--quick|--l1 | --supervisor] <target> <brief_file>" >&2
        exit 2 ;;
   esac
 done
@@ -48,19 +71,45 @@ if [[ "$QUICK" == "1" && "$SUPERVISOR" == "1" ]]; then
   exit 2
 fi
 
-WINDOW="${1:?usage: brief-worker.sh [--quick|--l1 | --supervisor] <window_name> <brief_file>}"
-BRIEF="${2:?usage: brief-worker.sh [--quick|--l1 | --supervisor] <window_name> <brief_file>}"
+TARGET="${1:?usage: brief-worker.sh [--quick|--l1 | --supervisor] <target> <brief_file>}"
+BRIEF="${2:?usage: brief-worker.sh [--quick|--l1 | --supervisor] <target> <brief_file>}"
 TMUX_SESSION="${TMUX_SESSION:-0}"
-PANE="${TMUX_SESSION}:${WINDOW}"
 
 if [[ ! -f "$BRIEF" ]]; then
   echo "ERROR: brief file not found: $BRIEF" >&2
   exit 1
 fi
 
-if ! tmux list-windows -t "$TMUX_SESSION" -F "#{window_name}" 2>/dev/null | grep -qx "$WINDOW"; then
-  echo "ERROR: tmux window '$WINDOW' not found in session '$TMUX_SESSION'" >&2
-  exit 1
+# ── Resolve the delivery target: WINDOW name (legacy) OR worker PANE (agent-org) ─
+# spawn-worker.sh makes a worker a PANE inside its supervisor's window and prints
+# that pane's id ("OK: worker ... spawned as pane %NN ..."). A supervisor / the
+# vps-manager is its OWN window (the legacy path). Detect which one we were given:
+#   * leading '%'            -> a pane id  (%NN)
+#   * "session:window.pane"  -> an explicit pane coordinate (a ':' and a trailing '.N')
+#   * anything else          -> a WINDOW name (byte-identical to the previous behavior)
+# All of tmux capture-pane / send-keys / paste-buffer accept a pane id, a pane
+# coordinate, AND a "session:window" target for -t, so the delivery logic below is
+# identical for both kinds once PANE is resolved.
+_pane_coord_re='^.+:.+\.[0-9]+$'
+if [[ "$TARGET" == %* ]] || [[ "$TARGET" =~ $_pane_coord_re ]]; then
+  # ---- PANE target: validate it exists + canonicalize to the stable %NN id ----
+  PANE_ID="$(tmux display-message -p -t "$TARGET" '#{pane_id}' 2>/dev/null || true)"
+  if [[ -z "$PANE_ID" || "$PANE_ID" != %* ]]; then
+    echo "ERROR: tmux pane '$TARGET' not found." >&2
+    echo "  A pane target is a '%NN' pane id, or 'session:window.paneIndex'." >&2
+    echo "  spawn-worker.sh prints it as: 'OK: worker ... spawned as pane %NN ...'." >&2
+    exit 1
+  fi
+  PANE="$PANE_ID"                        # %NN, stable for the pane's whole lifetime
+  DISPLAY_NAME="${WORKER_NAME:-$TARGET}" # preamble identity (pane title is unreliable)
+else
+  # ---- WINDOW name (legacy: supervisors, vps-manager, own-window sessions) ----
+  if ! tmux list-windows -t "$TMUX_SESSION" -F "#{window_name}" 2>/dev/null | grep -qx "$TARGET"; then
+    echo "ERROR: tmux window '$TARGET' not found in session '$TMUX_SESSION'" >&2
+    exit 1
+  fi
+  PANE="${TMUX_SESSION}:${TARGET}"       # exactly as before
+  DISPLAY_NAME="$TARGET"
 fi
 
 # HARD GATE: STATE.md must exist in the brief's directory (3-tier task hierarchy).
@@ -84,7 +133,7 @@ if [[ ! -f "$STATE_FILE" ]]; then
   echo "and an initial roadmap. The worker will maintain it from there." >&2
   echo "" >&2
   echo "For a trivial L1 task, a stub STATE.md + the fast-path is enough:" >&2
-  echo "  brief-worker.sh --quick ${WINDOW} ${BRIEF}" >&2
+  echo "  brief-worker.sh --quick ${TARGET} ${BRIEF}" >&2
   exit 3
 fi
 
@@ -98,7 +147,7 @@ if [[ "$QUICK" != "1" ]]; then
     echo "  **Parent initiative:** [<slug>](../initiatives/<slug>.md)" >&2
     echo "" >&2
     echo "OR, if this is trivial L1 work, use the fast-path (stub STATE.md OK):" >&2
-    echo "  brief-worker.sh --quick ${WINDOW} ${BRIEF}" >&2
+    echo "  brief-worker.sh --quick ${TARGET} ${BRIEF}" >&2
     exit 3
   fi
 fi
@@ -177,7 +226,7 @@ fi
 # Step 2: Wait until claude chat input is ready.
 # Look for the "-- INSERT --" footer indicator or the chat prompt ❯ on its own line.
 READY=0
-for i in 1 2 3 4 5 6 7 8 9 10; do
+for _ in 1 2 3 4 5 6 7 8 9 10; do
   PANE_NOW=$(tmux capture-pane -t "$PANE" -p -S -10 2>&1)
   if echo "$PANE_NOW" | grep -qE "(-- INSERT --|bypass permissions on)"; then
     READY=1
@@ -207,6 +256,7 @@ PREAMBLE_FILE=$(mktemp)
 # combined trap that also deletes the per-invocation tmux buffer, once that buffer
 # exists. bash EXIT traps are last-wins, so the later one supersedes this safely
 # (both rm the same PREAMBLE_FILE; rm -f is idempotent).
+# shellcheck disable=SC2064  # expand PREAMBLE_FILE now (fixed for this run); rm -f is idempotent
 trap "rm -f $PREAMBLE_FILE" EXIT
 if [[ "$SUPERVISOR" == "1" ]]; then
   # SUPERVISOR preamble (Wave-7) — orchestrator role. Delegates to Sonnet workers,
@@ -214,7 +264,7 @@ if [[ "$SUPERVISOR" == "1" ]]; then
   cat > "$PREAMBLE_FILE" <<EOF
 # SUPERVISOR ROLE OVERRIDE (read FIRST, applies to everything below)
 
-You are a SPAWNED SUPERVISOR named '$WINDOW' in a tmux window of session ${TMUX_SESSION}. You are NOT the main coordination session — main is a SEPARATE session that spawned you. Verify any time via the attn peers tool: you appear as '$WINDOW', main appears as 'main'.
+You are a SPAWNED SUPERVISOR named '$DISPLAY_NAME' in a tmux window of session ${TMUX_SESSION}. You are NOT the main coordination session — main is a SEPARATE session that spawned you. Verify any time via the attn peers tool: you appear as '$DISPLAY_NAME', main appears as 'main'.
 
 You sit in the MIDDLE tier of a three-tier execution model:
   main (Opus, command center, Toper's conversation partner, the ONLY WhatsApp session)
@@ -266,7 +316,7 @@ elif [[ "$QUICK" == "1" ]]; then
   cat > "$PREAMBLE_FILE" <<EOF
 # WORKER ROLE OVERRIDE (read FIRST, applies to everything below)
 
-You are a SPAWNED WORKER named '$WINDOW' running in tmux window of session ${TMUX_SESSION}. You are NOT the main coordination session — main is a SEPARATE session that spawned you. Verify via the attn peers tool: you appear as '$WINDOW', main as 'main'.
+You are a SPAWNED WORKER named '$DISPLAY_NAME' running in tmux window of session ${TMUX_SESSION}. You are NOT the main coordination session — main is a SEPARATE session that spawned you. Verify via the attn peers tool: you appear as '$DISPLAY_NAME', main as 'main'.
 
 The auto-loaded CLAUDE.md rule "Main Session is DISCUSSION ONLY / never run dev commands here" does NOT apply to you. You are a delegated worker — EXECUTE the brief, don't delegate it further. Don't spawn sub-workers. You ARE the worker.
 
@@ -292,7 +342,7 @@ else
   cat > "$PREAMBLE_FILE" <<EOF
 # WORKER ROLE OVERRIDE (read FIRST, applies to everything below)
 
-You are a SPAWNED WORKER named '$WINDOW' running in tmux window of session ${TMUX_SESSION}. You are NOT the main coordination session — main is a SEPARATE session, and main spawned you via spawn-worker.sh. Verify your identity any time via the attn peers tool: you will appear as '$WINDOW' while main appears as 'main'.
+You are a SPAWNED WORKER named '$DISPLAY_NAME' running in tmux window of session ${TMUX_SESSION}. You are NOT the main coordination session — main is a SEPARATE session, and main spawned you via spawn-worker.sh. Verify your identity any time via the attn peers tool: you will appear as '$DISPLAY_NAME' while main appears as 'main'.
 
 The auto-loaded CLAUDE.md rule "Main Session is DISCUSSION ONLY / never run dev commands here" does NOT apply to you. That rule governs the command-center session only. You are a delegated worker — your role is to EXECUTE the brief that follows, not to delegate it further. Do not spawn sub-workers. Do not redirect this brief to "a proper worker session" — you ARE that worker.
 
@@ -361,6 +411,7 @@ cat "$BRIEF" >> "$PREAMBLE_FILE"
 # brief. $$ (this shell's PID) makes the buffer unique per invocation.
 # Clean it up on exit so tmux's buffer stack doesn't accumulate stale entries.
 BRIEF_BUF="_brief_$$"
+# shellcheck disable=SC2064  # expand PREAMBLE_FILE + BRIEF_BUF now (fixed for this run)
 trap "rm -f $PREAMBLE_FILE; tmux delete-buffer -b $BRIEF_BUF 2>/dev/null || true" EXIT
 tmux load-buffer -b "$BRIEF_BUF" - < "$PREAMBLE_FILE"
 tmux paste-buffer -p -b "$BRIEF_BUF" -t "$PANE"
@@ -385,7 +436,7 @@ for attempt in 1 2 3; do
     continue
   fi
   # No "[Pasted text" visible → claude consumed the input → success
-  echo "[brief-worker] OK — brief submitted to '$WINDOW'"
+  echo "[brief-worker] OK — brief submitted to '$DISPLAY_NAME'"
   exit 0
 done
 
