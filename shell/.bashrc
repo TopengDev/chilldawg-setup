@@ -11,6 +11,7 @@ unalias c 2>/dev/null
 c() {
   if [[ "$1" == "-M" ]]; then
     shift
+    cd ~/claude/main || return 1
     WHATSAPP=1 claude --dangerously-load-development-channels plugin:whatsapp@TopengDev -d "channel" --dangerously-load-development-channels plugin:attn@s0nderlabs --dangerously-skip-permissions --remote-control "$@"
   elif [[ "$1" == "-D" ]]; then
     shift

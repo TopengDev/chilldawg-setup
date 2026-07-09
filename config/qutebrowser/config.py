@@ -40,43 +40,25 @@ c.content.blocking.whitelist = ["*://*.youtube.com/*"]
 c.content.javascript.enabled = True
 c.content.cookies.accept = 'all'
 
-# ── Permission prompt bypass (for agent-browser-driven workflows) ──
-# Pre-decide every permission prompt so qutebrowser doesn't pop up blocking
-# dialogs during automated testing flows. Override per-domain if a real site
-# legitimately needs e.g. mic/camera.
-c.content.notifications.enabled = False
-c.content.geolocation = False
-# audio/video/desktop capture: use "ask" (qutebrowser default) so mic/camera/screen-share
-# work for real use. Automation flows (bms-web-admin etc.) don't request these, so no
-# blocking prompts. Decision is remembered per-site in autoconfig.yml after first allow/deny.
-c.content.media.audio_capture = "ask"
-c.content.media.video_capture = "ask"
-c.content.media.audio_video_capture = "ask"
-c.content.desktop_capture = "ask"
-
-# Per-domain media auto-allow (trusted call/work sites — no prompt; default stays "ask").
-# Toper's trusted sites: Teams, Meet, Zoom, Discord, Aenoxa, Topengdev, Telegram. (2026-06-20)
-_media_trusted = [
-    "*://*.teams.microsoft.com/*",
-    "*://meet.google.com/*",
-    "*://*.zoom.us/*",
-    "*://*.discord.com/*",
-    "*://*.aenoxa.com/*",
-    "*://*.topengdev.com/*",
-    "*://*.telegram.org/*",
-]
-for _site in _media_trusted:
-    config.set("content.media.audio_capture", True, _site)
-    config.set("content.media.video_capture", True, _site)
-    config.set("content.media.audio_video_capture", True, _site)
-    config.set("content.desktop_capture", True, _site)
+# ── Permission prompt bypass -- ALLOW ALL (updated 2026-06-29) ──
+# Every BoolAsk permission set to True so qutebrowser NEVER shows a permission dialog.
+# Per-domain media loop removed (global True makes it redundant).
+c.content.notifications.enabled = True
+c.content.geolocation = True
+c.content.media.audio_capture = True
+c.content.media.video_capture = True
+c.content.media.audio_video_capture = True
+c.content.desktop_capture = True
+c.content.mouse_lock = True
 
 c.content.javascript.alert = False
 c.content.javascript.modal_dialog = False
 c.content.javascript.prompt = False
 c.content.javascript.can_open_tabs_automatically = True
+c.content.javascript.clipboard = "access-paste"
 c.content.persistent_storage = True
-c.content.register_protocol_handler = False
+c.content.register_protocol_handler = True
+c.content.local_content_can_access_remote_urls = True
 c.content.autoplay = True
 
 # Downloads — auto-accept, no overwrite prompts
