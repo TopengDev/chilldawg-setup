@@ -144,6 +144,10 @@ Christopher's hard UI typography floor: sub-500 text reads thin, frail, and low-
 | Memphis / Postmodern Maximalist | Bespoke | Origin UI · Kokonut / Magic motion |
 | Claymorphism / Soft 3D | **Cult UI** | Origin UI |
 | Risograph / Zine Print | Bespoke | Origin UI |
+| Glassmorphism | **Cult UI** (glass effects) | Origin UI |
+| Liquid Glass | Bespoke (refraction layer) | Origin UI · Motion Primitives |
+| Spatial UI | **React Bits** (WebGL/depth) | Origin UI · Motion Primitives |
+| Skeuomorphism / Tactile Realism | Bespoke (material-restyled) | Origin UI · Cult UI (tactile) |
 
 ### The libraries (quick reference)
 - **Origin UI**, 574 neutral, accessible (Radix + React Aria) base app-UI components (forms/inputs/tables/nav). MIT. The universal BASE for ~every archetype. (Rebranding under coss.com; legacy collection stable, reference `coss.com/origin`.)
@@ -155,7 +159,7 @@ Christopher's hard UI typography floor: sub-500 text reads thin, frail, and low-
 - **Motion Primitives**, ~33 animation primitives (text/scroll/cursor). MIT. Animation LAYER only, never a sole library. → high-motion archetypes.
 
 ### Note
-~7 archetypes (Editorial Luxury, Magazine Editorial, Warm Craft, Opulent Noir, Memphis, Neo-Brutalist, Risograph) have **no good themed library**, build bespoke on the Origin UI base (+ the noted accent layers). This is expected, not a gap to paper over.
+~9 archetypes (Editorial Luxury, Magazine Editorial, Warm Craft, Opulent Noir, Memphis, Neo-Brutalist, Risograph, Liquid Glass, Skeuomorphism / Tactile Realism) have **no good themed library**, build bespoke on the Origin UI base (+ the noted accent layers). This is expected, not a gap to paper over.
 
 ---
 
@@ -263,6 +267,10 @@ Default values by vibe:
 - Memphis / Postmodern Maximalist → VARIANCE 9, MOTION 6, DENSITY 6
 - Claymorphism / Soft 3D → VARIANCE 6, MOTION 6, DENSITY 4
 - Risograph / Zine Print → VARIANCE 8, MOTION 4, DENSITY 5
+- Glassmorphism → VARIANCE 5, MOTION 4, DENSITY 3
+- Liquid Glass → VARIANCE 6, MOTION 7, DENSITY 3
+- Spatial UI → VARIANCE 7, MOTION 7, DENSITY 2
+- Skeuomorphism / Tactile Realism → VARIANCE 6, MOTION 5, DENSITY 4
 - Custom → ask the user or pick based on context
 
 ---
@@ -270,6 +278,20 @@ Default values by vibe:
 ## 2. VIBE ARCHETYPES
 
 Each archetype is a starting point, not a cage. Remix, combine, or diverge, but always have a clear aesthetic direction.
+
+### Trend-name router
+
+People ask for what they want by trend name, not archetype name. Route common trend vocabulary to the archetype that actually owns it, don't invent a new one on the fly:
+
+| Trend name | Routes to | Note |
+|---|---|---|
+| Neumorphism / Soft UI | **BANNED**, see Claymorphism / Soft 3D instead | Same-color shadows kill legibility and WCAG contrast, a considered ban, not an oversight. Claymorphism keeps the puffy soft-3D feel with real color contrast preserved (see that entry's spec-note). |
+| Minimalism | Japanese Minimal, or Swiss / International Typographic | Japanese Minimal for negative-space restraint, Swiss for grid-driven rigor. |
+| Maximalism | Memphis / Postmodern Maximalist, or Gen Z Expressive | Memphis for the design-history clash (squiggles, geometric confetti), Gen Z for internet-native chaos. |
+| Brutalism | Neo-Brutalist | The web's brutalist vocabulary (raw edges, 0-radius, exposed structure) lives here. |
+| Bento / bento grid | Not a standalone archetype, a LAYOUT pattern | Any archetype can run a bento layout, see §4 Layout Archetypes and the §8 Creative Arsenal. |
+| Dark mode | Not an archetype, a THEME | Dark Cinematic and Opulent Noir are dark-native archetypes; every other archetype still ships a considered dark theme per §0.5, that is a theme decision, not a vibe pick. |
+| Glassmorphism, liquid glass, skeuomorphism, spatial UI | First-class archetypes below | See Glassmorphism, Liquid Glass, Skeuomorphism / Tactile Realism, and Spatial UI in this section. |
 
 ### Editorial Luxury
 **Best for**: Lifestyle brands, agencies, portfolios, editorial sites
@@ -462,6 +484,42 @@ Each archetype is a starting point, not a cage. Remix, combine, or diverge, but 
 - **Signature**: Visible grain, halftone dots, misregistered color layers, overprint blends, DIY zine collage, photocopy texture. Print-DIY versus Warm Craft's polished digital warmth.
 - **Recommended library:** `Bespoke (Origin UI base), see §0.7`
 
+### Glassmorphism
+**Best for**: SaaS dashboards, mobile overlays, premium landing pages, floating nav/toolbar chrome, any product wanting a selective frosted-depth accent
+- **Background**: A rich, structured backdrop for the frost to read against, a gradient field, photography, or geometry, never a flat grey void (frost over nothing reads as mud)
+- **Surfaces**: Frosted translucent panels (`backdrop-filter: blur() saturate()`) with a 1px light border, layered translucent depth across a small number of panes. Restraint over blanket coverage, one floating toolbar, one modal, one hero card, not glass on every surface (the 2020-2021 all-glass excess reads as dated trend-chasing today)
+- **Typography**: No monospace here, mono is reserved for the Terminal/Monospace archetype only (§3.1, §11 DD-1). Clean neutral sans (Switzer, General Sans), set for high contrast against the frosted fill.
+- **Color**: One accent, the backdrop behind the glass supplies most of the color richness, the panel itself stays close to neutral so it reads as frost, not paint
+- **Signature**: Mature frosted-translucency in the Big Sur / Fluent Acrylic lineage, a foundational technique by 2026, not a fading trend, at its best used selectively rather than everywhere. **Spec-note: cite the §6 Backdrop-blur Budget, fixed/sticky elements only, never scrolling list items or repeated grid cards.** Anti-slop: the "purple gradient plus glass card" combo is the number one AI-slop tell, banned outright (ties to §8); frost over a flat gray void is mud, not depth; text-on-frost carries a hard contrast gate (WCAG AA at minimum, verify hover states too, not just resting). The existing Glassmorphism Panel card pattern (§8 Creative Arsenal) is this archetype's component-level expression. Distinct from Liquid Glass: static frost versus living optical refraction; distinct from Y2K / Frutiger Aero: frost versus nostalgic gloss.
+- **Recommended library:** `Cult UI (glass effects) + Origin UI base, see §0.7`
+
+### Liquid Glass
+**Best for**: Premium consumer apps, contemporary Apple-era product launches, spatial/AR-adjacent brands, dashboards wanting a living optical read instead of a static frost
+- **Background**: A real, rich backdrop the glass can refract, structured photography, a saturated gradient field, or live app content, never a flat void (a flat backdrop kills the whole effect, there is nothing to bend)
+- **Surfaces**: Panels that REFRACT what sits behind them, not merely blur it (`backdrop-filter: blur() saturate()` as the base, an SVG `feDisplacementMap` layer for the refractive lensing read, gated behind `@supports` since it is Chromium-only). Specular edge highlights via a gradient border or `feSpecularLighting`. State changes morph fluidly rather than swap. Adaptive tint shifts with light and dark. Chrome recedes so content leads.
+- **Typography**: No monospace here, mono is reserved for the Terminal/Monospace archetype only (§3.1, §11 DD-1). Clean neutral sans for labels and body (Switzer, General Sans), a confident display face for hero moments.
+- **Color**: One restrained accent riding on the refracted backdrop, the backdrop supplies the color richness, the glass itself stays close to neutral so the optics read, not the paint
+- **Signature**: Real-time refraction that bends the actual content behind it (not aurora, not a soft blur haze), specular highlights that shift with pointer or scroll, fluid morph between states. **Spec-note: cite the §6 Backdrop-blur Budget, fixed/sticky elements only; the SVG displacement pass is its own GPU cost on top of the blur (roughly O(width times height) per frame), so keep refractive panels small, few, and off scrolling grids entirely.** Anti-slop: refraction is NOT aurora, zero glow-blobs; glass must sit over REAL content or imagery, glass over a flat void is the tell; text-on-glass carries a hard contrast and legibility gate (isolate the text layer, use a high-contrast oklch fill) plus a reduced-transparency fallback for `prefers-reduced-motion` and any user opacity preference. Distinct from Glassmorphism: living optical refraction versus static frost; distinct from Y2K / Frutiger Aero: contemporary optics versus nostalgic gloss.
+- **Recommended library:** `Bespoke (refraction layer) + Origin UI base · Motion Primitives, see §0.7`
+
+### Spatial UI
+**Best for**: Product launches with real 3D or spatial ambition, premium hardware and AR-adjacent brands, portfolio or pitch work that wants to legitimately own a depth-as-system moment
+- **Background**: A structured ambient environment, a gradient "room," photographic ambient, or a geometric horizon, never aurora haze. The environment is the ground the floating panes sit inside, not decoration bolted behind them.
+- **Surfaces**: A tokenized elevation scale (environment / mid-plane panes / foreground overlays), each level a real layered shadow (tight contact edge plus soft ambient falloff, §4), floating translucent panes at distinct z-depths, pronounced pointer and scroll parallax separation between layers (roughly 20 to 30 percent speed differential, §5), hover lift as state feedback, airy ergonomic spacing (this archetype runs DENSITY 2, sparse by design)
+- **Typography**: No monospace here, mono is reserved for the Terminal/Monospace archetype only (§3.1, §11 DD-1). A confident display face for the hero, clean sans body, generous tracking to match the airy spatial feel.
+- **Color**: Can run light or dark, spatial is a depth system, not a mood; one accent, the environment layer carries most of the color
+- **Signature**: This archetype legitimately owns the §5.5 Tier 2 signature 3D moment, a real interactive 3D or spatial scene (Spline or React Three Fiber) is on-identity here, not an add-on. Depth is SYSTEMATIC, named z-tokens applied consistently, never random floating cards. **Spec-note: hard cap on stacked backdrop-filter panes, cite the §6 Backdrop-blur Budget, and the reduced-motion path flattens the parallax and z-system gracefully to a static layered layout per §5.5 Tier 3.** Anti-slop: no aurora or glow-blob haze standing in for "environment," the environment is structured (gradient room, photographic ambient, geometric horizon), never soft pastel glow. Distinct from Glassmorphism: a whole depth system plus environment, not a single surface treatment; distinct from Dark Cinematic: spatial can run light, cinematic is mood-dark by definition.
+- **Recommended library:** `React Bits (WebGL/depth) + Origin UI base · Motion Primitives, see §0.7`
+
+### Skeuomorphism / Tactile Realism
+**Best for**: Audio and music production tools, hardware-adjacent products, premium onboarding for non-technical users, gaming interfaces, brands wanting dieter-rams or teenage-engineering hardware-nostalgia energy
+- **Background**: A real material ground, paper grain, brushed metal, ceramic, or fabric weave, rendered as photographic or SVG grain assets, never a CSS-gradient fake
+- **Surfaces**: Physical-metaphor controls, switches, dials, and knobs with real travel (a pressed or rotated state, not a flat toggle), built on the §4 layered-shadow discipline to sell ONE coherent physical light source across every control on the page
+- **Typography**: No monospace here, mono is reserved for the Terminal/Monospace archetype only (§3.1, §11 DD-1). A confident grotesk or humanist sans that reads as considered industrial-design labeling, not a display gimmick.
+- **Color**: Material-true, the palette comes from the real materials chosen (warm metal, cool ceramic, kraft paper), restrained, one accent reserved for interactive state
+- **Signature**: The modern tactile-realism revival, not iOS-6 cosplay, hardware-nostalgia energy (teenage-engineering, dieter-rams) over glossy-bevel 2013-era skeuomorphism. Anti-slop: textures are REAL (photographic or SVG grain assets), never CSS-gradient fakery; commit to full realism or do not enter, uncanny mid-fidelity realism is the failure mode; one light-source direction everywhere, never mixed shadow angles. Distinct from Claymorphism: real materials versus matte inflated 3D clay; distinct from Y2K / Frutiger Aero: material realism versus era gloss (Y2K's existing skeuomorphic-shine lines stay as they are, this archetype is the fuller material-realism treatment, not a replacement for that accent).
+- **Recommended library:** `Bespoke (material-restyled) + Origin UI base · Cult UI (tactile), see §0.7`
+
 ### Custom Vibe
 When the user describes something that doesn't match an archetype, extract:
 1. Color temperature (warm / cool / neutral)
@@ -532,6 +590,10 @@ Example: Editorial Luxury (V6/M4/D4) + Dark Cinematic (V6/M6/D2) = V6/M5/D3
 | Risograph / Zine Print | Warm Craft | Analog craft | Both tactile and handmade, riso ink texture meets artisanal warmth |
 | Claymorphism / Soft 3D | Playful Pop | Friendly 3D | Pop bounce + puffy clay = approachable, tactile consumer energy |
 | Y2K / Frutiger Aero | Playful Pop | Glossy fun | Aqua gloss + pop saturation = peak optimistic-consumer shine |
+| Glassmorphism | Dark Cinematic | Frosted noir | Cinematic darkness gives the frost a rich ground to refract against, the glass reads as chrome, not decoration |
+| Liquid Glass | Japanese Minimal | Optical restraint | Minimal negative space lets the refraction breathe, one glass moment reads as precision, not excess |
+| Spatial UI | Dark Cinematic | Depth in the dark | Cinematic atmosphere grounds the z-layered panes, depth reads as staged, not scattered |
+| Skeuomorphism / Tactile Realism | Warm Craft | Handmade and tactile | Shared material honesty, real surfaces and organic texture reinforce the same made-by-hand read |
 
 #### Incompatible Pairings (NO, these contradict each other)
 
@@ -547,6 +609,10 @@ Example: Editorial Luxury (V6/M4/D4) + Dark Cinematic (V6/M6/D2) = V6/M5/D3
 | Terminal | Y2K / Frutiger Aero | Austere CLI vs glossy aqua, opposite surface philosophies |
 | Swiss / International Typographic | Memphis / Postmodern Maximalist | Strict order vs anti-order, the grid and the confetti cancel out |
 | Claymorphism / Soft 3D | Neo-Brutalist | Soft inflated comfort vs raw hard edges, opposite tactility |
+| Glassmorphism | Neo-Brutalist | Frosted softness vs raw hard edges, the glass has nothing soft to sit on and disappears |
+| Liquid Glass | Risograph / Zine Print | Real-time optics vs flat riso ink, light vs pigment, neither material language survives the mix |
+| Spatial UI | Swiss / International Typographic | Z-depth hierarchy vs flat 2D grid discipline, the two organizing principles cannot coexist |
+| Skeuomorphism / Tactile Realism | Terminal / Monospace | Physical material weight vs austere CLI flatness, opposite surface philosophies |
 
 ---
 
