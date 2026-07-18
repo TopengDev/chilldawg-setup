@@ -97,6 +97,23 @@
             "command": "/home/christopher/.claude/hooks/block-raw-git-commit.sh",
             "timeout": 10,
             "statusMessage": "Checking for raw git commit..."
+          },
+          {
+            "type": "command",
+            "command": "/home/christopher/.claude/hooks/block-worktree-isolation.sh",
+            "timeout": 10,
+            "statusMessage": "Checking for isolated git worktree use..."
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Workflow|EnterWorktree",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/christopher/.claude/hooks/block-worktree-isolation.sh",
+            "timeout": 10,
+            "statusMessage": "Checking for isolated git worktree use..."
           }
         ]
       }

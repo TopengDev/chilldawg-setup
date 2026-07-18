@@ -82,6 +82,19 @@ After any new shell, the env vars below are populated automatically.
 
 Quick patches that mask the real problem are worse than no fix at all. If the proper fix is complex, say so and do it anyway. Only reach for a simple fix when the problem genuinely is simple.
 
+## Git Worktrees — TOTAL BAN (MANDATORY, ALL AGENTS)
+
+**OVERRIDE: NEVER create or use an isolated git worktree, under ANY circumstances.** Binds every agent — main, supervisors, workers, the VPS manager, subagents. No exception, no harness feature overrides it.
+
+1. **Never `git worktree add`** (nor `move`/`lock`). Cleanup of a stray worktree is allowed: `git worktree list`, `remove`, `prune`.
+2. **Never pass `isolation:"worktree"` to the Agent tool; never set `opts.isolation:'worktree'` in Workflow scripts; never call EnterWorktree.** If a harness feature offers worktree isolation, decline it and use the live tree.
+3. **All work happens in the LIVE working tree of the canonical repo.** Worker context/geometry is delivered by injecting project rules into the brief, never by a worktree.
+4. **If a task seems to need isolation** (e.g. parallel mutating agents), STOP and re-plan: sequence the work or split by file ownership; escalate if truly stuck. Worktree isolation is never the answer.
+
+**Enforcement:** the PreToolUse hook `block-worktree-isolation.sh` denies `git worktree add/move/lock` (Bash), `isolation:"worktree"` (Agent tool), a Workflow script setting `isolation:'worktree'`, and any EnterWorktree call — fail-open on every uncertainty, so only a confirmed match denies. The hook activates per-session only after a Claude Code restart; this prose rule and the paired memory entry bind immediately.
+
+**Why this rule exists:** {{USER_NAME}}'s standing directive (2026-07-17). Not a verified-failure incident — structural rationale instead: this org's live config is a symlink farm into the {{DOTFILES_REPO}} MAIN working tree, and rule-loading is path-geometry-dependent — a worktree checkout bypasses both (edits land where nothing reads them; an agent working inside the worktree loses its project rule chain).
+
 ## Research & Information Gathering
 
 **OVERRIDE: Do NOT do shallow research.** When researching anything — a library, framework, architecture decision, bug, API, tool, or concept:
